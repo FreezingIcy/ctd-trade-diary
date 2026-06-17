@@ -177,6 +177,14 @@ option{color:#000}
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// Fallback CDN: if gstatic blocked, try jsdelivr
+if(typeof firebase==='undefined'){
+  document.write('<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-app-compat.js"><\/script>');
+  document.write('<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-auth-compat.js"><\/script>');
+  document.write('<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-firestore-compat.js"><\/script>');
+}
+</script>
 </head>
 <body>
 
@@ -311,9 +319,23 @@ var isSyncing=false;
 
 function firebaseReady(){ return !!(FIREBASE_CONFIG.apiKey && fbApp && fbDb); }
 
-function initFirebase(){
+function initFirebase(retryCount){
+  retryCount=retryCount||0;
   if(!FIREBASE_CONFIG.apiKey){
     cloudStatus='offline'; cloudMsg='ยังไม่ได้ตั้งค่า Firebase'; return;
+  }
+  // wait for Firebase SDK to load
+  if(typeof firebase==='undefined'){
+    if(retryCount<20){
+      // retry up to 10 seconds (20 × 500ms)
+      setTimeout(()=>initFirebase(retryCount+1),500);
+      cloudStatus='pending'; cloudMsg='กำลังโหลด Firebase SDK...';
+      return;
+    }
+    cloudStatus='error'; cloudMsg='โหลด Firebase SDK ไม่สำเร็จ · ตรวจ network';
+    console.error('Firebase SDK failed to load after 10s');
+    if(typeof renderRecords==='function') renderRecords();
+    return;
   }
   try{
     fbApp=firebase.initializeApp(FIREBASE_CONFIG);
@@ -327,11 +349,12 @@ function initFirebase(){
       }else{
         cloudStatus='offline'; cloudMsg='ยังไม่ได้ Sign in';
       }
-      renderRecords();
+      if(typeof renderRecords==='function') renderRecords();
     });
   }catch(e){
-    cloudStatus='error'; cloudMsg='Firebase init error';
+    cloudStatus='error'; cloudMsg='Firebase init error: '+e.message;
     console.error('Firebase init:',e);
+    if(typeof renderRecords==='function') renderRecords();
   }
 }
 
@@ -1805,8 +1828,12 @@ function onEdateBlur(el){
   saveData();
 }
 
-// Init Firebase (if configured)
-try{ initFirebase(); }catch(e){ console.error('Firebase init skipped:',e); }
+// Init Firebase after window loads (ensures SDK scripts have time to load)
+if(document.readyState==='complete'){
+  initFirebase();
+}else{
+  window.addEventListener('load',()=>{ try{ initFirebase(); }catch(e){ console.error('Firebase init skipped:',e); } });
+}
 
 // Demo data for testing
 function loadDemoSession(){
