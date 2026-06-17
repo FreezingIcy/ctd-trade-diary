@@ -1409,7 +1409,7 @@ function buildSyncGuideUI(){
   // offline backup section
   h+=`<div style="font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.3px;margin:0 2px 6px">Offline backup</div>`;
   h+=`<div style="background:rgba(128,128,128,.06);border:.5px solid var(--border);border-radius:10px;margin-bottom:4px">
-    <button onclick="exportRecords()" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">${DL_ICON} Export file</button>
+    <button onclick="exportFileStep(this)" data-step="0" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">${DL_ICON} Export file</button>
   </div>`;
   h+=`<div style="text-align:center;margin-bottom:14px"><span onclick="showExportModal()" style="font-size:11px;color:var(--hint);cursor:pointer">Copy JSON</span></div>`;
   // button guide
@@ -1440,6 +1440,28 @@ function deleteRecord(id){
   saveRecords(data);recArmId=null;
   if(!data.records.length)recEdit=false;
   renderRecords();
+}
+function exportFileStep(btn){
+  const step=btn.dataset.step||'0';
+  if(step==='0'){
+    btn.innerHTML=`${DL_ICON} Export JSON + CSV?`;
+    btn.dataset.step='1';btn.style.background='var(--acc)';btn.style.color='#fff';
+    clearTimeout(btn._te);btn._te=setTimeout(()=>resetExportBtn(btn),2500);
+  }else if(step==='1'){
+    btn.innerHTML=`${DL_ICON} ยืนยัน Export`;btn.dataset.step='2';
+    clearTimeout(btn._te);btn._te=setTimeout(()=>resetExportBtn(btn),2500);
+  }else{
+    clearTimeout(btn._te);
+    exportRecords();
+    btn.innerHTML='✓ Export สำเร็จ';btn.style.background='#34C759';btn.style.color='#fff';
+    btn.dataset.step='done';
+    setTimeout(()=>resetExportBtn(btn),2000);
+  }
+}
+function resetExportBtn(btn){
+  btn.dataset.step='0';btn.style.background='';btn.style.color='';
+  btn.innerHTML=`${DL_ICON} Export file`;
+  clearTimeout(btn._te);
 }
 function clearRecords(btn){
   const data=loadRecords();
