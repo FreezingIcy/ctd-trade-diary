@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CTD">
+<title>CTD</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+button,.tab-btn{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+:root{
+  --bg:#F2F2F7;--card:#FFFFFF;--text:#000000;--sub:#6C6C70;--hint:#AEAEB2;
+  --border:#C6C6C8;--green:#34C759;--red:#FF3B30;--orange:#FF9500;
+  --blue:#007AFF;--acc:#0D7377;--purple:#5856D6;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1C1C1E;--card:#2C2C2E;--text:#FFFFFF;--sub:#AEAEB2;--hint:#636366;--border:#38383A;
+}}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;font-size:16px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
+.header{background:var(--acc);color:#fff;padding:52px 16px 0;display:flex;flex-direction:column}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.header h1{font-size:17px;font-weight:600;flex:1}
+.save-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);transition:background .3s}
+.save-dot.on{background:#34C759}
+.save-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border:none;border-radius:20px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s}
+.save-btn.saved{background:#34C759}
+.tab-bar{display:flex;gap:8px;padding:0 0 12px}
+.tab-btn{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);transition:.15s}
+.tab-btn.on{background:#fff;color:var(--acc)}
+.page{display:none;padding:14px}
+.page.on{display:block}
+.cr{color:var(--red)}.co{color:var(--orange)}.cb{color:var(--blue)}.cg{color:var(--green)}
+.entry-row{border-top:1.5px solid var(--acc)!important}
+.sl-row{border-bottom:1.5px solid var(--orange)!important}
+
+
+
+
+.stitle{font-size:12px;font-weight:500;color:var(--sub);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 7px 2px}
+.stitle:first-child{margin-top:0}
+.card{background:var(--card);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.row{display:flex;align-items:center;min-height:48px;padding:0 14px;border-bottom:.5px solid var(--border)}
+.row:last-child{border-bottom:none}
+.rl{flex:1;font-size:15px}
+.row input,.row select{background:transparent;border:none;font-size:15px;font-weight:500;color:var(--blue);text-align:right;width:130px;outline:none;font-family:inherit;-webkit-appearance:none}
+.row select{color:var(--text)}
+option{color:#000}
+
+
+
+
+.drow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:.5px solid var(--border)}
+.drow:last-child{border-bottom:none}
+.dl{font-size:14px;color:var(--sub)}.dv{font-size:14px;font-weight:500}
+.toggle-bar{display:flex;background:var(--border);border-radius:10px;padding:2px;gap:2px;margin-bottom:10px}
+.toggle-btn{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--sub);transition:.15s}
+.toggle-btn.on{background:var(--card);color:var(--acc);font-weight:600}
+.apply-btn{width:100%;padding:13px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;margin-bottom:4px}
+.apply-btn:active{opacity:.8}
+.btn-row{display:flex;gap:8px;margin-top:8px}
+.action-btn{flex:1;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer}
+.btn-save-main{background:var(--acc);color:#fff}
+.btn-reset{background:var(--card);color:var(--red)}
+.btn-import{background:var(--acc);color:#fff;flex:2!important}
+.btn-import.confirm{background:var(--orange)}
+.score-warn{background:#FFFBE6;border:1.5px solid #FFD60A;border-radius:12px;transition:background .3s,border .3s}
+@media(prefers-color-scheme:dark){.score-warn{background:#2D2800;border-color:#FFD60A}}
+.note-input{width:100%;background:var(--bg);border:none;border-radius:8px;font-size:14px;color:var(--text);font-family:inherit;resize:none;outline:none;padding:8px 10px;line-height:1.5;min-height:36px;overflow:hidden}
+.chip{font-size:11px;font-weight:500;padding:2px 7px;border-radius:6px;display:inline-block}
+.chip-pct{background:#FFF3E0;color:#854F0B}
+.chip-pip{background:#F2F2F7;color:#5F5E5A}
+.chip-dist{background:#E6F1FB;color:#0C447C}
+.os-g2{display:grid;grid-template-columns:1fr 1fr;background:var(--card)}
+.os-cell{padding:10px 14px;border-right:.5px solid var(--border);border-bottom:.5px solid var(--border)}
+.os-cell:nth-child(2n){border-right:none}
+.os-cell:nth-child(3),.os-cell:nth-child(4){border-bottom:none}
+.os-lbl{font-size:11px;color:var(--sub);margin-bottom:4px}
+.os-val{font-size:19px;font-weight:500}
+
+/* ── Tab2 Position Card ── */
+.pos-card{background:var(--card);border-radius:12px;overflow:hidden;margin-bottom:14px;border:.5px solid var(--border)}
+.pos-hd{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid var(--border)}
+.pos-hd.short{background:#FF3B3010}
+.pos-hd.long{background:#34C75910}
+.pos-hd-left{display:flex;flex-direction:column;gap:2px}
+.pos-sym{font-size:16px;font-weight:500;color:var(--text)}
+.pos-dir-tag{font-size:13px;margin-left:6px}
+.pos-dir-tag.short{color:var(--red)}
+.pos-dir-tag.long{color:var(--green)}
+.pos-id-txt{font-size:11px;color:var(--hint)}
+.state-badge{font-size:13px;font-weight:600;padding:5px 14px;border-radius:20px}
+.badge-active{background:#E6F1FB;color:#0C447C}
+.badge-partial{background:#FFF3E0;color:#854F0B}
+.badge-closed{background:#FFD600;color:#7A5800}
+.pos-g2{display:grid;grid-template-columns:1fr 1fr;gap:.5px;background:var(--border);border-bottom:.5px solid var(--border)}
+.pos-stat{background:var(--card);padding:9px 14px}
+.pos-slbl{font-size:11px;color:var(--sub);margin-bottom:2px}
+.pos-sval{font-size:15px;font-weight:500;color:var(--text)}
+.pos-sval.red{color:var(--red)}.pos-sval.green{color:var(--green)}.pos-sval.blue{color:var(--blue)}.pos-sval.acc{color:var(--acc)}.pos-sval.sub{color:var(--hint)}
+.pos-row{display:flex;align-items:center;min-height:44px;padding:0 14px;border-bottom:.5px solid var(--border);font-size:14px}
+.pos-row:last-child{border-bottom:none}
+.pos-rl{flex:1;color:var(--sub)}
+.pos-rv{font-weight:500;color:var(--text)}
+.pos-rv.red{color:var(--red)}.pos-rv.orange{color:var(--orange)}.pos-rv.sub{color:var(--hint)}
+.note-box{flex:1;background:var(--bg);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--sub);line-height:1.5;word-break:break-word}
+
+.exit-section-hd{padding:7px 14px;background:rgba(13,115,119,.15);font-size:11px;font-weight:600;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;border-top:.5px solid rgba(13,115,119,.2);border-bottom:.5px solid rgba(13,115,119,.2)}
+.exit-rec-row{display:flex;align-items:center;min-height:44px;padding:0 14px;border-bottom:.5px solid var(--border);font-size:13px;gap:4px}
+.exit-rec-row:last-child{border-bottom:none}
+.exit-rec-row.editing{background:rgba(13,115,119,.04)}
+.inline-input{background:transparent;border:none;border-bottom:1.5px solid var(--acc);font-size:13px;font-weight:500;color:var(--acc);outline:none;font-family:inherit;padding:2px;width:100%;text-align:inherit}
+.inline-select{background:transparent;border:none;border-bottom:1.5px solid var(--acc);font-size:11px;color:var(--acc);outline:none;font-family:inherit;padding:2px;width:100%;text-align:center;-webkit-appearance:none}
+.exit-tag{width:28px;flex-shrink:0;font-weight:600;color:var(--acc);font-size:12px}
+.exit-price-val{flex:1.5;font-weight:500;text-align:right}
+.exit-price-val.profit{color:var(--green)}.exit-price-val.loss{color:var(--red)}
+.exit-lot-val{flex:1;font-size:12px;color:var(--sub);text-align:center}
+.exit-method-badge{flex:1;font-size:11px;color:var(--sub);background:var(--bg);padding:2px 6px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.exit-score-val{flex:0.5;font-size:11px;color:var(--acc);text-align:center}
+.exit-pending-txt{color:var(--hint);font-style:italic;text-align:right;flex:1}
+.add-exit-row{display:flex;align-items:center;min-height:44px;padding:0 14px;gap:8px;cursor:pointer;border-top:.5px solid var(--border)}
+.add-exit-icon{width:24px;height:24px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex-shrink:0}
+.add-exit-lbl{font-size:14px;color:var(--acc);font-weight:500}
+.lot-status-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:.5px solid var(--border);transition:background .3s,border .3s}
+.lot-status-lbl{font-size:12px;color:var(--sub);white-space:nowrap;flex-shrink:0}
+.lot-status-disp{font-size:14px;font-weight:600;color:var(--text);flex:1;text-align:center}
+.lot-status-msg{font-size:12px;font-weight:500;color:var(--sub);white-space:nowrap;flex-shrink:0}
+.bd-section{padding:0 14px;border-top:.5px solid var(--border)}
+.bd-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:.5px solid var(--border);font-size:14px}
+.bd-row:last-child{border-bottom:none}
+.bd-lbl{color:var(--sub)}
+.bd-val{font-weight:500}
+.pos-action-row{padding:10px 14px;background:var(--bg);border-top:.5px solid var(--border);display:flex;gap:8px}
+.archive-btn{flex:1;padding:11px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:rgba(13,115,119,.12);color:var(--acc);transition:background .2s,color .2s}
+.archive-btn.off{background:var(--bg);color:var(--hint);cursor:not-allowed}
+.archive-btn.step1{background:var(--orange);color:#fff}
+.archive-btn.step2{background:var(--acc);color:#fff}
+.delete-btn{flex:0 0 44px;padding:11px;border:none;border-radius:10px;font-size:18px;cursor:pointer;background:rgba(255,59,48,.1);color:var(--red);display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s}
+.delete-btn.confirm{flex:0 0 110px;font-size:13px;font-weight:600;background:var(--red);color:#fff}
+
+/* ── Add Exit Sheet ── */
+.sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500}
+.sheet-overlay.on{display:block}
+.sheet{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-radius:18px 18px 0 0;padding:16px 16px calc(32px + env(safe-area-inset-bottom));z-index:501;max-height:90vh;overflow-y:auto}
+.sheet-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheet-title{font-size:16px;font-weight:500}
+.sheet-close{width:28px;height:28px;border-radius:50%;background:var(--bg);border:none;font-size:18px;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sheet-card{background:var(--bg);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.sheet-row{display:flex;align-items:center;min-height:46px;padding:0 14px;border-bottom:.5px solid var(--border);font-size:15px}
+.sheet-row:last-child{border-bottom:none}
+.sheet-rl{flex:1;color:var(--sub)}
+.sheet-input{background:transparent;border:none;font-size:15px;font-weight:500;color:var(--blue);text-align:right;outline:none;font-family:inherit;width:140px}
+.sheet-select{background:transparent;border:none;font-size:15px;font-weight:500;color:var(--blue);text-align:right;outline:none;font-family:inherit;-webkit-appearance:none}
+.sheet-confirm-btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+
+/* ── Trail SL Edit Sheet ── */
+.trail-sheet{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-radius:18px 18px 0 0;padding:16px 16px calc(32px + env(safe-area-inset-bottom));z-index:501;display:none}
+.trail-sheet.on{display:block}
+/* ── Cloud Sync ── */
+.cloud-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;font-size:12px;margin-bottom:10px}
+.cloud-bar.synced{background:rgba(52,199,89,.08);color:#1B7F37}
+.cloud-bar.pending{background:rgba(255,149,0,.08);color:#854F0B}
+.cloud-bar.offline{background:var(--bg);color:var(--hint)}
+.cloud-bar.error{background:rgba(255,59,48,.06);color:#A32D2D}
+.cloud-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.cloud-dot.synced{background:#34C759}
+.cloud-dot.pending{background:#FF9500}
+.cloud-dot.offline{background:var(--hint)}
+.cloud-dot.error{background:#FF3B30}
+.sync-btn{flex:1;padding:10px 0;border:none;border-radius:10px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none}
+.sync-btn:disabled{opacity:.5;cursor:not-allowed}
+.sync-btn.push{background:var(--acc);color:#fff}
+.sync-btn.pull{background:rgba(13,115,119,.12);color:var(--acc);border:1.5px solid rgba(13,115,119,.35)}
+.auth-btn{width:100%;padding:11px;border:1.5px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-user-select:none;user-select:none}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// Fallback CDN: if gstatic blocked, try jsdelivr
+if(typeof firebase==='undefined'){
+  document.write('<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-app-compat.js"><\/script>');
+  document.write('<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-auth-compat.js"><\/script>');
+  document.write('<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-firestore-compat.js"><\/script>');
+}
+</script>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <h1>CTD</h1>
+    <button class="save-btn" id="save-btn" onclick="manualSave()">
+      <div class="save-dot" id="sdot"></div>
+      <span id="save-txt">Save</span>
+    </button>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn on" id="tab-calc" onclick="switchTab('calc')">Calculator</button>
+    <button class="tab-btn" id="tab-session" onclick="switchTab('session')">Position</button>
+    <button class="tab-btn" id="tab-record" onclick="switchTab('record')">Record</button>
+  </div>
+</div>
+
+<input type="hidden" id="balance" value="10000">
+
+<!-- TAB1: Calculator -->
+<div id="page-calc" class="page on"></div>
+
+<!-- TAB2: Session -->
+<div id="page-session" class="page">
+  <div id="session-content"></div>
+</div>
+
+<!-- TAB3: Record -->
+<div id="page-record" class="page">
+  <div id="record-content"></div>
+</div>
+
+<!-- Add Exit Sheet -->
+<div class="sheet-overlay" id="exit-overlay" onclick="closeExitSheet()"></div>
+<div class="sheet" id="exit-sheet">
+  <div class="sheet-hd">
+    <span class="sheet-title" id="exit-sheet-title">Edit Exit</span>
+    <button class="sheet-close" onclick="closeExitSheet()">×</button>
+  </div>
+  <div class="sheet-card">
+    <div class="sheet-row">
+      <span class="sheet-rl">Slot</span>
+      <input class="sheet-input" id="exit-slot" type="text" placeholder="T1, T2, CL ..." style="text-transform:uppercase;width:100px">
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-rl">Price</span>
+      <input class="sheet-input" id="exit-price" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-rl">Date</span>
+      <input class="sheet-input" id="exit-date" type="text" placeholder="dd/mm/yy" style="width:140px">
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-rl">Lot</span>
+      <input class="sheet-input" id="exit-lot" type="number" inputmode="decimal" step="0.01" placeholder="0.01">
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-rl">Method</span>
+      <select class="sheet-select" id="exit-method">
+        <option value="">—</option>
+        <option>Cutloss</option><option>MA Float</option><option>PC Float</option>
+        <option>Trail Float</option><option>Vola Fix</option><option>EoWk</option><option>Trail Cut</option>
+      </select>
+    </div>
+    <div class="sheet-row">
+      <span class="sheet-rl">Exit Score</span>
+      <select class="sheet-select" id="exit-score">
+        <option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+      </select>
+    </div>
+  </div>
+  <button class="sheet-confirm-btn" onclick="confirmExit()">Confirm Exit</button>
+</div>
+
+<!-- Trail SL Edit Sheet -->
+<div class="sheet-overlay" id="trail-overlay" onclick="closeTrailSheet()"></div>
+<div class="trail-sheet" id="trail-sheet">
+  <div class="sheet-hd">
+    <span class="sheet-title">Edit Trail SL</span>
+    <button class="sheet-close" onclick="closeTrailSheet()">×</button>
+  </div>
+  <div class="sheet-card">
+    <div class="sheet-row">
+      <span class="sheet-rl">Trail SL</span>
+      <input class="sheet-input" id="trail-sl-input" type="number" inputmode="decimal" step="0.00001" placeholder="0.00000">
+    </div>
+  </div>
+  <button class="sheet-confirm-btn" onclick="confirmTrailSL()">Update Trail SL</button>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────
+const SYMBOLS={
+  EURUSD:{unit:100000,pipM:10000,pipSize:0.0001,note:'Forex'},
+  GBPUSD:{unit:100000,pipM:10000,pipSize:0.0001,note:'Forex'},
+  USDCHF:{unit:100000,pipM:10000,pipSize:0.0001,note:'Forex'},
+  XAUUSD:{unit:100,   pipM:10,   pipSize:0.01,  note:'Gold'},
+  XAUTHB:{unit:null,  pipM:null, pipSize:null,  note:'Gold/THB — pending'},
+};
+function getSymbol(key){return SYMBOLS[key]||SYMBOLS['EURUSD'];}
+const N_POS=1;
+const SK1='cfd_dash_v2';
+const SK2='ctd_session_v1';
+const SK3='ctd_record_v1';
+var riskMode=[,'fixed'];
+var currentExitPosId=null;
+var currentTrailPosId=null;
+var recSort='latest';
+var recFilter='all';
+var recEdit=false;
+var recArmId=null;
+var recExpandedId=null;
+function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// ─── Firebase Cloud Sync ─────────────────────────────
+// ⚠️ ใส่ config ของคุณจาก Firebase Console → Project Settings → Your apps → Config
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD-_HwDF2j28k-4cIG9_-UgE1iZGSULXLw",
+  authDomain: "ctd-trade-diary.firebaseapp.com",
+  databaseURL: "https://ctd-trade-diary-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ctd-trade-diary",
+  storageBucket: "ctd-trade-diary.firebasestorage.app",
+  messagingSenderId: "860025014306",
+  appId: "1:860025014306:web:8b7abbda2859224c05227b"
+};
+var fbApp=null, fbAuth=null, fbDb=null, fbUser=null;
+var cloudStatus='offline'; // 'offline'|'synced'|'pending'|'error'
+var cloudMsg='ยังไม่ได้เชื่อมต่อ';
+var cloudLastSync=null;
+var isSyncing=false;
+
+function firebaseReady(){ return !!(FIREBASE_CONFIG.apiKey && fbApp && fbDb); }
+
+function initFirebase(retryCount){
+  retryCount=retryCount||0;
+  if(!FIREBASE_CONFIG.apiKey){
+    cloudStatus='offline'; cloudMsg='ยังไม่ได้ตั้งค่า Firebase'; return;
+  }
+  // wait for Firebase SDK to load
+  if(typeof firebase==='undefined'){
+    if(retryCount<20){
+      // retry up to 10 seconds (20 × 500ms)
+      setTimeout(()=>initFirebase(retryCount+1),500);
+      cloudStatus='pending'; cloudMsg='กำลังโหลด Firebase SDK...';
+      return;
+    }
+    cloudStatus='error'; cloudMsg='โหลด Firebase SDK ไม่สำเร็จ · ตรวจ network';
+    console.error('Firebase SDK failed to load after 10s');
+    if(typeof renderRecords==='function') renderRecords();
+    return;
+  }
+  try{
+    fbApp=firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth=firebase.auth();
+    fbDb=firebase.firestore();
+    fbDb.enablePersistence({synchronizeTabs:false}).catch(()=>{});
+    fbAuth.onAuthStateChanged(user=>{
+      fbUser=user;
+      if(user){
+        cloudStatus='synced'; cloudMsg='เชื่อมต่อแล้ว · '+user.email;
+      }else{
+        cloudStatus='offline'; cloudMsg='ยังไม่ได้ Sign in';
+      }
+      if(typeof renderRecords==='function') renderRecords();
+    });
+  }catch(e){
+    cloudStatus='error'; cloudMsg='Firebase init error: '+e.message;
+    console.error('Firebase init:',e);
+    if(typeof renderRecords==='function') renderRecords();
+  }
+}
+
+async function signInGoogle(){
+  if(!firebaseReady()){alert('กรุณาตั้งค่า Firebase config ก่อน');return;}
+  try{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    await fbAuth.signInWithPopup(provider);
+  }catch(e){
+    if(e.code!=='auth/popup-closed-by-user'){
+      cloudStatus='error'; cloudMsg='Sign in ล้มเหลว';
+      renderRecords();
+    }
+  }
+}
+async function signOutCloud(){
+  if(fbAuth){await fbAuth.signOut(); fbUser=null;}
+  cloudStatus='offline'; cloudMsg='ออกจากระบบแล้ว';
+  renderRecords();
+}
+
+function userRecordsRef(){
+  if(!fbUser||!fbDb)return null;
+  return fbDb.collection('users').doc(fbUser.uid).collection('records');
+}
+
+async function pushToCloud(){
+  if(!fbUser||!fbDb||isSyncing)return;
+  isSyncing=true; cloudStatus='pending'; cloudMsg='กำลัง Push...';
+  renderRecords();
+  try{
+    const local=loadRecords();
+    const ref=userRecordsRef();
+    // read existing cloud IDs
+    const snap=await ref.get();
+    const cloudIds=new Set();
+    snap.forEach(doc=>cloudIds.add(doc.id));
+    // push local records not on cloud
+    let added=0, skipped=0;
+    const batch_size=500; // Firestore batch limit
+    let batch=fbDb.batch();
+    let batchCount=0;
+    for(const rec of local.records){
+      if(cloudIds.has(rec.id)){
+        skipped++;
+      }else{
+        batch.set(ref.doc(rec.id),JSON.parse(JSON.stringify(rec)));
+        added++;
+        batchCount++;
+        if(batchCount>=batch_size){
+          await batch.commit();
+          batch=fbDb.batch();
+          batchCount=0;
+        }
+      }
+    }
+    if(batchCount>0) await batch.commit();
+    cloudLastSync=new Date();
+    cloudStatus='synced';
+    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped`;
+    renderRecords();
+    setTimeout(()=>{
+      if(cloudStatus==='synced'){
+        cloudMsg=`Synced · ${local.records.length} records · ${fmtSyncTime(cloudLastSync)}`;
+        renderRecords();
+      }
+    },3000);
+  }catch(e){
+    cloudStatus='error'; cloudMsg='Push ล้มเหลว: '+e.message;
+    console.error('Push error:',e);
+    renderRecords();
+  }finally{ isSyncing=false; }
+}
+
+async function pullFromCloud(){
+  if(!fbUser||!fbDb||isSyncing)return;
+  isSyncing=true; cloudStatus='pending'; cloudMsg='กำลัง Pull...';
+  renderRecords();
+  try{
+    const ref=userRecordsRef();
+    const snap=await ref.get();
+    const cloudRecs=[];
+    snap.forEach(doc=>cloudRecs.push(doc.data()));
+    const local=loadRecords();
+    const localIds=new Set(local.records.map(r=>r.id));
+    let added=0, skipped=0;
+    for(const rec of cloudRecs){
+      if(localIds.has(rec.id)){
+        skipped++;
+      }else{
+        local.records.push(rec);
+        added++;
+      }
+    }
+    saveRecords(local);
+    cloudLastSync=new Date();
+    cloudStatus='synced';
+    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had`;
+    renderRecords();
+    setTimeout(()=>{
+      if(cloudStatus==='synced'){
+        cloudMsg=`Synced · ${local.records.length} records · ${fmtSyncTime(cloudLastSync)}`;
+        renderRecords();
+      }
+    },3000);
+  }catch(e){
+    cloudStatus='error'; cloudMsg='Pull ล้มเหลว: '+e.message;
+    console.error('Pull error:',e);
+    renderRecords();
+  }finally{ isSyncing=false; }
+}
+
+function fmtSyncTime(d){
+  if(!d)return '';
+  const now=new Date();
+  const diff=Math.floor((now-d)/1000);
+  if(diff<60)return 'เมื่อกี้';
+  if(diff<3600)return Math.floor(diff/60)+' min ago';
+  if(diff<86400)return Math.floor(diff/3600)+' hr ago';
+  return d.toLocaleDateString('th');
+}
+// ─── Utilities ───────────────────────────────────────
+function g(id){return document.getElementById(id)}
+function f(n,d=2){return isFinite(n)?n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'}
+function fSign(n,d=2){if(!isFinite(n))return '—'; return (n>=0?'+':'')+f(n,d);}
+const BIN_SVG='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>';
+function nowStamp(){const d=new Date();const p=v=>String(v).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${String(d.getFullYear()).slice(2)} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;}
+function autoExpand(el){if(!el)return;el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+
+// ─── Tab switching ────────────────────────────────────
+function switchTab(tab){
+  ['calc','session','record'].forEach(t=>{
+    g(`page-${t}`).classList.toggle('on',t===tab);
+    g(`tab-${t}`).classList.toggle('on',t===tab);
+  });
+  if(tab==='session') renderSession();
+  if(tab==='record') renderRecords();
+}
+
+// ─── Tab1: Calculator functions ───────────────────────
+function checkEntryScore(n){
+  const lot=parseFloat(g(`p${n}-lot`)?.value)||0;
+  const score=g(`p${n}-entry-score`)?.value||'';
+  const card=g(`p${n}-entry-score-card`);
+  if(!card)return;
+  if(lot>0&&!score)card.classList.add('score-warn');
+  else card.classList.remove('score-warn');
+}
+function validateLot(n){
+  const el=g(`p${n}-lot`);
+  if(!el)return;
+  const raw=el.value;
+  const val=parseFloat(raw);
+  const decMatch=raw.match(/\.(\d+)/);
+  const decimals=decMatch?decMatch[1].length:0;
+  const invalid=raw&&raw!=='0'&&(isNaN(val)||val<0.01||decimals>2);
+  el.style.color=invalid?'var(--red)':'var(--blue)';
+  el.style.fontWeight=invalid?'600':'500';
+  checkEntryScore(n);
+}
+function updateSymInfo(n){
+  const sym=getSymbol(g(`p${n}-inst`).value);
+  const el=g(`p${n}-sym-info`);
+  if(!el)return;
+  if(!sym.unit){el.textContent='⚠️ unit / pip size ยังไม่ได้กำหนด';el.style.color='var(--orange)';}
+  else{el.textContent=`unit ${sym.unit.toLocaleString()} · pip size ${sym.pipSize} · ${sym.note}`;el.style.color='var(--hint)';}
+}
+function manualSave(){
+  try{
+    saveData();
+    const btn=g('save-btn');const txt=g('save-txt');
+    btn.classList.add('saved');txt.textContent='Saved!';
+    clearTimeout(btn._t);
+    btn._t=setTimeout(()=>{btn.classList.remove('saved');txt.textContent='Save';},2000);
+  }catch(e){alert('บันทึกไม่ได้ — Safari อาจบล็อก localStorage ในโหมด Private');}
+}
+var _saveTimer=null;
+function saveDataDebounced(){clearTimeout(_saveTimer);_saveTimer=setTimeout(saveData,400);}
+function saveData(){
+  const d={bal:'',pos:{}};
+  for(let n=1;n<=N_POS;n++){
+    d.pos[n]={
+      edate:(g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value),
+      inst:g(`p${n}-inst`)?.value, lev:g(`p${n}-lev`)?.value,
+      dir:g(`p${n}-dir`)?.value, entry:g(`p${n}-entry`)?.value,
+      sl:g(`p${n}-sl`)?.value, lot:g(`p${n}-lot`)?.value,
+      rpt:g(`p${n}-rpt`)?.value, vsd:g(`p${n}-vsd`)?.value, vsf:g(`p${n}-vsf`)?.value,
+      entryScore:g(`p${n}-entry-score`)?.value,
+      entryNote:g(`p${n}-entry-note`)?.value,
+      rmode:riskMode[n]
+    };
+  }
+  try{
+    localStorage.setItem(SK1,JSON.stringify(d));
+    const dot=g('sdot');dot.classList.add('on');clearTimeout(dot._t);
+    dot._t=setTimeout(()=>dot.classList.remove('on'),1400);
+  }catch(e){}
+}
+function loadData(){
+  try{
+    const raw=localStorage.getItem(SK1);
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    for(let n=1;n<=N_POS;n++){
+      const p=d.pos?.[n];if(!p)continue;
+      const set=(id,val)=>{
+        const el=g(id);if(!el||val==null)return;
+        const dateIds=['edate'];
+        const isDate=dateIds.some(dk=>id.endsWith(dk));
+        if(isDate&&val){
+          el.dataset.full=val;
+          const parts=val.split(' ')[0].split('/');
+          el.value=parts.length===3?parts[0]+'/'+parts[1]+'/'+parts[2].slice(2):val;
+          el.style.color='var(--blue)';
+        }else{el.value=val;}
+      };
+      set(`p${n}-edate`,p.edate);
+      set(`p${n}-inst`,p.inst);set(`p${n}-lev`,p.lev);set(`p${n}-dir`,p.dir);
+      set(`p${n}-entry`,p.entry);set(`p${n}-sl`,p.sl);set(`p${n}-lot`,p.lot);
+      set(`p${n}-rpt`,p.rpt);set(`p${n}-vsd`,p.vsd);set(`p${n}-vsf`,p.vsf);
+      set(`p${n}-entry-score`,p.entryScore);
+      set(`p${n}-entry-note`,p.entryNote);
+      autoExpand(g(`p${n}-entry-note`));
+      if(p.rmode&&p.rmode!=='fixed')setRiskMode(n,p.rmode);
+      const ds=g(`p${n}-dir`);
+      if(ds){ds.style.color=ds.value==='long'?'var(--green)':'var(--red)';ds.style.fontWeight='600';}
+      checkEntryScore(n);
+    }
+  }catch(e){}
+}
+function resetPos(n){
+  const btn=g('page-calc').querySelector('.btn-reset');
+  if(btn.dataset.confirm!=='1'){
+    btn.textContent='ยืนยัน Reset?';btn.style.background='var(--red)';btn.style.color='#fff';btn.dataset.confirm='1';
+    setTimeout(()=>{btn.textContent='Reset';btn.style.background='';btn.style.color='';btn.dataset.confirm='';},2500);
+    return;
+  }
+  btn.textContent='Reset';btn.style.background='';btn.style.color='';btn.dataset.confirm='';
+  ['inst','lev','dir','edate','entry','sl','vsd','lot','rpt','vsf','entry-score','entry-note'].forEach(k=>{
+    const el=g(`p${n}-${k}`);if(!el)return;
+    if(el.tagName==='SELECT')el.selectedIndex=0;
+    else el.value='';
+    if(el.tagName==='TEXTAREA')autoExpand(el);
+  });
+  checkEntryScore(n);setRiskMode(n,'fixed');
+  try{const raw=localStorage.getItem(SK1);if(raw){const d=JSON.parse(raw);d.pos[n]={};localStorage.setItem(SK1,JSON.stringify(d));}}catch(e){}
+  calcPos(n);
+}
+function setRiskMode(n,mode){
+  riskMode[n]=mode;
+  const isFixed=mode==='fixed';
+  g(`p${n}-tog-fixed`).classList.toggle('on',isFixed);
+  g(`p${n}-tog-vola`).classList.toggle('on',!isFixed);
+  const sfRow=g(`p${n}-sf-row`);if(sfRow)sfRow.style.display=isFixed?'none':'';
+  const slFixed=g(`p${n}-sl-fixed-row`);const slVola=g(`p${n}-sl-vola-row`);
+  if(slFixed)slFixed.style.display=isFixed?'':'none';
+  if(slVola)slVola.style.display=isFixed?'none':'';
+  ['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-lot'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
+  calcRisk(n);
+}
+function calcRisk(n){
+  const sym=getSymbol(g(`p${n}-inst`).value);
+  const unit=sym.unit;const pipM=sym.pipM;
+  if(!unit){['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-lot'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});return;}
+  const entry=parseFloat(g(`p${n}-entry`).value)||0;
+  const ids=['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-lot'];
+  const clear=()=>ids.forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
+  if(!entry){clear();return;}
+  const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
+  let slDist=0,rpt=0;
+  if(riskMode[n]==='fixed'){
+    const sl=parseFloat(g(`p${n}-sl`).value)||0;
+    rpt=parseFloat(g(`p${n}-rpt`).value)||0;
+    if(!sl||!rpt){clear();return;}
+    slDist=Math.abs(entry-sl);
+  }else{
+    const sdPct=parseFloat(g(`p${n}-vsd`).value)||0;
+    const sf=parseFloat(g(`p${n}-vsf`).value)||0;
+    rpt=parseFloat(g(`p${n}-rpt`).value)||0;
+    if(!sdPct||!sf||!rpt){clear();return;}
+    slDist=entry*(sdPct/100)*sf;
+    const slPrice=(entry-sign*slDist).toFixed(5);
+    const slAutoEl=g(`p${n}-sl-auto`);if(slAutoEl)slAutoEl.textContent=slPrice;
+    const slEl=g(`p${n}-sl`);if(slEl)slEl.value=slPrice;
+  }
+  if(!slDist){clear();return;}
+  const cv=rpt/slDist;const lot=cv/(unit*entry);
+  const slPct=entry>0?((slDist/entry)*100):0;
+  const slPctEl=g(`p${n}-rc-slpct`);if(slPctEl)slPctEl.textContent=f(slPct,2)+'%';
+  const slPipsEl=g(`p${n}-rc-slpips`);if(slPipsEl)slPipsEl.textContent=f(slDist*pipM,1)+' pip';
+  const slDistEl=g(`p${n}-rc-sldist`);if(slDistEl)slDistEl.textContent=f(slDist,5);
+  g(`p${n}-rc-cv`).textContent='$'+f(cv);
+  g(`p${n}-rc-lot`).textContent=f(lot,3)+' lot';
+}
+function applyLot(n){
+  const lotTxt=g(`p${n}-rc-lot`).textContent;
+  if(!lotTxt||lotTxt==='—')return;
+  const num=parseFloat(lotTxt);if(!isFinite(num))return;  g(`p${n}-lot`).value=(Math.floor(num*100)/100).toFixed(2);
+  validateLot(n);calcPos(n);
+  const btn=g('page-calc').querySelector('.apply-btn');
+  btn.textContent='✓ Applied!';btn.style.background='var(--green)';
+  setTimeout(()=>{btn.textContent='✓ Lot Approved';btn.style.background='var(--acc)';},1500);
+  g(`p${n}-lot`).scrollIntoView({behavior:'smooth',block:'center'});
+}
+function calcPos(n){
+  const sym=getSymbol(g(`p${n}-inst`).value);
+  const unit=sym.unit||100000;const pipM=sym.pipM||10000;
+  const bal=parseFloat(g('balance').value)||0;
+  const lev=parseFloat(g(`p${n}-lev`).value)||25;
+  const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
+  const dsel=g(`p${n}-dir`);
+  if(dsel){dsel.style.color=dir==='long'?'var(--green)':'var(--red)';dsel.style.fontWeight='600';}
+  const entry=parseFloat(g(`p${n}-entry`).value)||0;
+  const sl=parseFloat(g(`p${n}-sl`).value)||0;
+  const lot=parseFloat(g(`p${n}-lot`).value)||0;
+  const cv=lot*unit*entry;
+  const margin=lev>0&&entry>0?cv/lev:0;
+  const mlevel=margin>0&&bal>0?(bal/margin)*100:0;
+  const slDist=Math.abs(entry-sl);
+  const risk=slDist*unit*lot;
+  const mg=g(`p${n}-margin`);if(mg)mg.textContent=margin?'$'+f(margin):'—';
+  const le=g(`p${n}-level`);if(le){le.textContent=mlevel?f(mlevel,1)+'%':'—';le.className='os-val '+(mlevel<100?'cr':mlevel<200?'co':mlevel<500?'':'cg');}
+  const rke=g(`p${n}-risk`);if(rke)rke.textContent=risk?'$'+f(risk):'—';
+  const cve=g(`p${n}-cv`);if(cve)cve.textContent=cv?'$'+f(cv,0):'—';
+  const slPct=entry>0&&slDist>0?(slDist/entry)*100:0;
+  const osp=g(`p${n}-os-slpct`);if(osp)osp.textContent=slPct?f(slPct,2)+'%':'—';
+  const oss=g(`p${n}-os-slpips`);if(oss)oss.textContent=slDist?f(slDist*pipM,1)+' pip':'—';
+  calcRisk(n);
+  saveDataDebounced();
+}
+// ─── Tab2: Session functions ──────────────────────────
+function loadSession(){
+  try{const raw=localStorage.getItem(SK2);return raw?JSON.parse(raw):{version:'v1',positions:[]};}
+  catch(e){return{version:'v1',positions:[]};}
+}
+function saveSession(data){
+  try{localStorage.setItem(SK2,JSON.stringify(data));}catch(e){}
+}
+function computePos(pos){
+  const sym=getSymbol(pos.entry.inst);
+  const unit=sym.unit||100000;const pipM=sym.pipM||10000;
+  const entry=parseFloat(pos.entry.price)||0;
+  const usedLot=parseFloat(pos.entry.usedLot)||0;
+  const lev=parseFloat(pos.entry.lev)||25;
+  const dir=pos.entry.dir;const sign=dir==='long'?1:-1;
+  const sl=parseFloat(pos.entry.sl)||0;
+  const cv=usedLot*unit*entry;
+  const margin=lev>0&&entry>0?cv/lev:0;
+  const bal=parseFloat(g('balance')?.value)||10000;
+  const mlevel=margin>0?((bal)/margin)*100:0;
+  const slDist=Math.abs(entry-sl);
+  const risk=slDist*unit*usedLot;
+  const exits=Object.entries(pos.exit)
+    .filter(([k])=>k!=='trailSL'&&k!=='note')
+    .map(([,v])=>({price:parseFloat(v?.price)||0,lot:parseFloat(v?.lot)||0}));
+  let realizedPL=0,totalExitLot=0,hasRealized=false;
+  exits.forEach(({price,lot})=>{
+    if(price&&lot){realizedPL+=(price-entry)*sign*unit*lot;totalExitLot+=lot;hasRealized=true;}
+  });
+  const remainingLot=Math.max(usedLot-totalExitLot,0);
+  const trailSL=parseFloat(pos.exit.trailSL)||0;
+  const trailSLD=trailSL&&entry?Math.abs(entry-trailSL):0;
+  const trailSLDPips=trailSLD*pipM;
+  // holding period
+  let holdingStr='—';
+  if(pos.meta.importedAt){
+    const parts=pos.meta.importedAt.split(' ');
+    const dp=parts[0].split('/');const tp=(parts[1]||'00:00:00').split(':');
+    const importDate=new Date(+('20'+dp[2]),+dp[1]-1,+dp[0],+tp[0],+tp[1],+tp[2]||0);
+    const diffMs=Date.now()-importDate.getTime();
+    const diffD=Math.floor(diffMs/86400000);
+    const diffH=Math.floor((diffMs%86400000)/3600000);
+    holdingStr=diffD>0?`${diffD}d ${diffH}h`:`${diffH}h`;
+  }
+  // state
+  let state=pos.meta.state;
+  if(totalExitLot>=usedLot-0.001&&totalExitLot>0)state='CLOSED';
+  else if(totalExitLot>0)state='PARTIAL';
+  else state='ACTIVE';
+  const rr=risk>0?realizedPL/risk:0;
+  return{unit,pipM,entry,usedLot,lev,dir,sign,cv,margin,mlevel,slDist,risk,
+    realizedPL,totalExitLot,remainingLot,hasRealized,trailSL,trailSLD,trailSLDPips,
+    holdingStr,state,rr};
+}
+function renderSession(){
+  const data=loadSession();
+  const active=data.positions;
+  let html='';
+  if(!active.length){
+    html='<div style="text-align:center;padding:48px 16px;color:var(--hint)"><div style="font-size:32px;margin-bottom:12px">—</div><div style="font-size:15px">ยังไม่มี position ที่ active</div><div style="font-size:13px;margin-top:6px">Import จาก Calculator เพื่อเริ่ม session</div></div>';
+  }else{
+    const states=active.map(p=>computePos(p).state);
+    const activeCount=states.filter(s=>s!=='CLOSED').length;
+    const closedCount=states.filter(s=>s==='CLOSED').length;
+    const noBoxBg=activeCount>0?'#FFB800':'var(--acc)';
+    const noBoxFg=activeCount>0?'#5E4200':'#fff';
+    html+=`<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:16px">
+      <div style="width:64px;height:64px;border-radius:16px;background:${noBoxBg};display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:${noBoxFg}">${activeCount}</div>
+      <div><div style="font-size:15px;font-weight:600;color:var(--text)">Position${activeCount!==1?'s':''} Active</div><div style="font-size:12px;color:var(--hint)">${active.length} total · ${closedCount} closed</div></div>
+    </div>`;
+    active.forEach(pos=>{
+      const c=computePos(pos);
+      const dirClass=pos.entry.dir==='short'?'short':'long';
+      const dirLabel=pos.entry.dir==='short'?'Short':'Long';
+      const badgeClass=c.state==='CLOSED'?'badge-closed':c.state==='PARTIAL'?'badge-partial':'badge-active';
+      const badgeLabel=c.state==='CLOSED'?'Closed':c.state==='PARTIAL'?'Partial':'Active';
+      // exit rows — fixed slots first, then any extra slots added via Add Exit
+      const fixedKeys=['cl','t1','t2','t3'];
+      const extraKeys=Object.keys(pos.exit).filter(k=>!fixedKeys.includes(k)&&k!=='trailSL'&&k!=='note');
+      const slots=[
+        ...fixedKeys.map(k=>({key:k,label:k.toUpperCase(),data:pos.exit[k]||{}})),
+        ...extraKeys.map(k=>({key:k,label:k.toUpperCase(),data:pos.exit[k]||{}})),
+      ];
+      const exitRows=slots.map(({key,label,data})=>{
+        const hasData=data.price&&data.lot;
+        const rowId=`exit-row-${pos.id}-${key}`;
+        const isCL=key==='cl';
+        const tagColor='';
+        const rowBorder=isCL?'border-bottom:.5px solid rgba(255,59,48,.4)':'';
+        if(hasData){
+          const xPrice=parseFloat(data.price);
+          const xPL=(xPrice-c.entry)*c.sign*c.unit*parseFloat(data.lot);
+          const priceClass=xPL>=0?'profit':'loss';
+          return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="startInlineEdit('${pos.id}','${key}',this,event)">
+            <span class="exit-tag" style="${tagColor}">${label}</span>
+            <span class="exit-price-val ${priceClass}">${f(xPrice,xPrice>100?2:5)}</span>
+            <span class="exit-lot-val">${f(parseFloat(data.lot),2)}</span>
+            <span class="exit-method-badge">${data.method||'—'}</span>
+            <span class="exit-score-val">${data.score?'★'+data.score:''}</span>
+          </div>`;
+        }
+        return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="startInlineEdit('${pos.id}','${key}',this,event)">
+          <span class="exit-tag" style="${tagColor}">${label}</span>
+          <span class="exit-pending-txt">— pending</span>
+          <span style="flex:1"></span><span style="flex:1"></span><span style="flex:0.5"></span>
+        </div>`;
+      }).join('');
+      // trail SL rows
+      const trailRow=c.trailSL?
+        `<div class="pos-row"><span class="pos-rl">Trail SL</span><span class="pos-rv" style="color:var(--blue);cursor:pointer" onclick="openTrailSheet('${pos.id}')">${f(c.trailSL,c.trailSL>100?2:5)}</span></div>
+         <div class="pos-row"><span class="pos-rl">SLD (trail)</span><span class="pos-rv orange">${f(c.trailSLDPips,1)} pips · $${f(c.trailSLD*c.unit*(c.remainingLot||c.usedLot))}</span></div>
+         ${`<div class="pos-row" style="align-items:flex-start"><span class="pos-rl" style="padding-top:8px">Note</span><div class="note-box${pos.entry.entryNote?'':' empty'}" onclick="startNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.entry.entryNote||'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div></div>`}`:
+        `${`<div class="pos-row" style="align-items:flex-start"><span class="pos-rl" style="padding-top:8px">Note</span><div class="note-box${pos.entry.entryNote?'':' empty'}" onclick="startNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.entry.entryNote||'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div></div>`}`;
+      html+=`
+      <div class="pos-card" id="poscard-${pos.id}">
+        <div class="pos-hd ${dirClass}">
+          <div class="pos-hd-left">
+            <div class="pos-sym">${pos.entry.inst}<span class="pos-dir-tag ${dirClass}">${dirLabel}</span></div>
+            <div class="pos-id-txt">${pos.id}</div>
+          </div>
+          <span class="state-badge ${badgeClass}">${badgeLabel}</span>
+        </div>
+        <div class="pos-g2">
+          <div class="pos-stat"><div class="pos-slbl">Margin</div><div class="pos-sval blue">${c.margin?'$'+f(c.margin):'—'}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">Margin Lv.</div><div class="pos-sval ${c.mlevel<100?'red':c.mlevel<200?'orange':c.mlevel<500?'':'green'}">${c.mlevel?f(c.mlevel,1)+'%':'—'}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">Risk ($)</div><div class="pos-sval red">${c.risk?'$'+f(c.risk):'—'}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">R : R</div><div class="pos-sval ${c.rr>=2?'green':c.rr>0?'':'sub'}">${c.hasRealized&&c.risk?f(c.rr,2)+'x':'—'}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">Realized P/L</div><div class="pos-sval ${c.realizedPL>0?'green':c.realizedPL<0?'red':'sub'}">${c.hasRealized?fSign(c.realizedPL):'—'}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">Available lot</div><div class="pos-sval acc">${f(c.remainingLot,2)}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">Entry Score</div><div class="pos-sval">${pos.entry.entryScore?'★ '+pos.entry.entryScore:'—'}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">Holding Period</div><div class="pos-sval">${c.holdingStr}</div></div>
+        </div>
+        <div class="exit-section-hd">Entry Setting</div>
+        <div class="pos-row"><span class="pos-rl">Entry</span><span class="pos-rv">${f(c.entry,c.entry>100?2:5)}</span></div>
+        <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'}</span></div>
+        ${trailRow}
+        <div class="exit-section-hd">Exit Records</div>
+        <div class="lot-status-bar" id="lot-bar-${pos.id}" style="background:rgba(0,0,0,.3);border-bottom:.5px solid rgba(255,255,255,.15)">
+          <span class="lot-status-lbl">Lot Status</span>
+          <span class="lot-status-disp" id="lot-disp-${pos.id}">${f(c.totalExitLot,2)} / ${f(c.usedLot,2)} lot</span>
+          <span class="lot-status-msg" id="lot-msg-${pos.id}">${lotStatusMsg(c.totalExitLot,c.usedLot)}</span>
+        </div>
+        ${exitRows}
+        <div class="add-exit-row" onclick="openExitSheet('${pos.id}')">
+          <div class="add-exit-icon">+</div>
+          <span class="add-exit-lbl">Add Exit</span>
+        </div>
+        <div class="pos-row" style="align-items:flex-start;border-top:.5px solid var(--border)">
+          <span class="pos-rl" style="padding-top:8px">Exit note</span>
+          <div class="note-box${pos.exit.note?'':' empty'}" onclick="startExitNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.exit.note||'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div>
+        </div>
+        <div class="exit-section-hd">Position Sum</div>
+        <div class="bd-section">
+          <div class="bd-row"><span class="bd-lbl">Realized P/L</span><span class="bd-val ${c.realizedPL>0?'cg':c.realizedPL<0?'cr':''}">${c.hasRealized?fSign(c.realizedPL):'—'}</span></div>
+          <div class="bd-row"><span class="bd-lbl">Net P/L</span><span class="bd-val" style="color:var(--sub)">—</span></div>
+          <div class="bd-row"><span class="bd-lbl">R : R</span><span class="bd-val" style="color:var(--sub)">${c.hasRealized&&c.risk?f(c.rr,2)+'x':'—'}</span></div>
+        </div>
+        <div class="pos-action-row">
+          <button class="delete-btn" id="del-btn-${pos.id}" onclick="deletePos('${pos.id}')">${BIN_SVG}</button>
+          <button class="archive-btn ${c.state!=='CLOSED'?'off':''}" data-archive-id="${pos.id}" data-step="0" onclick="${c.state==='CLOSED'?`archivePos('${pos.id}')`:''}">${c.state==='CLOSED'?'Archive':'Archive (ปิด lot ให้ครบก่อน)'}</button>
+        </div>
+      </div>`;
+    });
+  }
+  g('session-content').innerHTML=html;
+  // apply lot status bar colors
+  loadSession().positions.forEach(pos=>{
+    const c=computePos(pos);
+    updateLotBar(pos.id,c.totalExitLot,c.usedLot);
+  });
+}
+function deletePos(posId){
+  const btn=document.getElementById('del-btn-'+posId);
+  if(!btn)return;
+  const step=btn.dataset.step||'0';
+  if(step==='0'){
+    btn.classList.add('confirm');
+    btn.innerHTML='Delete';
+    btn.dataset.step='1';
+    clearTimeout(btn._t);
+    btn._t=setTimeout(()=>resetDeleteBtn(btn),2500);
+  }else if(step==='1'){
+    btn.innerHTML='ยืนยัน Delete';
+    btn.dataset.step='2';
+    clearTimeout(btn._t);
+    btn._t=setTimeout(()=>resetDeleteBtn(btn),2500);
+  }else{
+    resetDeleteBtn(btn);
+    const data=loadSession();
+    data.positions=data.positions.filter(p=>p.id!==posId);
+    saveSession(data);renderSession();
+  }
+}
+function resetDeleteBtn(btn){
+  btn.classList.remove('confirm');
+  btn.innerHTML=BIN_SVG;
+  btn.dataset.step='0';
+  clearTimeout(btn._t);
+}
+
+function startExitNoteEdit(posId,el){
+  if(el.querySelector('textarea'))return;
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===posId);
+  if(!pos)return;
+  const current=pos.exit.note||'';
+  el.innerHTML='';
+  const ta=document.createElement('textarea');
+  ta.value=current;
+  ta.style.cssText='width:100%;background:transparent;border:none;outline:none;font-size:13px;color:var(--text);font-family:inherit;line-height:1.5;resize:none;min-height:24px;padding:0';
+  ta.oninput=()=>{ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';};
+  ta.onblur=()=>{
+    const val=ta.value.trim();
+    const d=loadSession();
+    const p=d.positions.find(x=>x.id===posId);
+    if(p){p.exit.note=val;saveSession(d);}
+    renderSession();
+  };
+  el.appendChild(ta);
+  ta.focus();
+  ta.style.height=ta.scrollHeight+'px';
+}
+function startNoteEdit(posId,el){
+  if(el.querySelector('textarea'))return;
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===posId);
+  if(!pos)return;
+  const current=pos.entry.entryNote||'';
+  el.innerHTML='';
+  const ta=document.createElement('textarea');
+  ta.value=current;
+  ta.style.cssText='width:100%;background:transparent;border:none;outline:none;font-size:13px;color:var(--text);font-family:inherit;line-height:1.5;resize:none;min-height:24px;padding:0';
+  ta.oninput=()=>{ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';};
+  ta.onblur=()=>{
+    const val=ta.value.trim();
+    const d=loadSession();
+    const p=d.positions.find(x=>x.id===posId);
+    if(p){p.entry.entryNote=val;saveSession(d);}
+    renderSession();
+  };
+  el.appendChild(ta);
+  ta.focus();
+  ta.style.height=ta.scrollHeight+'px';
+}
+
+function lotStatusMsg(totalExitLot,usedLot){
+  if(usedLot>0&&totalExitLot>usedLot+0.001)return '⚠ Exceeded by '+f(totalExitLot-usedLot,2)+' lot';
+  if(usedLot>0&&Math.abs(usedLot-totalExitLot)<0.001)return '✓ Full';
+  return 'Available: '+f(Math.max(usedLot-totalExitLot,0),2)+' lot';
+}
+function updateLotBar(posId,totalExitLot,usedLot){
+  const bar=document.getElementById('lot-bar-'+posId);
+  const disp=document.getElementById('lot-disp-'+posId);
+  const msg=document.getElementById('lot-msg-'+posId);
+  if(!bar)return;
+  const avail=usedLot-totalExitLot;
+  const over=usedLot>0&&totalExitLot>usedLot+0.001;
+  const full=usedLot>0&&Math.abs(avail)<0.001;
+  const partial=usedLot>0&&totalExitLot>0.001&&!full&&!over;
+  disp.textContent=f(totalExitLot,2)+' / '+f(usedLot,2)+' lot';
+  if(over){
+    bar.style.cssText='background:rgba(255,59,48,.06);border-bottom:.5px solid rgba(255,59,48,.4)';
+    [bar.querySelector('.lot-status-lbl'),disp,msg].forEach(el=>{if(el)el.style.color='var(--red)'});
+    msg.textContent='⚠ Exceeded by '+f(totalExitLot-usedLot,2)+' lot';
+    msg.style.cssText='font-size:12px;font-weight:500;white-space:nowrap;flex-shrink:0;color:var(--red)';
+  }else if(full){
+    bar.style.cssText='background:rgba(0,122,255,.1);border-bottom:.5px solid rgba(0,122,255,.4)';
+    bar.querySelector('.lot-status-lbl').style.color='var(--blue)';
+    disp.style.color='var(--blue)';
+    msg.style.cssText='font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;background:#34C759;color:#fff;flex-shrink:0';
+    msg.textContent='✓ Full';
+  }else if(partial){
+    bar.style.cssText='background:rgba(0,0,0,.3);border-bottom:.5px solid rgba(255,255,255,.15)';
+    [bar.querySelector('.lot-status-lbl'),disp,msg].forEach(el=>{if(el)el.style.color='var(--blue)'});
+    msg.textContent='Available: '+f(Math.max(avail,0),2)+' lot';
+  }else{
+    bar.style.cssText='background:rgba(0,0,0,.3);border-bottom:.5px solid rgba(255,255,255,.15)';
+    bar.querySelector('.lot-status-lbl').style.color='rgba(255,255,255,.4)';
+    disp.style.color='rgba(255,255,255,.5)';
+    msg.style.cssText='font-size:12px;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0';
+    msg.textContent='Available: '+f(Math.max(avail,0),2)+' lot';
+  }
+}
+
+// ─── Inline Exit Edit ────────────────────────────────
+function startInlineEdit(posId,slotKey,rowEl,evt){
+  if(rowEl.classList.contains('editing'))return;
+  // detect which column the user actually tapped
+  let focusCol='price';
+  if(evt&&evt.target){
+    const t=evt.target;
+    if(t.closest&&t.closest('.exit-lot-val')) focusCol='lot';
+    else if(t.closest&&t.closest('.exit-method-badge')) focusCol='method';
+    else if(t.closest&&t.closest('.exit-score-val')) focusCol='score';
+    else if(t.closest&&t.closest('.exit-price-val')) focusCol='price';
+    else {
+      // iOS often reports target=row when tapping in gaps — fallback to clientX hit-test
+      const x=evt.clientX!=null?evt.clientX:(evt.touches&&evt.touches[0]&&evt.touches[0].clientX);
+      if(x!=null){
+        const cells=rowEl.querySelectorAll('.exit-price-val,.exit-lot-val,.exit-method-badge,.exit-score-val');
+        for(const cell of cells){
+          const r=cell.getBoundingClientRect();
+          if(x>=r.left&&x<=r.right){
+            if(cell.classList.contains('exit-price-val')) focusCol='price';
+            else if(cell.classList.contains('exit-lot-val')) focusCol='lot';
+            else if(cell.classList.contains('exit-method-badge')) focusCol='method';
+            else if(cell.classList.contains('exit-score-val')) focusCol='score';
+            break;
+          }
+        }
+      }
+    }
+  }
+  document.querySelectorAll('.exit-rec-row.editing').forEach(r=>r.classList.remove('editing'));
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===posId);
+  if(!pos)return;
+  const ex=pos.exit[slotKey]||{};
+  const label=slotKey.toUpperCase();
+  const methods=['','Cutloss','MA Float','PC Float','Trail Float','Vola Fix','EoWk','Trail Cut'];
+  const mOpts=methods.map(m=>`<option${m===ex.method?' selected':''}>${m}</option>`).join('');
+  const sOpts=['','1','2','3','4','5'].map(s=>`<option${s===ex.score?' selected':''}>${s}</option>`).join('');
+  const fullBtn=slotKey==='cl'
+    ?`<button onclick="setFullLot('${posId}',this)" style="padding:3px 8px;border:none;border-radius:6px;background:var(--acc);color:#fff;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0">Full</button>`
+    :'';
+  rowEl.classList.add('editing');
+  rowEl.removeAttribute('onclick');
+  rowEl.innerHTML=`
+    <span class="exit-tag">${label}</span>
+    <div class="exit-price-val"><input class="inline-input" style="text-align:right" type="number" inputmode="decimal" placeholder="price" value="${ex.price||''}"></div>
+    <div class="exit-lot-val" style="display:flex;align-items:center;gap:4px;justify-content:center">${fullBtn}<input class="inline-input" style="text-align:center;flex:1" type="number" inputmode="decimal" step="0.01" placeholder="lot" value="${ex.lot||''}" oninput="validateTLot(this,'${posId}')"></div>
+    <div class="exit-method-badge" style="background:transparent;padding:0"><select class="inline-select" tabindex="0">${mOpts}</select></div>
+    <div class="exit-score-val"><select class="inline-select" tabindex="0">${sOpts}</select></div>
+  `;
+  rowEl.addEventListener('focusout',function(e){
+    if(rowEl.contains(e.relatedTarget))return;
+    saveInlineExit(posId,slotKey,rowEl);
+  });
+  let focusEl;
+  if(focusCol==='lot') focusEl=rowEl.querySelector('.exit-lot-val input');
+  else if(focusCol==='method') focusEl=rowEl.querySelector('.exit-method-badge select');
+  else if(focusCol==='score') focusEl=rowEl.querySelector('.exit-score-val select');
+  else focusEl=rowEl.querySelector('.exit-price-val input');
+  if(focusEl){focusEl.focus(); if(focusEl.tagName==='SELECT'){try{focusEl.click();}catch(e){}}}
+}
+function validateTLot(el,posId){
+  if(!el)return;
+  const val=parseFloat(el.value);
+  const raw=el.value;
+  const decMatch=raw.match(/\.([0-9]+)/);
+  const decimals=decMatch?decMatch[1].length:0;
+  const invalid=raw&&raw!=='0'&&(isNaN(val)||val<0.01||decimals>2);
+  // check against remaining lot if posId provided
+  if(!invalid&&posId&&val){
+    const data=loadSession();
+    const pos=data.positions.find(p=>p.id===posId);
+    if(pos){
+      const c=computePos(pos);
+      const over=val>c.usedLot+0.001;
+      el.style.color=over?'var(--red)':'var(--acc)';
+      el.style.fontWeight='500';
+      return;
+    }
+  }
+  el.style.color=invalid?'var(--red)':'var(--acc)';
+  el.style.fontWeight='500';
+}
+function setFullLot(posId,btn){
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===posId);
+  if(!pos)return;
+  const c=computePos(pos);
+  const remaining=Math.max(c.remainingLot,0);
+  const lotInput=btn.closest('.exit-lot-val').querySelector('input');
+  if(lotInput)lotInput.value=f(remaining,2);
+}
+
+function saveInlineExit(posId,slotKey,rowEl){
+  const inputs=rowEl.querySelectorAll('input,select');
+  const price=inputs[0].value.trim();
+  const lot=inputs[1].value.trim();
+  const method=inputs[2].value;
+  const score=inputs[3].value;
+  if(!price&&!lot)return;
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===posId);
+  if(!pos)return;
+  pos.exit[slotKey]={price,lot,method,score,date:pos.exit[slotKey]?.date||''};
+  const c=computePos(pos);
+  pos.meta.state=c.state;
+  saveSession(data);
+  renderSession();
+}
+// ─── Add/Edit Exit Sheet ──────────────────────────────
+function openExitSheet(posId, slotKey){
+  currentExitPosId=posId;
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===posId);
+  if(!pos)return;
+  const isEdit=!!slotKey;
+  g('exit-sheet-title').textContent=isEdit?'Edit Exit':'Add Exit';
+  const slotInput=g('exit-slot');
+  if(isEdit){
+    const ex=pos.exit[slotKey]||{};
+    slotInput.value=slotKey.toUpperCase();
+    slotInput.readOnly=true;
+    slotInput.style.color='var(--sub)';
+    g('exit-price').value=ex.price||'';
+    g('exit-date').value=ex.date||'';
+    g('exit-lot').value=ex.lot||'';
+    // method
+    const mSel=g('exit-method');
+    mSel.value=ex.method||'';
+    // score
+    const sSel=g('exit-score');
+    sSel.value=ex.score||'';
+  }else{
+    slotInput.value='';
+    slotInput.readOnly=false;
+    slotInput.style.color='var(--blue)';
+    g('exit-price').value='';g('exit-date').value='';g('exit-lot').value='';
+    g('exit-method').selectedIndex=0;g('exit-score').selectedIndex=0;
+  }
+  g('exit-overlay').classList.add('on');
+  g('exit-sheet').style.display='block';
+}
+function closeExitSheet(){
+  g('exit-overlay').classList.remove('on');
+  g('exit-sheet').style.display='none';
+  currentExitPosId=null;
+}
+function confirmExit(){
+  if(!currentExitPosId)return;
+  const rawSlot=g('exit-slot').value.trim().toLowerCase().replace(/\s+/g,'');
+  const price=g('exit-price').value;
+  const date=g('exit-date').value;
+  const lot=g('exit-lot').value;
+  const method=g('exit-method').value;
+  const score=g('exit-score').value;
+  if(!rawSlot){alert('กรุณากรอก Slot');return;}
+  if(!price||!lot){alert('กรุณากรอก Price และ Lot');return;}
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===currentExitPosId);
+  if(!pos)return;
+  pos.exit[rawSlot]={price,date,method,lot,score};
+  const c=computePos(pos);
+  pos.meta.state=c.state;
+  saveSession(data);
+  closeExitSheet();
+  renderSession();
+}
+
+// ─── Trail SL Sheet ───────────────────────────────────
+function openTrailSheet(posId){
+  currentTrailPosId=posId;
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===posId);
+  g('trail-sl-input').value=pos?.exit?.trailSL||'';
+  g('trail-overlay').classList.add('on');g('trail-sheet').classList.add('on');
+}
+function closeTrailSheet(){
+  g('trail-overlay').classList.remove('on');g('trail-sheet').classList.remove('on');
+  currentTrailPosId=null;
+}
+function confirmTrailSL(){
+  if(!currentTrailPosId)return;
+  const val=g('trail-sl-input').value;
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===currentTrailPosId);
+  if(!pos)return;
+  pos.exit.trailSL=val;
+  saveSession(data);
+  closeTrailSheet();
+  renderSession();
+}
+
+// ─── Archive ──────────────────────────────────────────
+function archivePos(posId){
+  const btn=document.querySelector(`[data-archive-id="${posId}"]`);
+  if(!btn)return;
+  const step=btn.dataset.step||'0';
+  if(step==='0'){
+    // check lot exceeded
+    const data=loadSession();
+    const pos=data.positions.find(p=>p.id===posId);
+    if(pos){
+      const c=computePos(pos);
+      if(c.totalExitLot>c.usedLot+0.001){
+        btn.textContent='Exceeded lot';
+        btn.style.background='var(--red)';btn.style.color='#fff';
+        clearTimeout(btn._t);
+        btn._t=setTimeout(()=>{
+          btn.textContent='Archive';
+          btn.style.background='';btn.style.color='';
+        },2500);
+        return;
+      }
+    }
+    btn.textContent='Export';btn.classList.add('step1');btn.dataset.step='1';
+    clearTimeout(btn._t);
+    btn._t=setTimeout(()=>resetArchiveBtn(btn),2500);
+  }else if(step==='1'){
+    btn.textContent='ยืนยัน Export';btn.classList.remove('step1');btn.classList.add('step2');btn.dataset.step='2';
+    clearTimeout(btn._t);
+    btn._t=setTimeout(()=>resetArchiveBtn(btn),2500);
+  }else{
+    resetArchiveBtn(btn);
+    const data=loadSession();
+    const pos=data.positions.find(p=>p.id===posId);
+    if(!pos)return;
+    // freeze close time, commit to permanent Record store, then remove from session
+    pos.meta.closedAt=nowStamp();
+    pos.meta.state='CLOSED';
+    addRecord(pos);
+    data.positions=data.positions.filter(p=>p.id!==posId);
+    saveSession(data);
+    renderSession();
+  }
+}
+function resetArchiveBtn(btn){
+  btn.textContent='Archive';
+  btn.classList.remove('step1','step2');
+  btn.dataset.step='0';
+  clearTimeout(btn._t);
+}
+// ─── CTD.Record — data layer ──────────────────────────
+function loadRecords(){
+  try{const raw=localStorage.getItem(SK3);const d=raw?JSON.parse(raw):{version:'r1',records:[]};if(d.exportedCount==null)d.exportedCount=0;return d;}
+  catch(e){return{version:'r1',records:[],exportedCount:0};}
+}
+function saveRecords(data){
+  try{localStorage.setItem(SK3,JSON.stringify(data));}catch(e){}
+}
+// build a frozen, asset-agnostic record entry from a position
+function buildRecord(pos){
+  const c=computePos(pos);
+  const slots=['cl','t1','t2','t3'];
+  const extraSlots=Object.keys(pos.exit).filter(k=>!['trailSL','note','cl','t1','t2','t3'].includes(k));
+  const allSlots=[...slots,...extraSlots];
+  const exits=[];let scoreSum=0,scoreN=0;
+  allSlots.forEach(slot=>{
+    const ex=pos.exit[slot];
+    if(!ex||!ex.price)return;
+    const xPrice=parseFloat(ex.price)||0;const xLot=parseFloat(ex.lot)||0;
+    const pl=(xPrice-c.entry)*c.sign*c.unit*xLot;
+    if(ex.score!==''&&ex.score!=null&&isFinite(+ex.score)){scoreSum+=+ex.score;scoreN++;}
+    exits.push({slot,price:ex.price,date:ex.date||'',lot:ex.lot,method:ex.method||'',score:ex.score||'',pl:+pl.toFixed(2)});
+  });
+  const outcome=c.realizedPL>0.0001?'win':c.realizedPL<-0.0001?'loss':'breakeven';
+  return {
+    recVer:'r1',
+    id:pos.id,
+    archivedAt:pos.meta.closedAt||nowStamp(),
+    openedAt:pos.meta.importedAt||'',
+    closedAt:pos.meta.closedAt||'',
+    source:JSON.parse(JSON.stringify(pos)),   // raw packet (replay/audit)
+    eval:{
+      // ── asset-agnostic core ──
+      symbol:pos.entry.inst,
+      direction:pos.entry.dir,
+      entryPrice:c.entry,
+      entrySL:parseFloat(pos.entry.sl)||0,
+      exits,
+      riskAmount:+c.risk.toFixed(2),
+      realizedPL:+c.realizedPL.toFixed(2),
+      rMultiple:+c.rr.toFixed(3),
+      outcome,
+      totalExitLot:+c.totalExitLot.toFixed(2),
+      avgExitScore:scoreN?+(scoreSum/scoreN).toFixed(2):null,
+      holdingStr:c.holdingStr,
+      entryScore:pos.entry.entryScore||'',
+      entryNote:pos.entry.entryNote||'',
+      exitNote:pos.exit.note||'',
+      // ── Fx extension ──
+      ext:{
+        usedLot:parseFloat(pos.entry.usedLot)||0,
+        usedCV:+c.cv.toFixed(2),
+        lev:parseFloat(pos.entry.lev)||0,
+        sld:parseFloat(pos.entry.sld)||c.slDist,
+        riskMode:pos.entry.rmode||'',
+        rpt:pos.entry.rpt||'',
+        vola:pos.entry.vsd||'',
+        sf:pos.entry.vsf||''
+      }
+    }
+  };
+}
+function addRecord(pos){
+  const data=loadRecords();
+  let rec=buildRecord(pos);
+  // dup id guard (defensive — re-archive of same id)
+  if(data.records.some(r=>r.id===rec.id)){
+    let n=2;let base=rec.id;
+    while(data.records.some(r=>r.id===`${base}-${n}`))n++;
+    rec.id=`${base}-${n}`;
+  }
+  data.records.push(rec);
+  saveRecords(data);
+  return rec;
+}
+// normalized interface for the (future, separate) performance block
+function getRecordsForEval(){
+  return loadRecords().records.map(r=>({id:r.id,recVer:r.recVer,archivedAt:r.archivedAt,...r.eval}));
+}
+function csvCell(v){
+  v=v==null?'':String(v);
+  return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+}
+function toISODate(s){
+  const m=/^(\d{2})\/(\d{2})\/(\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(s||'');
+  if(!m)return s||'';
+  return `${2000+(+m[3])}-${m[2]}-${m[1]} ${(m[4]||'00').padStart(2,'0')}:${m[5]||'00'}:${m[6]||'00'}`;
+}
+function fmtLot(v){if(v===''||v==null)return '';const n=+v;return isFinite(n)?n.toFixed(8):'';}
+function downloadBlob(blob,filename){
+  try{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=filename;a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},100);
+  }catch(e){console.error('download failed:',filename,e);}
+}
+async function exportRecords(){
+  const data=loadRecords();
+  if(!data.records.length)return;
+  // build content
+  const jsonStr=JSON.stringify(data,null,2);
+  const tradeCols=['ID','Symbol','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Realized $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
+  const slotCols=['cl','t1','t2','t3'];
+  const exitCols=[];
+  slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} P/L`);});
+  const rows=[[...tradeCols,...exitCols]];
+  data.records.forEach(r=>{
+    const e=r.eval;const x=e.ext||{};
+    const row=[r.id,e.symbol,e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,e.realizedPL,e.rMultiple,e.outcome,e.entryScore,e.holdingStr,x.riskMode];
+    const bySlot={};(e.exits||[]).forEach(ex=>bySlot[ex.slot]=ex);
+    slotCols.forEach(s=>{const ex=bySlot[s];if(ex)row.push(ex.price,fmtLot(ex.lot),ex.method,ex.score,ex.pl);else row.push('','','','','');});
+    rows.push(row);
+  });
+  const csvStr=rows.map(r=>r.map(csvCell).join(',')).join('\n');
+  // iOS: Web Share API → native share sheet (Save to Files / AirDrop / etc.)
+  if(navigator.share){
+    try{
+      const jf=new File([jsonStr],'ctd_records.json',{type:'application/json'});
+      const cf=new File(['\ufeff'+csvStr],'ctd_records.csv',{type:'text/csv'});
+      const canShare=navigator.canShare&&navigator.canShare({files:[jf,cf]});
+      if(canShare){
+        await navigator.share({files:[jf,cf],title:'CTD Records'});
+        data.exportedCount=data.records.length;saveRecords(data);
+        renderRecords();return;
+      }
+    }catch(e){if(e.name==='AbortError')return;}
+  }
+  // Desktop fallback: blob download
+  data.exportedCount=data.records.length;saveRecords(data);
+  downloadBlob(new Blob([jsonStr],{type:'application/json'}),'ctd_records.json');
+  downloadBlob(new Blob(['\ufeff'+csvStr],{type:'text/csv;charset=utf-8'}),'ctd_records.csv');
+}
+// Copy mode: show CSV/JSON in scrollable modal + clipboard button (works everywhere incl iframe)
+function showExportModal(){
+  const data=loadRecords();
+  if(!data.records.length)return;
+  const jsonStr=JSON.stringify(data,null,2);
+  const existing=document.getElementById('export-modal');
+  if(existing){existing.remove();return;}
+  const overlay=document.createElement('div');
+  overlay.id='export-modal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-end;padding:0;';
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:20px 20px 0 0;width:100%;padding:20px 16px;max-height:70vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span style="font-size:15px;font-weight:600;color:var(--text)">Copy data</span>
+      <span onclick="document.getElementById('export-modal').remove()" style="font-size:15px;color:var(--acc);cursor:pointer;font-weight:600">Done</span>
+    </div>
+    <textarea id="export-txt" readonly style="flex:1;min-height:200px;background:var(--bg);border:none;border-radius:10px;padding:10px;font-size:12px;font-family:monospace;color:var(--text);resize:none;outline:none">${jsonStr.replace(/</g,'&lt;')}</textarea>
+    <button onclick="(async()=>{try{await navigator.clipboard.writeText(document.getElementById('export-txt').value);this.textContent='Copied ✓';setTimeout(()=>this.textContent='Copy JSON',1500);}catch(e){document.getElementById('export-txt').select()}})()" style="margin-top:10px;padding:11px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:14px;font-weight:600;width:100%;cursor:pointer;-webkit-user-select:none;user-select:none">Copy JSON</button>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+function recordsBytes(){
+  try{return (localStorage.getItem(SK3)||'').length;}catch(e){return 0;}
+}
+function fmtBytes(b){
+  if(b<1024)return b+' B';
+  if(b<1048576)return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(2)+' MB';
+}
+// ─── CTD.Record — viewer ──────────────────────────────
+const CLOUD_UP='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>';
+const CLOUD_DN='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>';
+const DL_ICON='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+function buildCloudSyncUI(){
+  let h='';
+  h+=`<div style="font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.3px;margin:0 2px 6px">Cloud sync</div>`;
+  if(!firebaseReady()){
+    h+=`<div class="cloud-bar offline"><span class="cloud-dot offline"></span>Firebase ยังไม่ได้ตั้งค่า</div>`;
+    h+=`<div style="font-size:12px;color:var(--sub);margin-bottom:14px;padding:0 2px">ดูคู่มือ setup ใน CTD_Setup_Guide</div>`;
+    return h;
+  }
+  if(!fbUser){
+    h+=`<div class="cloud-bar offline"><span class="cloud-dot offline"></span>ยังไม่ได้ Sign in</div>`;
+    h+=`<button class="auth-btn" onclick="signInGoogle()"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Sign in with Google</button>`;
+    h+=`<div style="height:14px"></div>`;
+    return h;
+  }
+  // signed in — status + push/pull
+  h+=`<div class="cloud-bar ${cloudStatus}"><span class="cloud-dot ${cloudStatus}"></span>${escHtml(cloudMsg)}</div>`;
+  h+=`<div style="display:flex;gap:8px;margin-bottom:6px">
+    <button class="sync-btn push" onclick="pushToCloud()" ${isSyncing?'disabled':''}>${CLOUD_UP} Push</button>
+    <button class="sync-btn pull" onclick="pullFromCloud()" ${isSyncing?'disabled':''}>${CLOUD_DN} Pull</button>
+  </div>`;
+  h+=`<div style="text-align:right;margin-bottom:4px"><span onclick="signOutCloud()" style="font-size:11px;color:var(--hint);cursor:pointer">${escHtml(fbUser.email)} · Sign out</span></div>`;
+  return h;
+}
+function buildSyncGuideUI(){
+  let h='';
+  // divider
+  h+=`<div style="height:.5px;background:var(--border);margin:14px 0"></div>`;
+  // offline backup section
+  h+=`<div style="font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.3px;margin:0 2px 6px">Offline backup</div>`;
+  h+=`<div style="background:rgba(128,128,128,.06);border:.5px solid var(--border);border-radius:10px;margin-bottom:4px">
+    <button onclick="exportRecords()" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">${DL_ICON} Export file</button>
+  </div>`;
+  h+=`<div style="text-align:center;margin-bottom:14px"><span onclick="showExportModal()" style="font-size:11px;color:var(--hint);cursor:pointer">Copy JSON</span></div>`;
+  // button guide
+  h+=`<div style="background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">
+    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">Button guide</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px"><span style="color:var(--acc);flex-shrink:0;margin-top:1px">${CLOUD_UP}</span><div style="font-size:12px;line-height:1.5"><div style="font-weight:500;color:var(--text)">Push — local → cloud</div><div style="color:var(--sub)">จดเทรดเสร็จ กดส่งขึ้น (merge + dedup)</div></div></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px"><span style="color:var(--acc);flex-shrink:0;margin-top:1px">${CLOUD_DN}</span><div style="font-size:12px;line-height:1.5"><div style="font-weight:500;color:var(--text)">Pull — cloud → local</div><div style="color:var(--sub)">เปิดเครื่องใหม่ ดึง data ล่าสุด (preview ก่อน confirm)</div></div></div>
+    <div style="display:flex;gap:8px"><span style="color:var(--sub);flex-shrink:0;margin-top:1px">${DL_ICON}</span><div style="font-size:12px;line-height:1.5"><div style="font-weight:500;color:var(--text)">Export file — JSON+CSV download</div><div style="color:var(--sub)">backup ฉุกเฉิน / host ล่ม / ส่งไฟล์ให้คนอื่น</div></div></div>
+  </div>`;
+  // cloud status bar guide
+  h+=`<div style="background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:14px;margin-top:10px">
+    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">Cloud status bar</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="cloud-dot synced"></span><div style="font-size:12px"><span style="font-weight:500;color:var(--text)">Green</span><span style="color:var(--sub)"> — synced (local = cloud)</span></div></div>
+    <div style="display:flex;align-items:center;gap:8px"><span class="cloud-dot pending"></span><div style="font-size:12px"><span style="font-weight:500;color:var(--text)">Orange</span><span style="color:var(--sub)"> — pending (local มี data ใหม่ยังไม่ push)</span></div></div>
+  </div>`;
+  return h;
+}
+
+function setRecSort(s){recSort=s;recArmId=null;renderRecords();}
+function setRecFilter(sym){recFilter=sym;recArmId=null;renderRecords();}
+function toggleRecEdit(){recEdit=!recEdit;recArmId=null;renderRecords();}
+function toggleRecNote(id){recExpandedId=recExpandedId===id?null:id;renderRecords();}
+function armDeleteRecord(id){recArmId=recArmId===id?null:id;renderRecords();}
+function deleteRecord(id){
+  const data=loadRecords();
+  data.records=data.records.filter(r=>r.id!==id);
+  if(data.exportedCount>data.records.length)data.exportedCount=data.records.length;
+  saveRecords(data);recArmId=null;
+  if(!data.records.length)recEdit=false;
+  renderRecords();
+}
+function clearRecords(btn){
+  const data=loadRecords();
+  const unexported=Math.max(0,data.records.length-(data.exportedCount||0));
+  const step=btn.dataset.step||'0';
+  if(step==='0'){
+    btn.textContent=unexported>0?`Clear all (${unexported} ยังไม่ export)`:'Clear all';
+    btn.dataset.step='1';btn.style.background='#FF3B30';btn.style.color='#fff';
+    clearTimeout(btn._t);btn._t=setTimeout(()=>resetClearBtn(btn),2500);
+  }else if(step==='1'){
+    btn.textContent='ยืนยัน Clear all';btn.dataset.step='2';
+    clearTimeout(btn._t);btn._t=setTimeout(()=>resetClearBtn(btn),2500);
+  }else{
+    clearTimeout(btn._t);
+    saveRecords({version:'r1',records:[],exportedCount:0});
+    recEdit=false;recArmId=null;recFilter='all';
+    renderRecords();
+  }
+}
+function resetClearBtn(btn){
+  btn.dataset.step='0';btn.style.background='';btn.style.color='';
+  btn.innerHTML=`${BIN_SVG} Clear all records`;
+  clearTimeout(btn._t);
+}
+function renderRecords(){
+  const el=g('record-content');if(!el)return;
+  const data=loadRecords();
+  const all=data.records;
+  if(!all.length){
+    let emptyHtml=`<div style="padding:40px 16px;text-align:center;color:var(--hint);font-size:14px">ยังไม่มี record<br><span style="font-size:12px">trade ที่ archive จาก Position จะมาเก็บที่นี่</span></div>`;
+    emptyHtml+=buildCloudSyncUI();
+    emptyHtml+=buildSyncGuideUI();
+    if(fbUser&&firebaseReady()){
+      emptyHtml+=`<div style="text-align:center;font-size:12px;color:var(--sub);margin-top:8px">กด Pull เพื่อดึง data จาก cloud</div>`;
+    }
+    el.innerHTML=emptyHtml;
+    return;
+  }
+  const symbols=[...new Set(all.map(r=>r.eval.symbol))];
+  if(recFilter!=='all'&&!symbols.includes(recFilter))recFilter='all';
+  // filter
+  let recs=recFilter==='all'?all.slice():all.filter(r=>r.eval.symbol===recFilter);
+  // sort
+  const rank=o=>o==='win'?0:o==='breakeven'?1:2;
+  if(recSort==='latest')recs.reverse();
+  else if(recSort==='pl')recs.sort((a,b)=>b.eval.realizedPL-a.eval.realizedPL);
+  else if(recSort==='wl')recs.sort((a,b)=>rank(a.eval.outcome)-rank(b.eval.outcome)||b.eval.realizedPL-a.eval.realizedPL);
+  // summary (on filtered set)
+  const n=recs.length;
+  const totalPL=recs.reduce((s,r)=>s+(r.eval.realizedPL||0),0);
+  const wins=recs.filter(r=>r.eval.outcome==='win').length;
+  const winRate=n?(wins/n*100):0;
+  const rVals=recs.map(r=>r.eval.rMultiple).filter(v=>isFinite(v));
+  const avgR=rVals.length?rVals.reduce((a,b)=>a+b,0)/rVals.length:0;
+  const plColor=totalPL>0?'var(--green)':totalPL<0?'var(--red)':'var(--text)';
+  let html='';
+  // summary box
+  html+=`<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:16px">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff">${n}</div>
+    <div><div style="font-size:15px;font-weight:600;color:var(--text)">${recFilter==='all'?`Record${n!==1?'s':''}`:recFilter}</div><div style="font-size:12px;color:var(--hint)">${recFilter==='all'?fmtBytes(recordsBytes())+' ใช้ไป':`${n} of ${all.length} trades`}</div></div>
+  </div>`;
+  html+=`<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Total P/L</div><div style="font-size:16px;font-weight:600;color:${plColor}">${fSign(totalPL,2)}</div></div>
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Win rate</div><div style="font-size:16px;font-weight:600;color:var(--text)">${winRate.toFixed(0)}% <span style="font-size:12px;color:var(--hint)">(${wins}/${n})</span></div></div>
+    <div style="padding:12px 14px;border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg R</div><div style="font-size:16px;font-weight:600;color:${avgR>=0?'var(--green)':'var(--red)'}">${fSign(avgR,2)}R</div></div>
+    <div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Trades</div><div style="font-size:16px;font-weight:600;color:var(--text)">${n}</div></div>
+  </div></div>`;
+  // cloud sync section
+  html+=buildCloudSyncUI();
+  // divider + offline backup + guide boxes
+  html+=buildSyncGuideUI();
+  // history header + Edit toggle
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 2px 8px">
+    <span style="font-size:12px;font-weight:500;color:var(--sub);text-transform:uppercase;letter-spacing:.05em">History</span>
+    <span onclick="toggleRecEdit()" style="font-size:13px;font-weight:600;color:${recEdit?'var(--red)':'var(--acc)'};cursor:pointer">${recEdit?'Done':'Edit'}</span>
+  </div>`;
+  // sort segmented
+  const seg=(key,label)=>`<div onclick="setRecSort('${key}')" style="flex:1;text-align:center;font-size:13px;font-weight:${recSort===key?'500':'400'};color:${recSort===key?'var(--text)':'var(--sub)'};background:${recSort===key?'var(--card)':'transparent'};border-radius:7px;padding:5px 0;cursor:pointer">${label}</div>`;
+  html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <span style="font-size:12px;color:var(--sub);flex-shrink:0">Sort</span>
+    <div style="flex:1;display:flex;background:rgba(120,120,128,.12);border-radius:9px;padding:2px">${seg('latest','Latest')}${seg('pl','P/L')}${seg('wl','Win-Loss')}</div>
+  </div>`;
+  // symbol chips
+  const chip=(val,label)=>`<span onclick="setRecFilter('${val}')" style="font-size:13px;font-weight:${recFilter===val?'500':'400'};padding:5px 13px;border-radius:20px;cursor:pointer;${recFilter===val?'background:var(--acc);color:#fff':'background:var(--card);color:var(--sub);border:.5px solid var(--border)'}">${label}</span>`;
+  html+=`<div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap">${chip('all','All')}${symbols.map(s=>chip(s,s)).join('')}</div>`;
+  // list
+  html+='<div class="card">';
+  recs.forEach((r,i)=>{
+    const e=r.eval;const id=r.id;
+    const dirColor=e.direction==='long'?'var(--green)':'var(--red)';
+    const plC=e.realizedPL>0?'var(--green)':e.realizedPL<0?'var(--red)':'var(--sub)';
+    const oc=e.outcome==='win'?{bg:'#E1F5EE',fg:'#085041'}:e.outcome==='loss'?{bg:'#FFE5E3',fg:'#8A211A'}:{bg:'var(--bg)',fg:'var(--sub)'};
+    const bb=i<recs.length-1?'border-bottom:.5px solid var(--border)':'';
+    const minus=recEdit?`<button onclick="armDeleteRecord('${id}')" style="flex-shrink:0;width:22px;height:22px;border:none;border-radius:50%;background:var(--red);color:#fff;font-size:16px;font-weight:600;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer" aria-label="ลบ">−</button>`:'';
+    if(recEdit&&recArmId===id){
+      html+=`<div style="${bb}"><div style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+        ${minus}
+        <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text)">${e.symbol} <span style="color:${dirColor};font-size:12px;font-weight:500">${e.direction==='long'?'Long':'Short'}</span></div></div>
+        <button onclick="deleteRecord('${id}')" style="flex-shrink:0;padding:7px 16px;border:none;border-radius:9px;background:#FF3B30;color:#fff;font-size:13px;font-weight:600;cursor:pointer">ลบ row?</button>
+      </div></div>`;
+    }else{
+      const hasNote=(e.entryNote&&String(e.entryNote).trim())||(e.exitNote&&String(e.exitNote).trim());
+      const expanded=recExpandedId===id;
+      const noteInline=hasNote?`<span onclick="event.stopPropagation();toggleRecNote('${id}')" style="color:var(--acc);font-size:11px;font-weight:500;cursor:pointer;margin-left:6px;white-space:nowrap"> · note ${expanded?'▾':'›'}</span>`:'';
+      const notePanel=(hasNote&&expanded)?`<div style="padding:2px 14px 12px;font-size:12px;color:var(--text);background:var(--bg);border-top:.5px solid var(--border)">${e.entryNote?`<div style="margin-top:8px"><span style="color:var(--hint);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Entry</span><div>${escHtml(e.entryNote)}</div></div>`:''}${e.exitNote?`<div style="margin-top:8px"><span style="color:var(--hint);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Exit</span><div>${escHtml(e.exitNote)}</div></div>`:''}</div>`:'';
+      html+=`<div style="${bb}"><div style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+        ${minus}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${e.symbol} <span style="color:${dirColor};font-size:12px;font-weight:500">${e.direction==='long'?'Long':'Short'}</span></div>
+          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${r.source?.entry?.date||r.archivedAt} · ${e.holdingStr}${noteInline}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:14px;font-weight:600;color:${plC}">${fSign(e.realizedPL,2)}</div>
+          <div style="font-size:11px;color:var(--hint)">${fSign(e.rMultiple,2)}R</div>
+        </div>
+        <span style="font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:${oc.bg};color:${oc.fg}">${e.outcome}</span>
+      </div>${notePanel}</div>`;
+    }
+  });
+  html+='</div>';
+  // clear all (separate zone)
+  html+=`<div style="margin-top:24px;padding-top:4px">
+    <button onclick="clearRecords(this)" data-step="0" style="width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border:none;border-radius:12px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:600;cursor:pointer">${BIN_SVG} Clear all records</button>
+    <div style="font-size:11px;color:var(--hint);text-align:center;padding:10px 0">localStorage + Cloud sync · กด Push เพื่อ backup ขึ้น cloud</div>
+  </div>`;
+  el.innerHTML=html;
+}
+
+// ─── Build Tab1 ───────────────────────────────────────
+function buildPos(){
+  const n=1;
+  const pg=g('page-calc');
+  pg.innerHTML=`
+    <p class="stitle">Trading Card</p>
+    <div class="card">
+      <div class="row"><div class="rl">Symbol</div>
+        <select id="p1-inst" onchange="updateSymInfo(1);calcRisk(1);calcPos(1)">
+          <option value="XAUUSD">XAUUSD</option>
+          <option value="EURUSD">EURUSD</option>
+          <option disabled>──────────</option>
+          <option value="GBPUSD">GBPUSD</option>
+          <option value="USDCHF">USDCHF</option>
+          <option value="XAUTHB">XAUTHB ⚠️</option>
+        </select>
+      </div>
+      <div class="row"><div class="rl">Leverage</div>
+        <select id="p1-lev" onchange="calcRisk(1);calcPos(1)">
+          <option value="">—</option><option value="10">1 : 10</option><option value="20">1 : 20</option>
+          <option value="25" selected>1 : 25</option><option value="50">1 : 50</option>
+          <option value="100">1 : 100</option><option value="200">1 : 200</option><option value="500">1 : 500</option>
+        </select>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row"><div class="rl">Entry Date</div>
+        <input type="text" id="p1-edate" value="" placeholder="dd/mm/yy" style="width:140px;font-size:14px" oninput="saveData()" onblur="onEdateBlur(this)">
+      </div>
+      <div class="row"><div class="rl">Direction</div>
+        <select id="p1-dir" onchange="calcPos(1)">
+          <option value="long">Long</option><option value="short">Short</option>
+        </select>
+      </div>
+      <div class="row entry-row"><div class="rl">Entry price</div>
+        <input type="number" id="p1-entry" value="" inputmode="decimal" step="0.00001" oninput="calcPos(1);calcRisk(1)" onchange="calcPos(1);calcRisk(1)">
+      </div>
+      <div class="row sl-row" id="p1-sl-fixed-row"><div class="rl">SL price</div>
+        <input type="number" id="p1-sl" value="" inputmode="decimal" step="0.00001" oninput="calcPos(1);calcRisk(1)" onchange="calcPos(1);calcRisk(1)">
+      </div>
+      <div class="row sl-row" id="p1-sl-vola-row" style="display:none"><div class="rl">SL price</div>
+        <span style="font-size:14px;font-weight:500;color:var(--sub)" id="p1-sl-auto">—</span>
+      </div>
+      <div class="row"><div class="rl">Vola (%)</div>
+        <input type="number" id="p1-vsd" value="" inputmode="decimal" step="0.01" oninput="calcRisk(1)" onchange="calcRisk(1)">
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-bottom:4px">
+      <span style="font-size:12px;color:var(--hint)" id="p1-sym-info">—</span>
+      <span style="font-size:12px;color:var(--acc);font-weight:500">ดู CTD Manual</span>
+    </div>
+
+    <p class="stitle">MM</p>
+    <div class="toggle-bar">
+      <button class="toggle-btn on" id="p1-tog-fixed" onclick="setRiskMode(1,'fixed')">Fixed</button>
+      <button class="toggle-btn" id="p1-tog-vola" onclick="setRiskMode(1,'vola')">Vola</button>
+    </div>
+    <div class="card">
+      <div class="row"><div class="rl">RpT ($)</div>
+        <input type="number" id="p1-rpt" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
+      </div>
+      <div class="row" id="p1-sf-row" style="display:none"><div class="rl">SF</div>
+        <input type="number" id="p1-vsf" value="" inputmode="decimal" step="0.1" oninput="calcRisk(1)" onchange="calcRisk(1)">
+      </div>
+    </div>
+
+    <p class="stitle">Position Status</p>
+    <div class="card" style="padding:0 14px">
+      <div class="drow">
+        <span class="dl">SL dist</span>
+        <div style="display:flex;gap:5px;align-items:center" id="p1-rc-sl-chips">
+          <span class="chip chip-pct" id="p1-rc-slpct">—</span>
+          <span class="chip chip-pip" id="p1-rc-slpips">—</span>
+          <span class="chip chip-dist" id="p1-rc-sldist">—</span>
+        </div>
+      </div>
+      <div class="drow"><span class="dl">CV ($)</span><span class="dv cb" id="p1-rc-cv">—</span></div>
+      <div class="drow"><span class="dl">Lot Size</span><span class="dv" style="font-size:20px;font-weight:600;color:var(--acc)" id="p1-rc-lot">—</span></div>
+    </div>
+    <div style="padding:6px 4px 2px;font-size:11px;color:var(--hint);text-align:center">* Minimum lot size = 0.01 lot</div>
+    <button class="apply-btn" onclick="applyLot(1)">✓ Lot Approved</button>
+
+    <p class="stitle">Order Setup</p>
+    <div class="card" style="margin-bottom:6px">
+      <div class="row"><div class="rl">Used Lot</div>
+        <input type="number" id="p1-lot" value="" inputmode="decimal" step="0.01" min="0.01" oninput="validateLot(1);calcPos(1)" onchange="validateLot(1);calcPos(1)">
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:6px">
+      <div class="os-g2">
+        <div class="os-cell">
+          <div class="os-lbl">Required Margin</div>
+          <div class="os-val cb" id="p1-margin">—</div>
+        </div>
+        <div class="os-cell">
+          <div class="os-lbl">Margin Level</div>
+          <div class="os-val" id="p1-level">—</div>
+        </div>
+        <div class="os-cell">
+          <div class="os-lbl">Contract Value</div>
+          <div class="os-val" style="color:var(--acc)" id="p1-cv">—</div>
+        </div>
+        <div class="os-cell">
+          <div class="os-lbl">Risk</div>
+          <div class="os-val cr" id="p1-risk">—</div>
+          <div style="display:flex;gap:5px;margin-top:4px">
+            <span class="chip chip-pct" id="p1-os-slpct">—</span>
+            <span class="chip chip-pip" id="p1-os-slpips">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="p1-entry-score-card" style="margin-bottom:10px">
+      <div class="row">
+        <div class="rl">Entry Score</div>
+        <select id="p1-entry-score" onchange="checkEntryScore(1);saveData()" style="font-size:13px;width:52px;color:var(--sub)">
+          <option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        </select>
+      </div>
+      <div class="row" style="border-bottom:none;align-items:flex-start;padding-top:10px;padding-bottom:10px;gap:10px">
+        <div class="rl" style="padding-top:6px">Note</div>
+        <textarea id="p1-entry-note" class="note-input" placeholder="—" oninput="autoExpand(this);saveData()"></textarea>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="action-btn btn-save-main" onclick="saveData()">Save</button>
+      <button class="action-btn btn-import" id="p1-import-btn" onclick="importToSession(1)">Import →</button>
+      <button class="action-btn btn-reset" id="p1-reset-btn" onclick="resetPos(1)">Reset</button>
+    </div>
+  `;
+}
+
+buildPos();
+loadData();
+updateSymInfo(1);
+calcPos(1);
+
+// ─── Phase 4: Import Tab1 → Tab2 ─────────────────────
+function buildEntryId(n){
+  const inst=(g(`p${n}-inst`)?.value||'').toUpperCase();
+  const dir=g(`p${n}-dir`)?.value==='long'?'L':'S';
+  const raw=g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value||'';
+  // parse date+time from stored full value: dd/mm/yy hh:mm:ss
+  const m=raw.match(/(\d{2})\/(\d{2})\/(\d{2,4})\s+(\d{2}):(\d{2})/);
+  let ddmmyy='000000',hhmm='0000';
+  if(m){
+    const d=m[1],mo=m[2],y=m[3].slice(-2),h=m[4],mi=m[5];
+    ddmmyy=d+mo+y;hhmm=h+mi;
+  }
+  return `${inst}.O.${dir}.${ddmmyy}.${hhmm}`;
+}
+function buildPacket(n){
+  const inst=g(`p${n}-inst`)?.value||'';
+  const sym=getSymbol(inst);
+  const entry=parseFloat(g(`p${n}-entry`)?.value)||0;
+  const sl=parseFloat(g(`p${n}-sl`)?.value)||0;
+  const lot=parseFloat(g(`p${n}-lot`)?.value)||0;
+  const cv=lot*sym.unit*entry;
+  const lev=parseFloat(g(`p${n}-lev`)?.value)||25;
+  const vsd=g(`p${n}-vsd`)?.value||'';
+  const vsf=g(`p${n}-vsf`)?.value||'';
+  const sld=entry>0&&vsd?entry*(parseFloat(vsd)/100)*(parseFloat(vsf)||1):Math.abs(entry-sl);
+  const now=new Date();
+  const pad=v=>String(v).padStart(2,'0');
+  const importedAt=`${pad(now.getDate())}/${pad(now.getMonth()+1)}/${String(now.getFullYear()).slice(2)} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  return {
+    version:'v1',
+    id:buildEntryId(n),
+    meta:{state:'ACTIVE',importedAt,closedAt:null},
+    entry:{
+      date:g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value||'',
+      inst,dir:g(`p${n}-dir`)?.value||'long',
+      price:String(entry),sl:String(sl),
+      rmode:riskMode[n]||'fixed',
+      rpt:g(`p${n}-rpt`)?.value||'',
+      vsd,vsf,
+      sld:String(sld.toFixed(2)),
+      usedLot:String(lot),
+      usedCV:String(cv.toFixed(0)),
+      lev:String(lev),
+      entryScore:g(`p${n}-entry-score`)?.value||'',
+      entryNote:g(`p${n}-entry-note`)?.value||''
+    },
+    exit:{trailSL:'',note:'',cl:{price:'',date:'',method:'',lot:'',score:''},t1:{price:'',date:'',method:'',lot:'',score:''},t2:{price:'',date:'',method:'',lot:'',score:''},t3:{price:'',date:'',method:'',lot:'',score:''}}
+  };
+}
+function importToSession(n){
+  const btn=g('p1-import-btn');
+  // validate required fields
+  const inst=g(`p${n}-inst`)?.value;
+  const entry=parseFloat(g(`p${n}-entry`)?.value);
+  const lot=parseFloat(g(`p${n}-lot`)?.value);
+  if(!inst||!entry||!lot){
+    btn.textContent='กรอก Symbol / Entry / Lot ก่อน';
+    btn.style.background='var(--red)';
+    clearTimeout(btn._t);
+    btn._t=setTimeout(()=>{btn.textContent='Import →';btn.style.background='var(--acc)';btn.dataset.confirm='';},2000);
+    return;
+  }
+  // 2-step confirm
+  if(btn.dataset.confirm!=='1'){
+    btn.textContent='ยืนยัน Import?';
+    btn.style.background='';
+    btn.style.color='';
+    btn.classList.add('confirm');
+    btn.dataset.confirm='1';
+    clearTimeout(btn._t);
+    btn._t=setTimeout(()=>{btn.textContent='Import →';btn.classList.remove('confirm');btn.dataset.confirm='';},2500);
+    return;
+  }
+  // build packet
+  btn.dataset.confirm='';
+  btn.classList.remove('confirm');
+  const packet=buildPacket(n);
+  const data=loadSession();
+  // duplicate ID check
+  let finalId=packet.id;
+  const existing=data.positions.map(p=>p.id);
+  if(existing.includes(finalId)){
+    let suffix=2;
+    while(existing.includes(finalId+'-'+suffix))suffix++;
+    finalId=finalId+'-'+suffix;
+    packet.id=finalId;
+  }
+  data.positions.push(packet);
+  saveSession(data);
+  // feedback
+  btn.textContent='✓ Imported!';
+  btn.style.background='var(--green)';
+  clearTimeout(btn._t);
+  btn._t=setTimeout(()=>{btn.textContent='Import →';btn.style.background='var(--acc)';},2000);
+  // switch to Tab2
+  switchTab('session',document.querySelector('[onclick*="session"]'));
+  renderSession();
+}
+
+function parseEntryDate(raw){
+  if(!raw||!raw.trim())return '';
+  raw=raw.trim();
+  const m=raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})(?:[\s,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if(!m)return raw;
+  let[,d,mo,y,h,min,s]=m;
+  d=d.padStart(2,'0');mo=mo.padStart(2,'0');
+  if(y.length===2)y='20'+y;
+  h=h?h.padStart(2,'0'):'00';min=min?min.padStart(2,'0'):'00';s=s?s.padStart(2,'0'):'00';
+  return d+'/'+mo+'/'+y+' '+h+':'+min+':'+s;
+}
+function onEdateBlur(el){
+  const raw=el.value.trim();if(!raw){saveData();return;}
+  const full=parseEntryDate(raw);
+  if(full){
+    el.dataset.full=full;
+    const parts=full.split(' ')[0].split('/');
+    el.value=parts[0]+'/'+parts[1]+'/'+parts[2].slice(2);
+    el.style.color='var(--blue)';
+  }
+  saveData();
+}
+
+// Init Firebase after window loads (ensures SDK scripts have time to load)
+if(document.readyState==='complete'){
+  initFirebase();
+}else{
+  window.addEventListener('load',()=>{ try{ initFirebase(); }catch(e){ console.error('Firebase init skipped:',e); } });
+}
+
+// Demo data for testing
+function loadDemoSession(){
+  const DEMO_VER='d2';
+  try{
+    const existing=localStorage.getItem(SK2);
+    if(existing){
+      const d=JSON.parse(existing);
+      if(d.positions&&d.positions.length>0&&d.demoVer===DEMO_VER) return;
+    }
+  }catch(e){}
+  const demo={version:'v1',demoVer:DEMO_VER,positions:[
+    {id:'XAUUSD.O.S.260523.0830',
+     meta:{state:'PARTIAL',importedAt:'23/05/26 09:15:00',closedAt:null},
+     entry:{date:'23/05/26 08:30:00',inst:'XAUUSD',dir:'short',price:'3320.50',sl:'3334.12',rmode:'vola',rpt:'200',vsd:'0.565',vsf:'2',sld:'15.38',usedLot:'0.04',usedCV:'13282',lev:'25',entryScore:'4',entryNote:'Trend break + volume confirm. Watch 3310 support.'},
+     exit:{trailSL:'3315.00',note:'',cl:{price:'',date:'',method:'',lot:'',score:''},t1:{price:'3305.00',date:'24/05/26 14:30:00',method:'PC Float',lot:'0.02',score:'4'},t2:{price:'',date:'',method:'',lot:'',score:''},t3:{price:'',date:'',method:'',lot:'',score:''}}},
+    {id:'EURUSD.O.L.260524.1005',
+     meta:{state:'ACTIVE',importedAt:'24/05/26 10:05:00',closedAt:null},
+     entry:{date:'24/05/26 09:45:00',inst:'EURUSD',dir:'long',price:'1.16027',sl:'1.15681',rmode:'vola',rpt:'200',vsd:'0.346',vsf:'2',sld:'0.008026',usedLot:'0.04',usedCV:'4641.08',lev:'25',entryScore:'3',entryNote:''},
+     exit:{trailSL:'',note:'',cl:{price:'',date:'',method:'',lot:'',score:''},t1:{price:'',date:'',method:'',lot:'',score:''},t2:{price:'',date:'',method:'',lot:'',score:''},t3:{price:'',date:'',method:'',lot:'',score:''}}}
+  ]};
+  saveSession(demo);
+}
+loadDemoSession();
+</script>
+</body>
+</html>
