@@ -109,9 +109,7 @@ option{color:#000}
 .exit-section-hd{padding:7px 14px;background:rgba(13,115,119,.15);font-size:11px;font-weight:600;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;border-top:.5px solid rgba(13,115,119,.2);border-bottom:.5px solid rgba(13,115,119,.2)}
 .exit-rec-row{display:flex;align-items:center;min-height:44px;padding:0 14px;border-bottom:.5px solid var(--border);font-size:13px;gap:4px}
 .exit-rec-row:last-child{border-bottom:none}
-.exit-rec-row.editing{background:rgba(13,115,119,.04)}
-.inline-input{background:transparent;border:none;border-bottom:1.5px solid var(--acc);font-size:13px;font-weight:500;color:var(--acc);outline:none;font-family:inherit;padding:2px;width:100%;text-align:inherit}
-.inline-select{background:transparent;border:none;border-bottom:1.5px solid var(--acc);font-size:11px;color:var(--acc);outline:none;font-family:inherit;padding:2px;width:100%;text-align:center;-webkit-appearance:none}
+/* exit-rec-row inline edit removed (replaced by bottom sheet) */
 .exit-tag{width:28px;flex-shrink:0;font-weight:600;color:var(--acc);font-size:12px}
 .exit-price-val{flex:1.5;font-weight:500;text-align:right}
 .exit-price-val.profit{color:var(--green)}.exit-price-val.loss{color:var(--red)}
@@ -151,8 +149,27 @@ option{color:#000}
 .sheet-row:last-child{border-bottom:none}
 .sheet-rl{flex:1;color:var(--sub)}
 .sheet-input{background:transparent;border:none;font-size:15px;font-weight:500;color:var(--blue);text-align:right;outline:none;font-family:inherit;width:140px}
-.sheet-select{background:transparent;border:none;font-size:15px;font-weight:500;color:var(--blue);text-align:right;outline:none;font-family:inherit;-webkit-appearance:none}
 .sheet-confirm-btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+/* mockup-style fields for exit sheet (label above input) */
+.sh-fld{margin-bottom:11px}
+.sh-fld-l{font-size:12px;color:var(--sub);margin-bottom:5px;display:block}
+.sh-inp{width:100%;height:42px;border:.5px solid var(--border);border-radius:10px;background:var(--bg);padding:0 13px;font-size:15px;color:var(--text);outline:none;font-family:inherit;-webkit-appearance:none}
+.sh-inp:focus{border-color:var(--acc)}
+.sh-row2{display:flex;gap:9px}.sh-row2 .sh-fld{flex:1}
+.sh-row3{display:flex;gap:9px}.sh-row3 .sh-fld{flex:1}
+.sh-fee-box{background:var(--bg);border-radius:10px;padding:11px 13px;margin:13px 0}
+.sh-fee-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.sh-fee-l{color:var(--sub)}
+.sh-fee-v{font-weight:500;font-variant-numeric:tabular-nums}
+.sh-fee-div{height:.5px;background:var(--border);margin:6px 0}
+.sh-net-row{display:flex;justify-content:space-between;font-size:15px;font-weight:600;padding:3px 0}
+.sh-hint{font-size:11px;color:var(--hint);margin-top:4px}
+.sh-lot-status{display:flex;justify-content:space-between;align-items:center;margin-top:5px;font-size:11px;font-weight:500;color:var(--sub)}
+.sh-lot-status.ok #exit-lot-status-msg{color:var(--acc)}
+.sh-lot-status.full #exit-lot-status-msg{color:var(--green)}
+.sh-lot-status.over #exit-lot-status-msg{color:var(--red)}
+.sh-full-link{font-size:11px;color:var(--acc);font-weight:500;cursor:pointer;-webkit-user-select:none;user-select:none;white-space:nowrap}
+.sh-full-link:active{opacity:.5}
 
 /* ── Trail SL Edit Sheet ── */
 .trail-sheet{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-radius:18px 18px 0 0;padding:16px 16px calc(32px + env(safe-area-inset-bottom));z-index:501;display:none}
@@ -225,37 +242,63 @@ if(typeof firebase==='undefined'){
     <span class="sheet-title" id="exit-sheet-title">Edit Exit</span>
     <button class="sheet-close" onclick="closeExitSheet()">×</button>
   </div>
-  <div class="sheet-card">
-    <div class="sheet-row">
-      <span class="sheet-rl">Slot</span>
-      <input class="sheet-input" id="exit-slot" type="text" placeholder="T1, T2, CL ..." style="text-transform:uppercase;width:100px">
+  <div class="sh-fld">
+    <label class="sh-fld-l">Slot</label>
+    <input class="sh-inp" id="exit-slot" type="text" placeholder="T1, T2, CL ..." style="text-transform:uppercase" oninput="updateExitLotBar()">
+  </div>
+  <div class="sh-row2">
+    <div class="sh-fld">
+      <label class="sh-fld-l">Price</label>
+      <input class="sh-inp" id="exit-price" type="text" inputmode="decimal" placeholder="0.00" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
     </div>
-    <div class="sheet-row">
-      <span class="sheet-rl">Price</span>
-      <input class="sheet-input" id="exit-price" type="number" inputmode="decimal" placeholder="0.00">
+    <div class="sh-fld">
+      <label class="sh-fld-l">Lot</label>
+      <input class="sh-inp" id="exit-lot" type="text" inputmode="decimal" placeholder="0.01" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+      <div class="sh-lot-status" id="exit-lot-status"><span id="exit-lot-status-msg">Available: —</span><span class="sh-full-link" id="exit-full-link" style="display:none" onclick="setExitFullLot()">Use full →</span></div>
     </div>
-    <div class="sheet-row">
-      <span class="sheet-rl">Date</span>
-      <input class="sheet-input" id="exit-date" type="text" placeholder="dd/mm/yy" style="width:140px">
-    </div>
-    <div class="sheet-row">
-      <span class="sheet-rl">Lot</span>
-      <input class="sheet-input" id="exit-lot" type="number" inputmode="decimal" step="0.01" placeholder="0.01">
-    </div>
-    <div class="sheet-row">
-      <span class="sheet-rl">Method</span>
-      <select class="sheet-select" id="exit-method">
+  </div>
+  <div class="sh-fld">
+    <label class="sh-fld-l">Date</label>
+    <input class="sh-inp" id="exit-date" type="text" placeholder="dd/mm/yy or paste full" onblur="onExitDateBlur(this)">
+    <div class="sh-hint">รับหลาย format → เก็บ 2026/06/17 21:28:29</div>
+  </div>
+  <div class="sh-row2">
+    <div class="sh-fld">
+      <label class="sh-fld-l">Method</label>
+      <select class="sh-inp" id="exit-method">
         <option value="">—</option>
         <option>Cutloss</option><option>MA Float</option><option>PC Float</option>
         <option>Trail Float</option><option>Vola Fix</option><option>EoWk</option><option>Trail Cut</option>
       </select>
     </div>
-    <div class="sheet-row">
-      <span class="sheet-rl">Exit Score</span>
-      <select class="sheet-select" id="exit-score">
+    <div class="sh-fld">
+      <label class="sh-fld-l">Score</label>
+      <select class="sh-inp" id="exit-score">
         <option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
       </select>
     </div>
+  </div>
+  <div class="sh-row3">
+    <div class="sh-fld">
+      <label class="sh-fld-l">Swap</label>
+      <input class="sh-inp" id="exit-swap" type="text" inputmode="decimal" placeholder="0 · pos = -7" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+    </div>
+    <div class="sh-fld">
+      <label class="sh-fld-l">Com</label>
+      <input class="sh-inp" id="exit-com" type="text" inputmode="decimal" placeholder="0" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+    </div>
+    <div class="sh-fld">
+      <label class="sh-fld-l">VAT</label>
+      <input class="sh-inp" id="exit-vat" type="text" inputmode="decimal" placeholder="0" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+    </div>
+  </div>
+  <div class="sh-fee-box" id="exit-fee-preview" style="display:none">
+    <div class="sh-fee-row"><span class="sh-fee-l">Gross</span><span class="sh-fee-v" id="exfp-gross"></span></div>
+    <div class="sh-fee-row"><span class="sh-fee-l">Swap</span><span class="sh-fee-v" id="exfp-swap"></span></div>
+    <div class="sh-fee-row"><span class="sh-fee-l">Com</span><span class="sh-fee-v" id="exfp-com"></span></div>
+    <div class="sh-fee-row"><span class="sh-fee-l">VAT</span><span class="sh-fee-v" id="exfp-vat"></span></div>
+    <div class="sh-fee-div"></div>
+    <div class="sh-net-row"><span>Net</span><span id="exfp-net" style="font-variant-numeric:tabular-nums"></span></div>
   </div>
   <button class="sheet-confirm-btn" onclick="confirmExit()">Confirm Exit</button>
 </div>
@@ -371,9 +414,15 @@ async function signInGoogle(){
   }
 }
 async function signOutCloud(){
-  if(fbAuth){await fbAuth.signOut(); fbUser=null;}
-  cloudStatus='offline'; cloudMsg='ออกจากระบบแล้ว';
-  renderRecords();
+  try{
+    if(fbAuth){await fbAuth.signOut();}
+  }catch(e){
+    console.error('Sign out error:',e);
+  }finally{
+    fbUser=null;
+    cloudStatus='offline'; cloudMsg='ออกจากระบบแล้ว';
+    renderRecords();
+  }
 }
 
 function userRecordsRef(){
@@ -393,11 +442,12 @@ async function pushToCloud(){
     const cloudIds=new Set();
     snap.forEach(doc=>cloudIds.add(doc.id));
     // push local records not on cloud
-    let added=0, skipped=0;
+    let added=0, skipped=0, invalid=0;
     const batch_size=500; // Firestore batch limit
     let batch=fbDb.batch();
     let batchCount=0;
     for(const rec of local.records){
+      if(!isValidRecord(rec)){invalid++;continue;}
       if(cloudIds.has(rec.id)){
         skipped++;
       }else{
@@ -414,7 +464,7 @@ async function pushToCloud(){
     if(batchCount>0) await batch.commit();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped`;
+    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${invalid?' · '+invalid+' invalid':''}`;
     renderRecords();
     setTimeout(()=>{
       if(cloudStatus==='synced'){
@@ -440,19 +490,27 @@ async function pullFromCloud(){
     snap.forEach(doc=>cloudRecs.push(doc.data()));
     const local=loadRecords();
     const localIds=new Set(local.records.map(r=>r.id));
-    let added=0, skipped=0;
+    let added=0, skipped=0, invalid=0;
     for(const rec of cloudRecs){
+      if(!isValidRecord(rec)){invalid++;continue;}
       if(localIds.has(rec.id)){
         skipped++;
       }else{
         local.records.push(rec);
+        localIds.add(rec.id);
         added++;
       }
     }
-    saveRecords(local);
+    const saved=saveRecords(local);
+    if(!saved){
+      cloudStatus='error';
+      cloudMsg='Pull ล้มเหลว: เก็บ local ไม่ได้ (storage เต็ม?)';
+      renderRecords();
+      return;
+    }
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had`;
+    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${invalid?' · '+invalid+' invalid':''}`;
     renderRecords();
     setTimeout(()=>{
       if(cloudStatus==='synced'){
@@ -465,6 +523,15 @@ async function pullFromCloud(){
     console.error('Pull error:',e);
     renderRecords();
   }finally{ isSyncing=false; }
+}
+
+// validate a record from cloud before trusting it
+function isValidRecord(rec){
+  return !!(rec
+    && typeof rec.id==='string' && rec.id
+    && rec.eval && typeof rec.eval==='object'
+    && typeof rec.eval.symbol==='string'
+    && Array.isArray(rec.eval.exits));
 }
 
 function fmtSyncTime(d){
@@ -482,6 +549,21 @@ function f(n,d=2){return isFinite(n)?n.toLocaleString('en-US',{minimumFractionDi
 function fSign(n,d=2){if(!isFinite(n))return '—'; return (n>=0?'+':'')+f(n,d);}
 const BIN_SVG='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>';
 function nowStamp(){const d=new Date();const p=v=>String(v).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${String(d.getFullYear()).slice(2)} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;}
+// strip commas/spaces from numeric input → float
+function parseNum(v){
+  if(v==null)return NaN;
+  return parseFloat(String(v).replace(/[,\s]/g,''));
+}
+// format price input on blur: strip comma, keep as plain number string
+function onPriceBlur(el){
+  const raw=(el.value||'').replace(/[,\s]/g,'');
+  if(raw===''){el.value='';return;}
+  const n=parseFloat(raw);
+  if(isFinite(n)){
+    // preserve user's decimal precision, just remove commas
+    el.value=raw;
+  }
+}
 function autoExpand(el){if(!el)return;el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 
 // ─── Tab switching ────────────────────────────────────
@@ -619,14 +701,14 @@ function calcRisk(n){
   const sym=getSymbol(g(`p${n}-inst`).value);
   const unit=sym.unit;const pipM=sym.pipM;
   if(!unit){['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-lot'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});return;}
-  const entry=parseFloat(g(`p${n}-entry`).value)||0;
+  const entry=parseNum(g(`p${n}-entry`).value)||0;
   const ids=['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-lot'];
   const clear=()=>ids.forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
   if(!entry){clear();return;}
   const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
   let slDist=0,rpt=0;
   if(riskMode[n]==='fixed'){
-    const sl=parseFloat(g(`p${n}-sl`).value)||0;
+    const sl=parseNum(g(`p${n}-sl`).value)||0;
     rpt=parseFloat(g(`p${n}-rpt`).value)||0;
     if(!sl||!rpt){clear();return;}
     slDist=Math.abs(entry-sl);
@@ -667,8 +749,8 @@ function calcPos(n){
   const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
   const dsel=g(`p${n}-dir`);
   if(dsel){dsel.style.color=dir==='long'?'var(--green)':'var(--red)';dsel.style.fontWeight='600';}
-  const entry=parseFloat(g(`p${n}-entry`).value)||0;
-  const sl=parseFloat(g(`p${n}-sl`).value)||0;
+  const entry=parseNum(g(`p${n}-entry`).value)||0;
+  const sl=parseNum(g(`p${n}-sl`).value)||0;
   const lot=parseFloat(g(`p${n}-lot`).value)||0;
   const cv=lot*unit*entry;
   const margin=lev>0&&entry>0?cv/lev:0;
@@ -709,11 +791,16 @@ function computePos(pos){
   const risk=slDist*unit*usedLot;
   const exits=Object.entries(pos.exit)
     .filter(([k])=>k!=='trailSL'&&k!=='note')
-    .map(([,v])=>({price:parseFloat(v?.price)||0,lot:parseFloat(v?.lot)||0}));
+    .map(([,v])=>({price:parseFloat(v?.price)||0,lot:parseFloat(v?.lot)||0,
+                   swap:parseNum(v?.swap)||0,com:parseNum(v?.com)||0,vat:parseNum(v?.vat)||0}));
   let realizedPL=0,totalExitLot=0,hasRealized=false;
-  exits.forEach(({price,lot})=>{
+  let totalSwap=0,totalCom=0,totalVat=0,hasFees=false;
+  exits.forEach(({price,lot,swap,com,vat})=>{
     if(price&&lot){realizedPL+=(price-entry)*sign*unit*lot;totalExitLot+=lot;hasRealized=true;}
+    if(swap||com||vat){totalSwap+=swap;totalCom+=com;totalVat+=vat;hasFees=true;}
   });
+  const totalFees=totalSwap+totalCom+totalVat;
+  const netPL=realizedPL-totalFees;
   const remainingLot=Math.max(usedLot-totalExitLot,0);
   const trailSL=parseFloat(pos.exit.trailSL)||0;
   const trailSLD=trailSL&&entry?Math.abs(entry-trailSL):0;
@@ -737,6 +824,7 @@ function computePos(pos){
   const rr=risk>0?realizedPL/risk:0;
   return{unit,pipM,entry,usedLot,lev,dir,sign,cv,margin,mlevel,slDist,risk,
     realizedPL,totalExitLot,remainingLot,hasRealized,trailSL,trailSLD,trailSLDPips,
+    totalSwap,totalCom,totalVat,totalFees,netPL,hasFees,
     holdingStr,state,rr};
 }
 function renderSession(){
@@ -778,7 +866,7 @@ function renderSession(){
           const xPrice=parseFloat(data.price);
           const xPL=(xPrice-c.entry)*c.sign*c.unit*parseFloat(data.lot);
           const priceClass=xPL>=0?'profit':'loss';
-          return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="startInlineEdit('${pos.id}','${key}',this,event)">
+          return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="openExitSheet('${pos.id}','${key}')">
             <span class="exit-tag" style="${tagColor}">${label}</span>
             <span class="exit-price-val ${priceClass}">${f(xPrice,xPrice>100?2:5)}</span>
             <span class="exit-lot-val">${f(parseFloat(data.lot),2)}</span>
@@ -786,7 +874,7 @@ function renderSession(){
             <span class="exit-score-val">${data.score?'★'+data.score:''}</span>
           </div>`;
         }
-        return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="startInlineEdit('${pos.id}','${key}',this,event)">
+        return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="openExitSheet('${pos.id}','${key}')">
           <span class="exit-tag" style="${tagColor}">${label}</span>
           <span class="exit-pending-txt">— pending</span>
           <span style="flex:1"></span><span style="flex:1"></span><span style="flex:0.5"></span>
@@ -839,7 +927,8 @@ function renderSession(){
         <div class="exit-section-hd">Position Sum</div>
         <div class="bd-section">
           <div class="bd-row"><span class="bd-lbl">Realized P/L</span><span class="bd-val ${c.realizedPL>0?'cg':c.realizedPL<0?'cr':''}">${c.hasRealized?fSign(c.realizedPL):'—'}</span></div>
-          <div class="bd-row"><span class="bd-lbl">Net P/L</span><span class="bd-val" style="color:var(--sub)">—</span></div>
+          <div class="bd-row"><span class="bd-lbl">Fees${c.hasFees?` <span style="color:var(--hint);font-size:11px">(swap ${fSign(-c.totalSwap)} · com −${Math.abs(c.totalCom).toFixed(2)} · vat −${Math.abs(c.totalVat).toFixed(2)})</span>`:''}</span><span class="bd-val" style="color:var(--sub)">${c.hasFees?('−'+Math.abs(c.totalFees).toFixed(2)):'—'}</span></div>
+          <div class="bd-row"><span class="bd-lbl">Net P/L</span><span class="bd-val ${c.netPL>0?'cg':c.netPL<0?'cr':''}">${c.hasRealized?fSign(c.netPL):'—'}</span></div>
           <div class="bd-row"><span class="bd-lbl">R : R</span><span class="bd-val" style="color:var(--sub)">${c.hasRealized&&c.risk?f(c.rr,2)+'x':'—'}</span></div>
         </div>
         <div class="pos-action-row">
@@ -970,114 +1059,6 @@ function updateLotBar(posId,totalExitLot,usedLot){
 }
 
 // ─── Inline Exit Edit ────────────────────────────────
-function startInlineEdit(posId,slotKey,rowEl,evt){
-  if(rowEl.classList.contains('editing'))return;
-  // detect which column the user actually tapped
-  let focusCol='price';
-  if(evt&&evt.target){
-    const t=evt.target;
-    if(t.closest&&t.closest('.exit-lot-val')) focusCol='lot';
-    else if(t.closest&&t.closest('.exit-method-badge')) focusCol='method';
-    else if(t.closest&&t.closest('.exit-score-val')) focusCol='score';
-    else if(t.closest&&t.closest('.exit-price-val')) focusCol='price';
-    else {
-      // iOS often reports target=row when tapping in gaps — fallback to clientX hit-test
-      const x=evt.clientX!=null?evt.clientX:(evt.touches&&evt.touches[0]&&evt.touches[0].clientX);
-      if(x!=null){
-        const cells=rowEl.querySelectorAll('.exit-price-val,.exit-lot-val,.exit-method-badge,.exit-score-val');
-        for(const cell of cells){
-          const r=cell.getBoundingClientRect();
-          if(x>=r.left&&x<=r.right){
-            if(cell.classList.contains('exit-price-val')) focusCol='price';
-            else if(cell.classList.contains('exit-lot-val')) focusCol='lot';
-            else if(cell.classList.contains('exit-method-badge')) focusCol='method';
-            else if(cell.classList.contains('exit-score-val')) focusCol='score';
-            break;
-          }
-        }
-      }
-    }
-  }
-  document.querySelectorAll('.exit-rec-row.editing').forEach(r=>r.classList.remove('editing'));
-  const data=loadSession();
-  const pos=data.positions.find(p=>p.id===posId);
-  if(!pos)return;
-  const ex=pos.exit[slotKey]||{};
-  const label=slotKey.toUpperCase();
-  const methods=['','Cutloss','MA Float','PC Float','Trail Float','Vola Fix','EoWk','Trail Cut'];
-  const mOpts=methods.map(m=>`<option${m===ex.method?' selected':''}>${m}</option>`).join('');
-  const sOpts=['','1','2','3','4','5'].map(s=>`<option${s===ex.score?' selected':''}>${s}</option>`).join('');
-  const fullBtn=slotKey==='cl'
-    ?`<button onclick="setFullLot('${posId}',this)" style="padding:3px 8px;border:none;border-radius:6px;background:var(--acc);color:#fff;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0">Full</button>`
-    :'';
-  rowEl.classList.add('editing');
-  rowEl.removeAttribute('onclick');
-  rowEl.innerHTML=`
-    <span class="exit-tag">${label}</span>
-    <div class="exit-price-val"><input class="inline-input" style="text-align:right" type="number" inputmode="decimal" placeholder="price" value="${ex.price||''}"></div>
-    <div class="exit-lot-val" style="display:flex;align-items:center;gap:4px;justify-content:center">${fullBtn}<input class="inline-input" style="text-align:center;flex:1" type="number" inputmode="decimal" step="0.01" placeholder="lot" value="${ex.lot||''}" oninput="validateTLot(this,'${posId}')"></div>
-    <div class="exit-method-badge" style="background:transparent;padding:0"><select class="inline-select" tabindex="0">${mOpts}</select></div>
-    <div class="exit-score-val"><select class="inline-select" tabindex="0">${sOpts}</select></div>
-  `;
-  rowEl.addEventListener('focusout',function(e){
-    if(rowEl.contains(e.relatedTarget))return;
-    saveInlineExit(posId,slotKey,rowEl);
-  });
-  let focusEl;
-  if(focusCol==='lot') focusEl=rowEl.querySelector('.exit-lot-val input');
-  else if(focusCol==='method') focusEl=rowEl.querySelector('.exit-method-badge select');
-  else if(focusCol==='score') focusEl=rowEl.querySelector('.exit-score-val select');
-  else focusEl=rowEl.querySelector('.exit-price-val input');
-  if(focusEl){focusEl.focus(); if(focusEl.tagName==='SELECT'){try{focusEl.click();}catch(e){}}}
-}
-function validateTLot(el,posId){
-  if(!el)return;
-  const val=parseFloat(el.value);
-  const raw=el.value;
-  const decMatch=raw.match(/\.([0-9]+)/);
-  const decimals=decMatch?decMatch[1].length:0;
-  const invalid=raw&&raw!=='0'&&(isNaN(val)||val<0.01||decimals>2);
-  // check against remaining lot if posId provided
-  if(!invalid&&posId&&val){
-    const data=loadSession();
-    const pos=data.positions.find(p=>p.id===posId);
-    if(pos){
-      const c=computePos(pos);
-      const over=val>c.usedLot+0.001;
-      el.style.color=over?'var(--red)':'var(--acc)';
-      el.style.fontWeight='500';
-      return;
-    }
-  }
-  el.style.color=invalid?'var(--red)':'var(--acc)';
-  el.style.fontWeight='500';
-}
-function setFullLot(posId,btn){
-  const data=loadSession();
-  const pos=data.positions.find(p=>p.id===posId);
-  if(!pos)return;
-  const c=computePos(pos);
-  const remaining=Math.max(c.remainingLot,0);
-  const lotInput=btn.closest('.exit-lot-val').querySelector('input');
-  if(lotInput)lotInput.value=f(remaining,2);
-}
-
-function saveInlineExit(posId,slotKey,rowEl){
-  const inputs=rowEl.querySelectorAll('input,select');
-  const price=inputs[0].value.trim();
-  const lot=inputs[1].value.trim();
-  const method=inputs[2].value;
-  const score=inputs[3].value;
-  if(!price&&!lot)return;
-  const data=loadSession();
-  const pos=data.positions.find(p=>p.id===posId);
-  if(!pos)return;
-  pos.exit[slotKey]={price,lot,method,score,date:pos.exit[slotKey]?.date||''};
-  const c=computePos(pos);
-  pos.meta.state=c.state;
-  saveSession(data);
-  renderSession();
-}
 // ─── Add/Edit Exit Sheet ──────────────────────────────
 function openExitSheet(posId, slotKey){
   currentExitPosId=posId;
@@ -1087,27 +1068,34 @@ function openExitSheet(posId, slotKey){
   const isEdit=!!slotKey;
   g('exit-sheet-title').textContent=isEdit?'Edit Exit':'Add Exit';
   const slotInput=g('exit-slot');
+  const dateEl=g('exit-date');
   if(isEdit){
     const ex=pos.exit[slotKey]||{};
     slotInput.value=slotKey.toUpperCase();
     slotInput.readOnly=true;
     slotInput.style.color='var(--sub)';
     g('exit-price').value=ex.price||'';
-    g('exit-date').value=ex.date||'';
+    // date: if stored in new yyyy/mm/dd format show short, else show as-is
+    const storedDate=ex.date||'';
+    dateEl.value=/^\d{4}\//.test(storedDate)?dateDisplay(storedDate):(storedDate||'');
+    dateEl.dataset.full=/^\d{4}\//.test(storedDate)?storedDate:'';
+    dateEl.style.color='';
     g('exit-lot').value=ex.lot||'';
-    // method
-    const mSel=g('exit-method');
-    mSel.value=ex.method||'';
-    // score
-    const sSel=g('exit-score');
-    sSel.value=ex.score||'';
+    g('exit-method').value=ex.method||'';
+    g('exit-score').value=ex.score||'';
+    g('exit-swap').value=ex.swap||'';
+    g('exit-com').value=ex.com||'';
+    g('exit-vat').value=ex.vat||'';
   }else{
     slotInput.value='';
     slotInput.readOnly=false;
     slotInput.style.color='var(--blue)';
-    g('exit-price').value='';g('exit-date').value='';g('exit-lot').value='';
+    g('exit-price').value='';dateEl.value='';dateEl.dataset.full='';dateEl.style.color='';
+    g('exit-lot').value='';
     g('exit-method').selectedIndex=0;g('exit-score').selectedIndex=0;
+    g('exit-swap').value='';g('exit-com').value='';g('exit-vat').value='';
   }
+  updateExitPreview();
   g('exit-overlay').classList.add('on');
   g('exit-sheet').style.display='block';
 }
@@ -1120,21 +1108,122 @@ function confirmExit(){
   if(!currentExitPosId)return;
   const rawSlot=g('exit-slot').value.trim().toLowerCase().replace(/\s+/g,'');
   const price=g('exit-price').value;
-  const date=g('exit-date').value;
+  const date=g('exit-date').dataset.full||g('exit-date').value;
   const lot=g('exit-lot').value;
   const method=g('exit-method').value;
   const score=g('exit-score').value;
+  const swap=g('exit-swap').value;
+  const com=g('exit-com').value;
+  const vat=g('exit-vat').value;
   if(!rawSlot){alert('กรุณากรอก Slot');return;}
   if(!price||!lot){alert('กรุณากรอก Price และ Lot');return;}
   const data=loadSession();
   const pos=data.positions.find(p=>p.id===currentExitPosId);
   if(!pos)return;
-  pos.exit[rawSlot]={price,date,method,lot,score};
+  pos.exit[rawSlot]={price,date,method,lot,score,swap,com,vat};
   const c=computePos(pos);
   pos.meta.state=c.state;
   saveSession(data);
   closeExitSheet();
   renderSession();
+}
+
+// ── Exit fees: live preview & helpers ─────────────────
+// Net = Gross − Swap − Com − VAT (pos swap = -7 → adds back; com/vat positive = deduct)
+function feeNet(gross, swap, com, vat){
+  return (gross||0) - (parseNum(swap)||0) - (parseNum(com)||0) - (parseNum(vat)||0);
+}
+function fmtSigned(n,d){
+  d=d==null?2:d;
+  if(!isFinite(n))return '—';
+  const s=n.toFixed(d);
+  return n>0?('+'+s):s;
+}
+function updateExitPreview(){
+  updateExitLotBar();
+  const box=g('exit-fee-preview');if(!box)return;
+  const price=parseNum(g('exit-price').value);
+  const lot=parseNum(g('exit-lot').value);
+  const swap=parseNum(g('exit-swap').value);
+  const com=parseNum(g('exit-com').value);
+  const vat=parseNum(g('exit-vat').value);
+  // need entry context for gross calc
+  if(!currentExitPosId||!isFinite(price)||!isFinite(lot)){box.style.display='none';return;}
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===currentExitPosId);
+  if(!pos){box.style.display='none';return;}
+  const sym=getSymbol(pos.entry.inst);
+  const unit=sym?sym.unit:0;
+  const entry=parseNum(pos.entry.price);
+  const sign=pos.entry.dir==='long'?1:-1;
+  const gross=(price-entry)*sign*unit*lot;
+  const net=gross-(isFinite(swap)?swap:0)-(isFinite(com)?com:0)-(isFinite(vat)?vat:0);
+  box.style.display='block';
+  g('exfp-gross').textContent=fmtSigned(gross);
+  g('exfp-gross').style.color=gross>0?'var(--green)':(gross<0?'var(--red)':'');
+  // swap: stored value -7 means pos swap (got money back) → display as +7 green
+  const swapShown=isFinite(swap)?-swap:0;
+  g('exfp-swap').textContent=isFinite(swap)?fmtSigned(swapShown):'0.00';
+  g('exfp-swap').style.color=swapShown>0?'var(--green)':(swapShown<0?'var(--sub)':'');
+  g('exfp-com').textContent=isFinite(com)&&com!==0?('−'+Math.abs(com).toFixed(2)):'0.00';
+  g('exfp-com').style.color=com>0?'var(--sub)':'';
+  g('exfp-vat').textContent=isFinite(vat)&&vat!==0?('−'+Math.abs(vat).toFixed(2)):'0.00';
+  g('exfp-vat').style.color=vat>0?'var(--sub)':'';
+  g('exfp-net').textContent=fmtSigned(net);
+  g('exfp-net').style.color=net>0?'var(--green)':(net<0?'var(--red)':'');
+}
+function updateExitLotBar(){
+  const wrap=g('exit-lot-status');const msgEl=g('exit-lot-status-msg');const link=g('exit-full-link');
+  if(!wrap||!msgEl||!currentExitPosId){if(wrap)wrap.style.display='none';return;}
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===currentExitPosId);
+  if(!pos){wrap.style.display='none';return;}
+  const c=computePos(pos);
+  // exclude current slot's existing lot (since user is editing it now)
+  const currentSlot=(g('exit-slot').value||'').trim().toLowerCase().replace(/\s+/g,'');
+  const existingLot=currentSlot&&pos.exit[currentSlot]?parseFloat(pos.exit[currentSlot].lot)||0:0;
+  const pendingLot=parseNum(g('exit-lot').value)||0;
+  const totalExit=c.totalExitLot-existingLot+pendingLot;
+  const msg=lotStatusMsg(totalExit,c.usedLot);
+  msgEl.textContent=msg;
+  wrap.style.display='flex';
+  wrap.classList.remove('ok','full','over');
+  if(msg.startsWith('⚠'))wrap.classList.add('over');
+  else if(msg.startsWith('✓'))wrap.classList.add('full');
+  else wrap.classList.add('ok');
+  // show Use full link only for CL slot with remaining
+  if(link){
+    const remaining=Math.max(c.usedLot-c.totalExitLot+existingLot,0);
+    if(currentSlot==='cl'&&remaining>0.001){
+      link.textContent='Use full ('+f(remaining,2)+') →';
+      link.style.display='inline-block';
+    }else{
+      link.style.display='none';
+    }
+  }
+}
+function setExitFullLot(){
+  if(!currentExitPosId)return;
+  const data=loadSession();
+  const pos=data.positions.find(p=>p.id===currentExitPosId);
+  if(!pos)return;
+  const c=computePos(pos);
+  const currentSlot=(g('exit-slot').value||'').trim().toLowerCase().replace(/\s+/g,'');
+  const existingLot=currentSlot&&pos.exit[currentSlot]?parseFloat(pos.exit[currentSlot].lot)||0:0;
+  const remaining=Math.max(c.usedLot-c.totalExitLot+existingLot,0);
+  if(remaining>0){
+    g('exit-lot').value=f(remaining,2);
+    updateExitPreview();
+  }
+}
+function onExitDateBlur(el){
+  const raw=el.value.trim();if(!raw)return;
+  const stored=parseDateFlexible(raw);
+  if(stored&&/^\d{4}\//.test(stored)){
+    el.dataset.full=stored;
+    el.value=dateDisplay(stored);
+    el.style.color='var(--blue)';
+  }
 }
 
 // ─── Trail SL Sheet ───────────────────────────────────
@@ -1216,7 +1305,8 @@ function loadRecords(){
   catch(e){return{version:'r1',records:[],exportedCount:0};}
 }
 function saveRecords(data){
-  try{localStorage.setItem(SK3,JSON.stringify(data));}catch(e){}
+  try{localStorage.setItem(SK3,JSON.stringify(data));return true;}
+  catch(e){console.error('saveRecords failed:',e);return false;}
 }
 // build a frozen, asset-agnostic record entry from a position
 function buildRecord(pos){
@@ -1229,11 +1319,18 @@ function buildRecord(pos){
     const ex=pos.exit[slot];
     if(!ex||!ex.price)return;
     const xPrice=parseFloat(ex.price)||0;const xLot=parseFloat(ex.lot)||0;
-    const pl=(xPrice-c.entry)*c.sign*c.unit*xLot;
+    const xSwap=parseNum(ex.swap)||0;const xCom=parseNum(ex.com)||0;const xVat=parseNum(ex.vat)||0;
+    const gross=(xPrice-c.entry)*c.sign*c.unit*xLot;
+    const net=gross-xSwap-xCom-xVat;
     if(ex.score!==''&&ex.score!=null&&isFinite(+ex.score)){scoreSum+=+ex.score;scoreN++;}
-    exits.push({slot,price:ex.price,date:ex.date||'',lot:ex.lot,method:ex.method||'',score:ex.score||'',pl:+pl.toFixed(2)});
+    exits.push({slot,price:ex.price,date:ex.date||'',lot:ex.lot,method:ex.method||'',score:ex.score||'',
+      swap:ex.swap||'',com:ex.com||'',vat:ex.vat||'',
+      gross:+gross.toFixed(2),pl:+net.toFixed(2)});  // pl = net (Phase 7B); gross kept separately
   });
-  const outcome=c.realizedPL>0.0001?'win':c.realizedPL<-0.0001?'loss':'breakeven';
+  // realizedPL = NET (Phase 7B) · grossPL kept alongside for transparency
+  const netPL=c.netPL;
+  const outcome=netPL>0.0001?'win':netPL<-0.0001?'loss':'breakeven';
+  const rMultipleNet=c.risk>0?netPL/c.risk:0;
   return {
     recVer:'r1',
     id:pos.id,
@@ -1249,8 +1346,13 @@ function buildRecord(pos){
       entrySL:parseFloat(pos.entry.sl)||0,
       exits,
       riskAmount:+c.risk.toFixed(2),
-      realizedPL:+c.realizedPL.toFixed(2),
-      rMultiple:+c.rr.toFixed(3),
+      realizedPL:+netPL.toFixed(2),       // net (after fees) — Phase 7B
+      grossPL:+c.realizedPL.toFixed(2),   // gross (before fees) — kept for transparency
+      totalFees:+c.totalFees.toFixed(2),
+      totalSwap:+c.totalSwap.toFixed(2),
+      totalCom:+c.totalCom.toFixed(2),
+      totalVat:+c.totalVat.toFixed(2),
+      rMultiple:+rMultipleNet.toFixed(3),
       outcome,
       totalExitLot:+c.totalExitLot.toFixed(2),
       avgExitScore:scoreN?+(scoreSum/scoreN).toFixed(2):null,
@@ -1314,16 +1416,26 @@ async function exportRecords(){
   if(!data.records.length)return;
   // build content
   const jsonStr=JSON.stringify(data,null,2);
-  const tradeCols=['ID','Symbol','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Realized $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
+  const tradeCols=['ID','Symbol','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
   const slotCols=['cl','t1','t2','t3'];
   const exitCols=[];
-  slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} P/L`);});
+  slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
   const rows=[[...tradeCols,...exitCols]];
   data.records.forEach(r=>{
     const e=r.eval;const x=e.ext||{};
-    const row=[r.id,e.symbol,e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,e.realizedPL,e.rMultiple,e.outcome,e.entryScore,e.holdingStr,x.riskMode];
+    const row=[r.id,e.symbol,e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,
+      e.grossPL!=null?e.grossPL:e.realizedPL,
+      e.totalFees!=null?e.totalFees:0,
+      e.realizedPL,
+      e.rMultiple,e.outcome,e.entryScore,e.holdingStr,x.riskMode];
     const bySlot={};(e.exits||[]).forEach(ex=>bySlot[ex.slot]=ex);
-    slotCols.forEach(s=>{const ex=bySlot[s];if(ex)row.push(ex.price,fmtLot(ex.lot),ex.method,ex.score,ex.pl);else row.push('','','','','');});
+    slotCols.forEach(s=>{
+      const ex=bySlot[s];
+      if(ex){
+        const grossV=ex.gross!=null?ex.gross:ex.pl;
+        row.push(ex.price,fmtLot(ex.lot),ex.method,ex.score,ex.swap||'',ex.com||'',ex.vat||'',grossV,ex.pl);
+      }else row.push('','','','','','','','','');
+    });
     rows.push(row);
   });
   const csvStr=rows.map(r=>r.map(csvCell).join(',')).join('\n');
@@ -1340,31 +1452,89 @@ async function exportRecords(){
       }
     }catch(e){if(e.name==='AbortError')return;}
   }
-  // Desktop fallback: blob download
+  // Desktop fallback: blob download (delay between files to avoid Chrome's "multiple downloads" block)
   data.exportedCount=data.records.length;saveRecords(data);
   downloadBlob(new Blob([jsonStr],{type:'application/json'}),'ctd_records.json');
-  downloadBlob(new Blob(['\ufeff'+csvStr],{type:'text/csv;charset=utf-8'}),'ctd_records.csv');
+  setTimeout(()=>{
+    downloadBlob(new Blob(['\ufeff'+csvStr],{type:'text/csv;charset=utf-8'}),'ctd_records.csv');
+  },350);
+  renderRecords();
 }
-// Copy mode: show CSV/JSON in scrollable modal + clipboard button (works everywhere incl iframe)
+// Copy mode: show JSON/CSV in tabbed modal + clipboard buttons (works everywhere incl iframe)
 function showExportModal(){
   const data=loadRecords();
   if(!data.records.length)return;
   const jsonStr=JSON.stringify(data,null,2);
+  // build CSV inline (mirror exportRecords schema)
+  const tradeCols=['ID','Symbol','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
+  const slotCols=['cl','t1','t2','t3'];
+  const exitCols=[];
+  slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
+  const rows=[[...tradeCols,...exitCols]];
+  data.records.forEach(r=>{
+    const e=r.eval;const x=e.ext||{};
+    const row=[r.id,e.symbol,e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,
+      e.grossPL!=null?e.grossPL:e.realizedPL,
+      e.totalFees!=null?e.totalFees:0,
+      e.realizedPL,
+      e.rMultiple,e.outcome,e.entryScore,e.holdingStr,x.riskMode];
+    const bySlot={};(e.exits||[]).forEach(ex=>bySlot[ex.slot]=ex);
+    slotCols.forEach(s=>{
+      const ex=bySlot[s];
+      if(ex){const gv=ex.gross!=null?ex.gross:ex.pl;row.push(ex.price,fmtLot(ex.lot),ex.method,ex.score,ex.swap||'',ex.com||'',ex.vat||'',gv,ex.pl);}
+      else row.push('','','','','','','','','');
+    });
+    rows.push(row);
+  });
+  const csvStr=rows.map(r=>r.map(csvCell).join(',')).join('\n');
   const existing=document.getElementById('export-modal');
   if(existing){existing.remove();return;}
   const overlay=document.createElement('div');
   overlay.id='export-modal';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-end;padding:0;';
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
-  overlay.innerHTML=`<div style="background:var(--card);border-radius:20px 20px 0 0;width:100%;padding:20px 16px;max-height:70vh;display:flex;flex-direction:column">
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:20px 20px 0 0;width:100%;padding:20px 16px;max-height:75vh;display:flex;flex-direction:column">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <span style="font-size:15px;font-weight:600;color:var(--text)">Copy data</span>
       <span onclick="document.getElementById('export-modal').remove()" style="font-size:15px;color:var(--acc);cursor:pointer;font-weight:600">Done</span>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button id="exm-tab-json" onclick="switchExpTab('json')" style="flex:1;padding:8px;border:none;border-radius:8px;background:var(--acc);color:#fff;font-size:13px;font-weight:600;cursor:pointer">JSON</button>
+      <button id="exm-tab-csv" onclick="switchExpTab('csv')" style="flex:1;padding:8px;border:none;border-radius:8px;background:var(--bg);color:var(--sub);font-size:13px;font-weight:500;cursor:pointer">CSV</button>
+    </div>
     <textarea id="export-txt" readonly style="flex:1;min-height:200px;background:var(--bg);border:none;border-radius:10px;padding:10px;font-size:12px;font-family:monospace;color:var(--text);resize:none;outline:none">${jsonStr.replace(/</g,'&lt;')}</textarea>
-    <button onclick="(async()=>{try{await navigator.clipboard.writeText(document.getElementById('export-txt').value);this.textContent='Copied ✓';setTimeout(()=>this.textContent='Copy JSON',1500);}catch(e){document.getElementById('export-txt').select()}})()" style="margin-top:10px;padding:11px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:14px;font-weight:600;width:100%;cursor:pointer;-webkit-user-select:none;user-select:none">Copy JSON</button>
+    <button id="exm-copy-btn" onclick="copyExpText(this)" style="margin-top:10px;padding:11px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:14px;font-weight:600;width:100%;cursor:pointer;-webkit-user-select:none;user-select:none">Copy JSON</button>
   </div>`;
   document.body.appendChild(overlay);
+  overlay.dataset.json=jsonStr;
+  overlay.dataset.csv=csvStr;
+}
+function switchExpTab(kind){
+  const overlay=document.getElementById('export-modal');if(!overlay)return;
+  const txt=document.getElementById('export-txt');
+  const btn=document.getElementById('exm-copy-btn');
+  const tJ=document.getElementById('exm-tab-json');
+  const tC=document.getElementById('exm-tab-csv');
+  if(kind==='csv'){
+    txt.value=overlay.dataset.csv||'';
+    btn.textContent='Copy CSV';
+    tC.style.background='var(--acc)';tC.style.color='#fff';tC.style.fontWeight='600';
+    tJ.style.background='var(--bg)';tJ.style.color='var(--sub)';tJ.style.fontWeight='500';
+  }else{
+    txt.value=overlay.dataset.json||'';
+    btn.textContent='Copy JSON';
+    tJ.style.background='var(--acc)';tJ.style.color='#fff';tJ.style.fontWeight='600';
+    tC.style.background='var(--bg)';tC.style.color='var(--sub)';tC.style.fontWeight='500';
+  }
+}
+async function copyExpText(btn){
+  const txt=document.getElementById('export-txt');if(!txt)return;
+  try{
+    await navigator.clipboard.writeText(txt.value);
+    const orig=btn.textContent;
+    btn.textContent='Copied ✓';
+    setTimeout(()=>{btn.textContent=orig;},1500);
+  }catch(e){txt.select();}
 }
 function recordsBytes(){
   try{return (localStorage.getItem(SK3)||'').length;}catch(e){return 0;}
@@ -1625,10 +1795,10 @@ function buildPos(){
         </select>
       </div>
       <div class="row entry-row"><div class="rl">Entry price</div>
-        <input type="number" id="p1-entry" value="" inputmode="decimal" step="0.00001" oninput="calcPos(1);calcRisk(1)" onchange="calcPos(1);calcRisk(1)">
+        <input type="text" id="p1-entry" value="" inputmode="decimal" oninput="calcPos(1);calcRisk(1)" onchange="calcPos(1);calcRisk(1)" onblur="onPriceBlur(this)">
       </div>
       <div class="row sl-row" id="p1-sl-fixed-row"><div class="rl">SL price</div>
-        <input type="number" id="p1-sl" value="" inputmode="decimal" step="0.00001" oninput="calcPos(1);calcRisk(1)" onchange="calcPos(1);calcRisk(1)">
+        <input type="text" id="p1-sl" value="" inputmode="decimal" oninput="calcPos(1);calcRisk(1)" onchange="calcPos(1);calcRisk(1)" onblur="onPriceBlur(this)">
       </div>
       <div class="row sl-row" id="p1-sl-vola-row" style="display:none"><div class="rl">SL price</div>
         <span style="font-size:14px;font-weight:500;color:var(--sub)" id="p1-sl-auto">—</span>
@@ -1733,20 +1903,22 @@ function buildEntryId(n){
   const inst=(g(`p${n}-inst`)?.value||'').toUpperCase();
   const dir=g(`p${n}-dir`)?.value==='long'?'L':'S';
   const raw=g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value||'';
-  // parse date+time from stored full value: dd/mm/yy hh:mm:ss
-  const m=raw.match(/(\d{2})\/(\d{2})\/(\d{2,4})\s+(\d{2}):(\d{2})/);
+  // stored format: yyyy/mm/dd hh:mm:ss → id needs ddmmyy.hhmm
   let ddmmyy='000000',hhmm='0000';
+  let m=raw.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
   if(m){
-    const d=m[1],mo=m[2],y=m[3].slice(-2),h=m[4],mi=m[5];
-    ddmmyy=d+mo+y;hhmm=h+mi;
+    ddmmyy=m[3]+m[2]+m[1].slice(2);hhmm=m[4]+m[5];
+  }else if((m=raw.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})/))){
+    // legacy day-first fallback
+    ddmmyy=m[1].padStart(2,'0')+m[2].padStart(2,'0')+m[3].slice(-2);hhmm=m[4].padStart(2,'0')+m[5];
   }
   return `${inst}.O.${dir}.${ddmmyy}.${hhmm}`;
 }
 function buildPacket(n){
   const inst=g(`p${n}-inst`)?.value||'';
   const sym=getSymbol(inst);
-  const entry=parseFloat(g(`p${n}-entry`)?.value)||0;
-  const sl=parseFloat(g(`p${n}-sl`)?.value)||0;
+  const entry=parseNum(g(`p${n}-entry`)?.value)||0;
+  const sl=parseNum(g(`p${n}-sl`)?.value)||0;
   const lot=parseFloat(g(`p${n}-lot`)?.value)||0;
   const cv=lot*sym.unit*entry;
   const lev=parseFloat(g(`p${n}-lev`)?.value)||25;
@@ -1781,7 +1953,7 @@ function importToSession(n){
   const btn=g('p1-import-btn');
   // validate required fields
   const inst=g(`p${n}-inst`)?.value;
-  const entry=parseFloat(g(`p${n}-entry`)?.value);
+  const entry=parseNum(g(`p${n}-entry`)?.value);
   const lot=parseFloat(g(`p${n}-lot`)?.value);
   if(!inst||!entry||!lot){
     btn.textContent='กรอก Symbol / Entry / Lot ก่อน';
@@ -1827,24 +1999,66 @@ function importToSession(n){
   renderSession();
 }
 
-function parseEntryDate(raw){
+// ── Flexible date parser ──
+// Accepts: 17/6/26 21:28 · 17/06/2026 21:28 · 2026-06-17 21:28:29
+//          17/06/2026 21:28:29.881(UTC+7:00) · GMT-5 · UTC etc.
+// Converts to UTC+7 (Bangkok). Returns storage format: yyyy/mm/dd hh:mm:ss
+const TARGET_TZ_OFFSET=7; // UTC+7 Bangkok
+function parseDateFlexible(raw){
   if(!raw||!raw.trim())return '';
   raw=raw.trim();
-  const m=raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})(?:[\s,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
-  if(!m)return raw;
-  let[,d,mo,y,h,min,s]=m;
-  d=d.padStart(2,'0');mo=mo.padStart(2,'0');
-  if(y.length===2)y='20'+y;
-  h=h?h.padStart(2,'0'):'00';min=min?min.padStart(2,'0'):'00';s=s?s.padStart(2,'0'):'00';
-  return d+'/'+mo+'/'+y+' '+h+':'+min+':'+s;
+  // extract timezone offset if present: (UTC+7:00) (UTC-5) GMT+7 GMT-05:00 +07:00 Z
+  let srcOffset=null; // hours from UTC
+  const tzM=raw.match(/(?:UTC|GMT)\s*([+-])(\d{1,2})(?::?(\d{2}))?/i)
+        || raw.match(/([+-])(\d{2}):?(\d{2})\s*$/);
+  if(tzM){
+    const sign=tzM[1]==='-'?-1:1;
+    srcOffset=sign*(parseInt(tzM[2],10)+(tzM[3]?parseInt(tzM[3],10)/60:0));
+  }else if(/\bUTC\b|\bGMT\b|Z\s*$/i.test(raw)){
+    srcOffset=0; // bare UTC/GMT/Z = offset 0
+  }
+  // strip timezone + fractional seconds + trailing junk
+  let s=raw.replace(/\(?\s*(?:UTC|GMT)\s*[+-]?\d{0,2}:?\d{0,2}\s*\)?/ig,'')
+           .replace(/[+-]\d{2}:?\d{2}\s*$/,'')
+           .replace(/Z\s*$/i,'')
+           .replace(/\.\d+/,'')
+           .trim();
+  // parse the bare datetime — support yyyy-mm-dd, yyyy/mm/dd, dd/mm/yy(yy), dd-mm-yy(yy)
+  let y,mo,d,h=0,mi=0,sec=0;
+  let m;
+  if((m=s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:[\s,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/))){
+    // ISO-ish: year first
+    y=+m[1];mo=+m[2];d=+m[3];h=+(m[4]||0);mi=+(m[5]||0);sec=+(m[6]||0);
+  }else if((m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[\s,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/))){
+    // day first
+    d=+m[1];mo=+m[2];y=+m[3];h=+(m[4]||0);mi=+(m[5]||0);sec=+(m[6]||0);
+    if(y<100)y+=2000;
+  }else{
+    return raw; // unparseable — keep raw
+  }
+  // build a Date in UTC from the parsed components, then shift by tz
+  let dt=new Date(Date.UTC(y,mo-1,d,h,mi,sec));
+  if(srcOffset!==null){
+    // convert: source local → UTC → target (UTC+7)
+    dt=new Date(dt.getTime()-srcOffset*3600000+TARGET_TZ_OFFSET*3600000);
+  }
+  // if no tz given, assume already in target tz (no shift)
+  const p=v=>String(v).padStart(2,'0');
+  return `${dt.getUTCFullYear()}/${p(dt.getUTCMonth()+1)}/${p(dt.getUTCDate())} ${p(dt.getUTCHours())}:${p(dt.getUTCMinutes())}:${p(dt.getUTCSeconds())}`;
+}
+// display: yyyy/mm/dd hh:mm:ss → dd/mm/yy hh:mm
+function dateDisplay(stored){
+  if(!stored)return '';
+  const m=stored.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+  if(!m)return stored;
+  return `${m[3]}/${m[2]}/${m[1].slice(2)} ${m[4]}:${m[5]}`;
 }
 function onEdateBlur(el){
   const raw=el.value.trim();if(!raw){saveData();return;}
-  const full=parseEntryDate(raw);
-  if(full){
-    el.dataset.full=full;
-    const parts=full.split(' ')[0].split('/');
-    el.value=parts[0]+'/'+parts[1]+'/'+parts[2].slice(2);
+  const stored=parseDateFlexible(raw);  // yyyy/mm/dd hh:mm:ss
+  if(stored&&/^\d{4}\//.test(stored)){
+    el.dataset.full=stored;
+    el.value=dateDisplay(stored);       // dd/mm/yy hh:mm
     el.style.color='var(--blue)';
   }
   saveData();
