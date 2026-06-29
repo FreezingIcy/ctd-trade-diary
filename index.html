@@ -14,9 +14,11 @@ button,.tab-btn{-webkit-user-select:none;user-select:none;-webkit-touch-callout:
   --bg:#F2F2F7;--card:#FFFFFF;--text:#000000;--sub:#6C6C70;--hint:#AEAEB2;
   --border:#C6C6C8;--green:#34C759;--red:#FF3B30;--orange:#FF9500;
   --blue:#007AFF;--acc:#0D7377;--purple:#5856D6;
+  --strat:#0D7377;--stratbg:rgba(13,115,119,.12);
 }
 @media(prefers-color-scheme:dark){:root{
   --bg:#1C1C1E;--card:#2C2C2E;--text:#FFFFFF;--sub:#AEAEB2;--hint:#636366;--border:#38383A;
+  --strat:#2DD4BF;--stratbg:rgba(45,212,191,.16);
 }}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;font-size:16px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .header{background:var(--acc);color:#fff;padding:52px 16px 0;display:flex;flex-direction:column}
@@ -26,6 +28,39 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .save-dot.on{background:#34C759}
 .save-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border:none;border-radius:20px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s}
 .save-btn.saved{background:#34C759}
+.manual-btn{display:flex;align-items:center;gap:5px;padding:7px 12px;border:none;border-radius:20px;background:rgba(255,255,255,.22);color:#fff;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;margin-right:8px}
+.manual-overlay{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:1000;display:none;opacity:0;transition:opacity .2s}
+.manual-overlay.on{display:block;opacity:1}
+.manual-sheet{position:absolute;left:0;right:0;bottom:0;top:46px;background:var(--bg);border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .26s ease}
+.manual-overlay.on .manual-sheet{transform:translateY(0)}
+.manual-sheet-h{background:var(--acc);color:#fff;padding:10px 16px 14px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.manual-grab{width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.5);margin:0 auto 8px}
+.manual-x{font-size:22px;color:rgba(255,255,255,.85);line-height:1;cursor:pointer;padding:0 4px}
+.manual-body{padding:14px 14px 40px;overflow:auto;-webkit-overflow-scrolling:touch}
+.m-sec{font-size:11px;font-weight:500;color:var(--sub);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px 2px}
+.m-sec:first-child{margin-top:0}
+.m-card{background:var(--card);border-radius:12px;overflow:hidden;margin-bottom:8px}
+.m-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:.5px solid var(--border);gap:10px}
+.m-row:last-child{border-bottom:none}
+.m-row.top{align-items:flex-start}
+.m-l{font-size:14px;color:var(--sub)}
+.m-v{font-size:13px;color:var(--sub);text-align:right}
+.m-hint{font-size:11px;color:var(--hint);padding:3px 2px 8px}
+.m-sym{font-size:14px;font-weight:500;width:80px;flex-shrink:0;color:var(--text)}
+.m-symd{font-size:12px;color:var(--sub);flex:1}
+.m-symn{font-size:11px;color:var(--hint)}
+.m-ph{padding:12px 14px;font-size:13px;color:var(--hint)}
+.m-sub{font-size:12px;font-weight:600;color:var(--acc);margin:12px 0 5px 2px;text-transform:uppercase;letter-spacing:.03em}
+.m-ghd{font-size:12px;font-weight:700;color:var(--acc);letter-spacing:.02em;padding:9px 14px;background:var(--stratbg)}
+.m-gintro{font-size:13px;color:var(--sub);padding:12px 14px;line-height:1.5;border-bottom:.5px solid var(--border)}
+.m-step{display:flex;gap:11px;padding:11px 14px;border-bottom:.5px solid var(--border);align-items:flex-start}
+.m-step:last-child{border-bottom:none}
+.m-num{flex-shrink:0;width:21px;height:21px;border-radius:50%;background:var(--acc);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.m-stext{font-size:13px;color:var(--text);line-height:1.6}
+.m-stext b{font-weight:600}
+.m-stext .mono{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;background:var(--bg);padding:1px 5px;border-radius:4px}
+.m-code{background:#1C1C1E;color:#E5E5EA;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.55;padding:12px;border-radius:8px;overflow-x:auto;white-space:pre;margin:4px 12px 10px}
+@media(prefers-color-scheme:dark){.m-code{background:#000}}
 .tab-bar{display:flex;gap:8px;padding:0 0 12px}
 .tab-btn{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);transition:.15s}
 .tab-btn.on{background:#fff;color:var(--acc)}
@@ -90,6 +125,10 @@ option{color:#000}
 .pos-dir-tag.short{color:var(--red)}
 .pos-dir-tag.long{color:var(--green)}
 .pos-id-txt{font-size:11px;color:var(--hint)}
+.strat-chip{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:1px 8px;border-radius:6px;background:var(--stratbg);color:var(--strat);letter-spacing:.02em;white-space:nowrap;line-height:1.6}
+.card.tcard{box-shadow:0 0 0 2.5px rgba(13,115,119,.6)}
+.row.strat-row .rl{color:var(--strat);font-weight:600}
+#p1-strategy{color:var(--strat);font-weight:600}
 .state-badge{font-size:13px;font-weight:600;padding:5px 14px;border-radius:20px}
 .badge-active{background:#E6F1FB;color:#0C447C}
 .badge-partial{background:#FFF3E0;color:#854F0B}
@@ -107,13 +146,38 @@ option{color:#000}
 .note-box{flex:1;background:var(--bg);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--sub);line-height:1.5;word-break:break-word}
 
 .exit-section-hd{padding:7px 14px;background:rgba(13,115,119,.15);font-size:11px;font-weight:600;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;border-top:.5px solid rgba(13,115,119,.2);border-bottom:.5px solid rgba(13,115,119,.2)}
-.exit-rec-row{display:flex;align-items:center;min-height:44px;padding:0 14px;border-bottom:.5px solid var(--border);font-size:13px;gap:4px}
+.exit-rec-row{display:flex;align-items:center;min-height:44px;padding:0 14px;border-bottom:.5px solid var(--border);font-size:13px;gap:6px;cursor:pointer}
 .exit-rec-row:last-child{border-bottom:none}
+.exit-rec-row:active{background:var(--bg)}
+.exit-date-val{font-size:11px;color:var(--sub);white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
 /* exit-rec-row inline edit removed (replaced by bottom sheet) */
+/* ── Tab3 expand panel ── */
+.rec-tl{position:relative;padding-left:22px}
+.rec-tl::before{content:'';position:absolute;left:6px;top:6px;bottom:6px;width:1.5px;background:var(--border)}
+.rec-evt{position:relative;padding-bottom:12px}
+.rec-evt:last-child{padding-bottom:2px}
+.rec-dot{position:absolute;left:-19px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--acc);box-sizing:border-box}
+.rec-dot.win{border-color:var(--green)}
+.rec-dot.loss{border-color:var(--red)}
+.rec-elab{font-size:10px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px}
+.rec-edate{font-size:11px;color:var(--sub);margin-bottom:3px;font-variant-numeric:tabular-nums}
+.rec-erow{display:flex;justify-content:space-between;font-size:12px;padding:2px 0}
+.rec-el{color:var(--sub)}
+.rec-ev{font-weight:500;font-variant-numeric:tabular-nums;color:var(--text)}
+.rec-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.rec-box{background:var(--card);border-radius:10px;padding:10px 12px}
+.rec-box-h{font-size:10px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.rec-brow{display:flex;justify-content:space-between;font-size:12px;padding:2px 0}
+.rec-bl{color:var(--sub)}
+.rec-bv{font-weight:500;font-variant-numeric:tabular-nums;color:var(--text)}
+.rec-box-net{display:flex;justify-content:space-between;align-items:baseline;padding-top:6px;margin-top:4px;border-top:.5px solid var(--border)}
+.rec-box-net-l{font-size:11px;font-weight:600;color:var(--text)}
+.rec-box-net-v{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.rec-note-sec{font-size:10px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 4px}
 .exit-tag{width:28px;flex-shrink:0;font-weight:600;color:var(--acc);font-size:12px}
-.exit-price-val{flex:1.5;font-weight:500;text-align:right}
+.exit-price-val{flex:1.2;font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
 .exit-price-val.profit{color:var(--green)}.exit-price-val.loss{color:var(--red)}
-.exit-lot-val{flex:1;font-size:12px;color:var(--sub);text-align:center}
+.exit-lot-val{flex:0.7;font-size:12px;color:var(--sub);text-align:center;font-variant-numeric:tabular-nums}
 .exit-method-badge{flex:1;font-size:11px;color:var(--sub);background:var(--bg);padding:2px 6px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
 .exit-score-val{flex:0.5;font-size:11px;color:var(--acc);text-align:center}
 .exit-pending-txt{color:var(--hint);font-style:italic;text-align:right;flex:1}
@@ -208,6 +272,7 @@ if(typeof firebase==='undefined'){
 <div class="header">
   <div class="header-top">
     <h1>CTD</h1>
+    <button class="manual-btn" id="manual-btn" onclick="openManual()">📖 Manual</button>
     <button class="save-btn" id="save-btn" onclick="manualSave()">
       <div class="save-dot" id="sdot"></div>
       <span id="save-txt">Save</span>
@@ -220,8 +285,6 @@ if(typeof firebase==='undefined'){
   </div>
 </div>
 
-<input type="hidden" id="balance" value="10000">
-
 <!-- TAB1: Calculator -->
 <div id="page-calc" class="page on"></div>
 
@@ -233,6 +296,17 @@ if(typeof firebase==='undefined'){
 <!-- TAB3: Record -->
 <div id="page-record" class="page">
   <div id="record-content"></div>
+</div>
+
+<!-- Manual pop-up -->
+<div class="manual-overlay" id="manual-overlay" onclick="closeManual(event)">
+  <div class="manual-sheet" onclick="event.stopPropagation()">
+    <div class="manual-sheet-h">
+      <div style="flex:1"><div class="manual-grab"></div><span style="font-size:16px;font-weight:600">CTD Manual</span></div>
+      <span class="manual-x" onclick="closeManual()">✕</span>
+    </div>
+    <div class="manual-body" id="manual-body"></div>
+  </div>
 </div>
 
 <!-- Add Exit Sheet -->
@@ -329,6 +403,194 @@ const SYMBOLS={
   XAUTHB:{unit:null,  pipM:null, pipSize:null,  note:'Gold/THB — pending'},
 };
 function getSymbol(key){return SYMBOLS[key]||SYMBOLS['EURUSD'];}
+// Strategy list — extend here when new systems are added
+const STRATEGIES=['Vector'];
+// Account balance (global, persisted) — *pending Port Summary Dashboard link
+function getBalance(){return localStorage.getItem('ctd_balance')||'10000';}
+function saveBalance(){const el=g('balance');if(el)localStorage.setItem('ctd_balance',el.value);calcPos(1);}
+// ===== Manual pop-up (in-app, full content minus Strategy) =====
+function manualHTML(){
+  const T='var(--acc)',O='var(--orange)';
+  const em=(n,t,c,d)=>`<div class="m-row top"><span class="m-l" style="font-weight:500;width:74px;flex-shrink:0;color:var(--text)">${n}</span><span class="m-l" style="width:42px;flex-shrink:0;color:${c}">${t}</span><span class="m-l" style="font-size:13px;flex:1">${d}</span></div>`;
+  const sym=(n,d,note,dim)=>`<div class="m-row"${dim?' style="opacity:.5"':''}><span class="m-sym">${n}</span><span class="m-symd">${d}</span><span class="m-symn">${note}</span></div>`;
+  return `
+    <p class="m-sec">Formula</p>
+    <div class="m-card">
+      <div class="m-row"><span class="m-l">SLD</span><span class="m-v">entry × vola% × SF</span></div>
+      <div class="m-row"><span class="m-l">CV</span><span class="m-v">RpT ÷ SLD</span></div>
+      <div class="m-row"><span class="m-l">Lot</span><span class="m-v">CV ÷ (unit × entry)</span></div>
+      <div class="m-row"><span class="m-l">Margin</span><span class="m-v">CV ÷ leverage</span></div>
+      <div class="m-row"><span class="m-l">Margin Lv.</span><span class="m-v">(balance ÷ margin) × 100%</span></div>
+      <div class="m-row"><span class="m-l">Risk ($)</span><span class="m-v">SLD × unit × lot</span></div>
+      <div class="m-row"><span class="m-l">P/L ($)</span><span class="m-v">(exit − entry) × sign × unit × lot</span></div>
+      <div class="m-row"><span class="m-l">R:R</span><span class="m-v">reward ÷ risk</span></div>
+    </div>
+    <p class="m-sec">Exit Method</p>
+    <div class="m-card">
+      ${em('Cutloss','Fixed',T,'ปิดตัดขาดทุน')}
+      ${em('MA Float','Float',O,'Exit by MA')}
+      ${em('PC Float','Float',O,'Exit by price cluster')}
+      ${em('Trail Float','Float',O,'Exit by trail stop')}
+      ${em('Vola Fix','Fixed',T,'Fixed exit by volatility @ entry price')}
+      ${em('EoWk','Fixed',T,'Exit ก่อนปิดสัปดาห์ ไม่ถือข้ามสัปดาห์')}
+      ${em('Trail Cut','Float',O,'Cut ก่อนถึง SL เช่น ราคาไม่ไปหลังผ่านเวลา / ราคาหลุดฐานแต่สูงกว่า SL')}
+    </div>
+    <p class="m-sec">ID Format</p>
+    <div class="m-card">
+      <div class="m-row"><span class="m-l">Entry ID</span><span class="m-v">[SYMBOL].[O].[L/S].[ddmmyy].[hhmm]</span></div>
+      <div class="m-row"><span class="m-l">Exit ID</span><span class="m-v">[SYMBOL].[C].[B/S].[ddmmyy].[hhmm]</span></div>
+    </div>
+    <div class="m-hint">eg. EURUSD.O.S.260106.0830 · XAUUSD.C.B.260525.1415</div>
+    <p class="m-sec">Score Guide</p>
+    <div class="m-card"><div class="m-ph">— รอ research และกำหนด criterion</div></div>
+    <p class="m-sec">Manage Symbols</p>
+    <div class="m-card">
+      ${sym('EURUSD','100,000 · 0.0001','Forex')}
+      ${sym('GBPUSD','100,000 · 0.0001','Forex')}
+      ${sym('USDCHF','100,000 · 0.0001','Forex')}
+      ${sym('XAUUSD','100 · 0.01','Gold')}
+      ${sym('XAUTHB','— · —','Pending',true)}
+    </div>
+    <div class="m-hint">* ต้องการเพิ่ม symbol ใหม่ให้แจ้ง Claude พร้อม unit และ pip size จาก broker</div>
+    <p class="m-sec">Cloud Sync + Hosting</p>
+    <div class="m-card">
+      <div class="m-gintro">ตั้งค่า Firebase Cloud Sync + GitHub Pages hosting (~10-15 นาที)</div>
+      <div class="m-ghd">A · Firebase Setup</div>
+      <div class="m-step"><span class="m-num">1</span><span class="m-stext">สร้าง project ที่ <b>console.firebase.google.com</b> → Create project → ปิด Google Analytics</span></div>
+      <div class="m-step"><span class="m-num">2</span><span class="m-stext"><b>Firestore</b>: Build → Firestore Database → Create → location <span class="mono">asia-southeast1</span> → Start in test mode</span></div>
+      <div class="m-step"><span class="m-num">3</span><span class="m-stext"><b>Auth</b>: Build → Authentication → Get started → Google → Enable → ใส่ support email → Save</span></div>
+      <div class="m-step"><span class="m-num">4</span><span class="m-stext"><b>Web App</b>: กดปุ่ม <span class="mono">&lt;/&gt;</span> → ตั้งชื่อ → Register → copy config ใส่ใน <span class="mono">FIREBASE_CONFIG</span> ในไฟล์ HTML</span></div>
+      <div class="m-code">const FIREBASE_CONFIG = {
+  apiKey: "...",
+  authDomain: "xxx.firebaseapp.com",
+  projectId: "xxx",
+  storageBucket: "xxx.appspot.com",
+  messagingSenderId: "...",
+  appId: "..."
+};</div>
+      <div class="m-step"><span class="m-num">5</span><span class="m-stext"><b>Security Rules</b>: Firestore → Rules → วาง code ด้านล่าง → Publish</span></div>
+      <div class="m-code">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/records/{recordId} {
+      allow read, write: if request.auth != null
+        &amp;&amp; request.auth.uid == userId;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}</div>
+      <div class="m-ghd">B · GitHub Pages Hosting</div>
+      <div class="m-step"><span class="m-num">1</span><span class="m-stext">สร้าง GitHub account + <b>Public</b> repo (ติ๊ก Add README)</span></div>
+      <div class="m-step"><span class="m-num">2</span><span class="m-stext">Rename ไฟล์เป็น <span class="mono">index.html</span> → Add file → Upload files → ลากไฟล์ → Commit</span></div>
+      <div class="m-step"><span class="m-num">3</span><span class="m-stext">เปิด Pages: Settings → Pages → Deploy from branch → <span class="mono">main</span> / <span class="mono">root</span> → Save</span></div>
+      <div class="m-step"><span class="m-num">4</span><span class="m-stext">รอ 1-2 นาที → เปิด <span class="mono">https://USER.github.io/repo/</span></span></div>
+      <div class="m-ghd">C · iPhone Home Screen</div>
+      <div class="m-row top"><span class="m-l" style="flex:1;font-size:13px">เปิด URL ใน <b style="color:var(--text)">Safari</b> → ปุ่ม Share → Add to Home Screen → เปิดเหมือนแอปจริง (ไม่มี toolbar)</span></div>
+      <div class="m-ghd">D · อัปเดต version</div>
+      <div class="m-row top"><span class="m-l" style="flex:1;font-size:13px">Upload <span class="mono">index.html</span> ใหม่ (overwrite) → Commit → รอ 1-2 นาที → Hard reload เพื่อล้าง cache</span></div>
+      <div class="m-ghd">E · วิธีใช้</div>
+      <div class="m-row"><span class="m-l">Push</span><span class="m-v">local → cloud (เพิ่มที่ยังไม่มีบน cloud)</span></div>
+      <div class="m-row"><span class="m-l">Pull</span><span class="m-v">cloud → local (ดึงที่ยังไม่มีในเครื่อง)</span></div>
+      <div class="m-row"><span class="m-l">Offline</span><span class="m-v">จดได้ปกติ → online แล้ว Push</span></div>
+      <div class="m-row"><span class="m-l">Export</span><span class="m-v">JSON+CSV backup ฉุกเฉิน</span></div>
+      <div class="m-ghd">F · Troubleshooting</div>
+      <div class="m-row top"><span class="m-l" style="width:128px;flex-shrink:0;color:var(--text)">Sign in popup เด้งดับ</span><span class="m-v" style="flex:1">เพิ่ม domain ใน Auth → Settings → Authorized domains</span></div>
+      <div class="m-row top"><span class="m-l" style="width:128px;flex-shrink:0;color:var(--text)">Push/Pull error</span><span class="m-v" style="flex:1">ตรวจ internet · rules · config</span></div>
+      <div class="m-row top"><span class="m-l" style="width:128px;flex-shrink:0;color:var(--text)">iPhone เปิดเป็น text</span><span class="m-v" style="flex:1">เปิดผ่าน URL ไม่ใช่ไฟล์ · ชื่อต้อง index.html</span></div>
+      <div class="m-row top"><span class="m-l" style="width:128px;flex-shrink:0;color:var(--text)">GitHub ไม่อัปเดต</span><span class="m-v" style="flex:1">รอ 1-2 นาที + Hard reload</span></div>
+      <div class="m-row top"><span class="m-l" style="width:128px;flex-shrink:0;color:var(--text)">GitHub แจ้ง API key leaked</span><span class="m-v" style="flex:1">ปลอดภัย — Firebase web key เปิด public ได้ · ไม่ต้อง rotate · ปิด alert เป็น "Won't fix" · ดูข้อ H</span></div>
+      <div class="m-ghd">G · Cost</div>
+      <div class="m-row top"><span class="m-l" style="flex:1;font-size:13px">Firebase Spark (ฟรี): 1GB + 50k reads/day + 20k writes/day → personal diary ไม่มีทางเกิน free tier</span></div>
+      <div class="m-ghd">H · API Key ปลอดภัยไหม?</div>
+      <div class="m-row top"><span class="m-l" style="flex:1;font-size:13px"><b style="color:var(--text)">Firebase web API key เปิด public ได้ ปลอดภัย</b> — มันแค่ระบุ project ความปลอดภัยอยู่ที่ Security Rules (ข้อ A·5) ไม่ใช่การซ่อน key · GitHub secret-scan = false positive · ⚠️ อย่าสับสนกับ <b style="color:var(--text)">Admin SDK service account JSON</b> (มี private_key) — ตัวนั้นห้ามหลุดเด็ดขาด</span></div>
+      <div class="m-step"><span class="m-num">1</span><span class="m-stext"><b>Restrict key (แนะนำ)</b>: Google Cloud Console → APIs &amp; Services → Credentials → กดที่ key</span></div>
+      <div class="m-step"><span class="m-num">2</span><span class="m-stext"><b>Application restrictions</b> → HTTP referrers → <span class="mono">freezingicy.github.io/*</span> (ใช้ได้เฉพาะเว็บเรา)</span></div>
+      <div class="m-step"><span class="m-num">3</span><span class="m-stext"><b>API restrictions</b> → เลือกเฉพาะ Firebase APIs ที่ใช้ · อย่าใส่ API ที่คิดเงิน (Maps / Generative Language)</span></div>
+      <div class="m-step"><span class="m-num">4</span><span class="m-stext">ถ้าเปิด Realtime Database ไว้ (config มี databaseURL) → เช็ก rules ให้ lock หรือถ้าไม่ใช้ก็ปล่อยได้ (แอปใช้ Firestore)</span></div>
+    </div>`;
+}
+function openManual(){const b=g('manual-body');if(b)b.innerHTML=manualHTML();const o=g('manual-overlay');if(o){o.classList.add('on');b.scrollTop=0;}}
+function closeManual(e){if(e&&e.currentTarget!==e.target)return;const o=g('manual-overlay');if(o)o.classList.remove('on');}
+// ===== Portfolio stat helpers =====
+function recDateMs(r){
+  const d=r.closedAt||r.archivedAt||(r.eval&&r.eval.exits&&r.eval.exits.length?r.eval.exits[r.eval.exits.length-1].date:'')||(r.source&&r.source.entry?r.source.entry.date:'')||'';
+  const m=String(d).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(!m)return 0;
+  let yy=+m[3];if(yy<100)yy+=2000;
+  return new Date(yy,(+m[2])-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0)).getTime();
+}
+// returns [{t, cum}] sorted ascending by date (cumulative net P/L)
+function cumulativeEquity(recs){
+  const sorted=recs.slice().sort((a,b)=>recDateMs(a)-recDateMs(b));
+  let cum=0;const out=[];
+  sorted.forEach(r=>{cum+=(r.eval.realizedPL||0);out.push({t:recDateMs(r),cum});});
+  return out;
+}
+// max peak-to-trough drop of a cumulative series (0 baseline = first high-water mark)
+function maxDrawdown(series){
+  let peak=0,maxDD=0;
+  series.forEach(p=>{const v=p.cum;if(v>peak)peak=v;const dd=peak-v;if(dd>maxDD)maxDD=dd;});
+  return maxDD;
+}
+const TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+// nice round gridline values across [lo,hi]
+function niceLevels(lo,hi,count){
+  const range=(hi-lo)||1;let raw=range/count;
+  const mag=Math.pow(10,Math.floor(Math.log10(raw)));const norm=raw/mag;
+  let step=norm<1.5?1:norm<3?2:norm<7?5:10;step*=mag;
+  const start=Math.ceil(lo/step)*step;const out=[];
+  for(let v=start;v<=hi+step*1e-6;v+=step)out.push(Math.round(v*100)/100);
+  return out;
+}
+// Equity curve card (SVG) — reads global recPeriod
+function equityCurveSVG(recsFull){
+  const all=cumulativeEquity(recsFull);
+  const periods=[['1m','1M'],['3m','3M'],['6m','6M'],['all','All']];
+  const sel=`<div style="display:flex;background:rgba(120,120,128,.12);border-radius:9px;padding:2px;margin:2px 15px 8px">${periods.map(([k,l])=>`<div onclick="setRecPeriod('${k}')" style="flex:1;text-align:center;font-size:12px;font-weight:${recPeriod===k?'600':'400'};color:${recPeriod===k?'var(--text)':'var(--sub)'};background:${recPeriod===k?'var(--card)':'transparent'};border-radius:7px;padding:5px 0;cursor:pointer;${recPeriod===k?'box-shadow:0 1px 3px rgba(0,0,0,.12)':''}">${l}</div>`).join('')}</div>`;
+  let pts=all;
+  if(recPeriod!=='all'&&all.length){
+    const endT=all[all.length-1].t;const days={'1m':30,'3m':90,'6m':180}[recPeriod];
+    pts=all.filter(p=>p.t>=endT-days*86400000);
+  }
+  const lastCum=all.length?all[all.length-1].cum:0;
+  const vColor=lastCum>0?'var(--green)':lastCum<0?'var(--red)':'var(--text)';
+  const head=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:13px 15px 4px"><span style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Equity Curve</span><span style="font-size:18px;font-weight:700;color:${vColor}">${fSign(lastCum,2)}</span></div>`;
+  let chart;
+  if(pts.length<2){
+    chart=`<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--hint)">ต้องมีอย่างน้อย 2 ไม้ในช่วงนี้</div>`;
+  }else{
+    const X0=34,X1=356,Y0=14,Y1=116;
+    const cums=pts.map(p=>p.cum);
+    let lo=Math.min(...cums),hi=Math.max(...cums);
+    if(recPeriod==='all'){lo=Math.min(0,lo);hi=Math.max(0,hi);}
+    if(lo===hi){lo-=1;hi+=1;}
+    const padv=(hi-lo)*0.12;lo-=padv;hi+=padv;
+    const startT=pts[0].t,endT=pts[pts.length-1].t;
+    const tx=t=>X0+(endT>startT?(t-startT)/(endT-startT):0)*(X1-X0);
+    const vy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
+    const ylv=niceLevels(lo,hi,4);
+    const grid=ylv.map(v=>{const y=vy(v);if(y<Y0-1||y>Y1+1)return'';const dash=Math.abs(v)<1e-9?' stroke-dasharray="3 3"':'';const lbl=Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':String(Math.round(v));return `<line x1="${X0}" y1="${y.toFixed(1)}" x2="${X1}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" opacity=".4"${dash}/><text x="${(X0-4).toFixed(0)}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--hint)">${lbl}</text>`;}).join('');
+    const spanDays=(endT-startT)/86400000;let xb=[];
+    if(spanDays<=45){for(let i=1;;i++){const tt=startT+i*7*86400000;if(tt>=endT)break;xb.push(tt);}}
+    else{let d=new Date(startT);let cur=new Date(d.getFullYear(),d.getMonth()+1,1).getTime();while(cur<endT){xb.push(cur);cur=new Date(new Date(cur).getFullYear(),new Date(cur).getMonth()+1,1).getTime();}}
+    const xgrid=xb.map(tt=>`<line x1="${tx(tt).toFixed(1)}" y1="${Y0}" x2="${tx(tt).toFixed(1)}" y2="${Y1}" stroke="var(--border)" stroke-width="1" opacity=".45"/>`).join('');
+    let xlabels='';
+    if(spanDays<=45){xlabels=xb.map(tt=>{const dt=new Date(tt);return `<text x="${tx(tt).toFixed(1)}" y="132" text-anchor="middle" font-size="9" fill="var(--hint)">${dt.getDate()}/${dt.getMonth()+1}</text>`;}).join('');}
+    else{const bounds=[startT,...xb,endT];for(let i=0;i<bounds.length-1;i++){const mid=(bounds[i]+bounds[i+1])/2;const mon=new Date(bounds[i]).getMonth();xlabels+=`<text x="${tx(mid).toFixed(1)}" y="132" text-anchor="middle" font-size="9" fill="var(--hint)">${TH_MON[mon]}</text>`;}}
+    const line=pts.map((p,i)=>(i?'L':'M')+tx(p.t).toFixed(1)+','+vy(p.cum).toFixed(1)).join(' ');
+    const area=line+` L${tx(endT).toFixed(1)},${Y1} L${tx(startT).toFixed(1)},${Y1} Z`;
+    chart=`<svg style="display:block;width:100%;height:150px" viewBox="0 0 360 150" preserveAspectRatio="none">
+      <defs><linearGradient id="eqfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0D7377" stop-opacity="0.20"/><stop offset="100%" stop-color="#0D7377" stop-opacity="0"/></linearGradient></defs>
+      ${grid}${xgrid}${xlabels}
+      <path d="${area}" fill="url(#eqfill)"/>
+      <path d="${line}" fill="none" stroke="#0D7377" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${tx(endT).toFixed(1)}" cy="${vy(pts[pts.length-1].cum).toFixed(1)}" r="3.5" fill="#0D7377"/>
+    </svg>`;
+  }
+  return `<div class="card">${head}${sel}${chart}<div style="text-align:center;padding:2px 15px 12px;font-size:11px;color:var(--hint)">cumulative net P/L</div></div>`;
+}
 const N_POS=1;
 const SK1='cfd_dash_v2';
 const SK2='ctd_session_v1';
@@ -338,6 +600,8 @@ var currentExitPosId=null;
 var currentTrailPosId=null;
 var recSort='latest';
 var recFilter='all';
+var stratFilter='all';
+var recPeriod='all';
 var recEdit=false;
 var recArmId=null;
 var recExpandedId=null;
@@ -621,9 +885,11 @@ function saveData(){
     d.pos[n]={
       edate:(g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value),
       inst:g(`p${n}-inst`)?.value, lev:g(`p${n}-lev`)?.value,
+      strategy:g(`p${n}-strategy`)?.value,
       dir:g(`p${n}-dir`)?.value, entry:g(`p${n}-entry`)?.value,
       sl:g(`p${n}-sl`)?.value, lot:g(`p${n}-lot`)?.value,
       rpt:g(`p${n}-rpt`)?.value, vsd:g(`p${n}-vsd`)?.value, vsf:g(`p${n}-vsf`)?.value,
+      marginIn:g(`p${n}-margin-in`)?.value,
       entryScore:g(`p${n}-entry-score`)?.value,
       entryNote:g(`p${n}-entry-note`)?.value,
       rmode:riskMode[n]
@@ -655,8 +921,10 @@ function loadData(){
       };
       set(`p${n}-edate`,p.edate);
       set(`p${n}-inst`,p.inst);set(`p${n}-lev`,p.lev);set(`p${n}-dir`,p.dir);
+      set(`p${n}-strategy`,p.strategy);
       set(`p${n}-entry`,p.entry);set(`p${n}-sl`,p.sl);set(`p${n}-lot`,p.lot);
       set(`p${n}-rpt`,p.rpt);set(`p${n}-vsd`,p.vsd);set(`p${n}-vsf`,p.vsf);
+      set(`p${n}-margin-in`,p.marginIn);
       set(`p${n}-entry-score`,p.entryScore);
       set(`p${n}-entry-note`,p.entryNote);
       autoExpand(g(`p${n}-entry-note`));
@@ -675,7 +943,7 @@ function resetPos(n){
     return;
   }
   btn.textContent='Reset';btn.style.background='';btn.style.color='';btn.dataset.confirm='';
-  ['inst','lev','dir','edate','entry','sl','vsd','lot','rpt','vsf','entry-score','entry-note'].forEach(k=>{
+  ['inst','lev','dir','strategy','edate','entry','sl','vsd','lot','rpt','margin-in','vsf','entry-score','entry-note'].forEach(k=>{
     const el=g(`p${n}-${k}`);if(!el)return;
     if(el.tagName==='SELECT')el.selectedIndex=0;
     else el.value='';
@@ -687,25 +955,48 @@ function resetPos(n){
 }
 function setRiskMode(n,mode){
   riskMode[n]=mode;
-  const isFixed=mode==='fixed';
+  const isFixed=mode==='fixed',isVola=mode==='vola',isMargin=mode==='margin';
   g(`p${n}-tog-fixed`).classList.toggle('on',isFixed);
-  g(`p${n}-tog-vola`).classList.toggle('on',!isFixed);
-  const sfRow=g(`p${n}-sf-row`);if(sfRow)sfRow.style.display=isFixed?'none':'';
+  g(`p${n}-tog-vola`).classList.toggle('on',isVola);
+  const togM=g(`p${n}-tog-margin`);if(togM)togM.classList.toggle('on',isMargin);
+  const sfRow=g(`p${n}-sf-row`);if(sfRow)sfRow.style.display=isVola?'':'none';
+  const rptRow=g(`p${n}-rpt-row`);if(rptRow)rptRow.style.display=isMargin?'none':'';
+  const mgRow=g(`p${n}-margin-row`);if(mgRow)mgRow.style.display=isMargin?'':'none';
   const slFixed=g(`p${n}-sl-fixed-row`);const slVola=g(`p${n}-sl-vola-row`);
-  if(slFixed)slFixed.style.display=isFixed?'':'none';
-  if(slVola)slVola.style.display=isFixed?'none':'';
-  ['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-lot'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
+  if(slFixed)slFixed.style.display=isVola?'none':'';
+  if(slVola)slVola.style.display=isVola?'':'none';
+  ['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-margin','rc-lot'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
   calcRisk(n);
 }
 function calcRisk(n){
   const sym=getSymbol(g(`p${n}-inst`).value);
   const unit=sym.unit;const pipM=sym.pipM;
-  if(!unit){['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-lot'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});return;}
+  if(!unit){['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-margin','rc-lot'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});return;}
   const entry=parseNum(g(`p${n}-entry`).value)||0;
-  const ids=['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-lot'];
+  const ids=['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-margin','rc-lot'];
   const clear=()=>ids.forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
   if(!entry){clear();return;}
   const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
+  if(riskMode[n]==='margin'){
+    const mgn=parseFloat(g(`p${n}-margin-in`).value)||0;
+    const lev=parseFloat(g(`p${n}-lev`).value)||0;
+    if(!mgn||!lev){clear();return;}
+    const cvm=mgn*lev;const lotm=cvm/(unit*entry);
+    const slm=parseNum(g(`p${n}-sl`).value)||0;
+    if(slm){
+      const slDistM=Math.abs(entry-slm);
+      const slPctM=entry>0?((slDistM/entry)*100):0;
+      g(`p${n}-rc-slpct`).textContent=f(slPctM,2)+'%';
+      g(`p${n}-rc-slpips`).textContent=f(slDistM*pipM,1)+' pip';
+      g(`p${n}-rc-sldist`).textContent=f(slDistM,5);
+    }else{
+      ['rc-slpct','rc-slpips','rc-sldist'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
+    }
+    g(`p${n}-rc-cv`).textContent='$'+f(cvm);
+    g(`p${n}-rc-margin`).textContent='$'+f(cvm/lev);
+    g(`p${n}-rc-lot`).textContent=f(lotm,3)+' lot';
+    return;
+  }
   let slDist=0,rpt=0;
   if(riskMode[n]==='fixed'){
     const sl=parseNum(g(`p${n}-sl`).value)||0;
@@ -729,6 +1020,8 @@ function calcRisk(n){
   const slPipsEl=g(`p${n}-rc-slpips`);if(slPipsEl)slPipsEl.textContent=f(slDist*pipM,1)+' pip';
   const slDistEl=g(`p${n}-rc-sldist`);if(slDistEl)slDistEl.textContent=f(slDist,5);
   g(`p${n}-rc-cv`).textContent='$'+f(cv);
+  const levR=parseFloat(g(`p${n}-lev`).value)||0;
+  g(`p${n}-rc-margin`).textContent=levR>0?'$'+f(cv/levR):'—';
   g(`p${n}-rc-lot`).textContent=f(lot,3)+' lot';
 }
 function applyLot(n){
@@ -744,7 +1037,7 @@ function applyLot(n){
 function calcPos(n){
   const sym=getSymbol(g(`p${n}-inst`).value);
   const unit=sym.unit||100000;const pipM=sym.pipM||10000;
-  const bal=parseFloat(g('balance').value)||0;
+  const bal=parseNum(g('balance')?.value)||0;
   const lev=parseFloat(g(`p${n}-lev`).value)||25;
   const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
   const dsel=g(`p${n}-dir`);
@@ -785,7 +1078,7 @@ function computePos(pos){
   const sl=parseFloat(pos.entry.sl)||0;
   const cv=usedLot*unit*entry;
   const margin=lev>0&&entry>0?cv/lev:0;
-  const bal=parseFloat(g('balance')?.value)||10000;
+  const bal=parseNum(g('balance')?.value)||10000;
   const mlevel=margin>0?((bal)/margin)*100:0;
   const slDist=Math.abs(entry-sl);
   const risk=slDist*unit*usedLot;
@@ -860,14 +1153,16 @@ function renderSession(){
         const hasData=data.price&&data.lot;
         const rowId=`exit-row-${pos.id}-${key}`;
         const isCL=key==='cl';
-        const tagColor='';
         const rowBorder=isCL?'border-bottom:.5px solid rgba(255,59,48,.4)':'';
         if(hasData){
           const xPrice=parseFloat(data.price);
           const xPL=(xPrice-c.entry)*c.sign*c.unit*parseFloat(data.lot);
           const priceClass=xPL>=0?'profit':'loss';
+          // date display: new yyyy/mm/dd → dd/mm/yy hh:mm; legacy passthrough
+          const dateShown=data.date?(/^\d{4}\//.test(data.date)?dateDisplay(data.date):data.date):'';
           return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="openExitSheet('${pos.id}','${key}')">
-            <span class="exit-tag" style="${tagColor}">${label}</span>
+            <span class="exit-tag">${label}</span>
+            <span class="exit-date-val">${escHtml(dateShown)||'—'}</span>
             <span class="exit-price-val ${priceClass}">${f(xPrice,xPrice>100?2:5)}</span>
             <span class="exit-lot-val">${f(parseFloat(data.lot),2)}</span>
             <span class="exit-method-badge">${data.method||'—'}</span>
@@ -875,9 +1170,8 @@ function renderSession(){
           </div>`;
         }
         return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="openExitSheet('${pos.id}','${key}')">
-          <span class="exit-tag" style="${tagColor}">${label}</span>
+          <span class="exit-tag">${label}</span>
           <span class="exit-pending-txt">— pending</span>
-          <span style="flex:1"></span><span style="flex:1"></span><span style="flex:0.5"></span>
         </div>`;
       }).join('');
       // trail SL rows
@@ -891,7 +1185,7 @@ function renderSession(){
         <div class="pos-hd ${dirClass}">
           <div class="pos-hd-left">
             <div class="pos-sym">${pos.entry.inst}<span class="pos-dir-tag ${dirClass}">${dirLabel}</span></div>
-            <div class="pos-id-txt">${pos.id}</div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:2px">${pos.entry.strategy?`<span class="strat-chip">${escHtml(pos.entry.strategy)}</span>`:''}<div class="pos-id-txt">${pos.id}</div></div>
           </div>
           <span class="state-badge ${badgeClass}">${badgeLabel}</span>
         </div>
@@ -1341,6 +1635,7 @@ function buildRecord(pos){
     eval:{
       // ── asset-agnostic core ──
       symbol:pos.entry.inst,
+      strategy:pos.entry.strategy||'',
       direction:pos.entry.dir,
       entryPrice:c.entry,
       entrySL:parseFloat(pos.entry.sl)||0,
@@ -1416,14 +1711,14 @@ async function exportRecords(){
   if(!data.records.length)return;
   // build content
   const jsonStr=JSON.stringify(data,null,2);
-  const tradeCols=['ID','Symbol','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
+  const tradeCols=['ID','Symbol','Strategy','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
   const slotCols=['cl','t1','t2','t3'];
   const exitCols=[];
   slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
   const rows=[[...tradeCols,...exitCols]];
   data.records.forEach(r=>{
     const e=r.eval;const x=e.ext||{};
-    const row=[r.id,e.symbol,e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,
+    const row=[r.id,e.symbol,e.strategy||'',e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,
       e.grossPL!=null?e.grossPL:e.realizedPL,
       e.totalFees!=null?e.totalFees:0,
       e.realizedPL,
@@ -1466,14 +1761,14 @@ function showExportModal(){
   if(!data.records.length)return;
   const jsonStr=JSON.stringify(data,null,2);
   // build CSV inline (mirror exportRecords schema)
-  const tradeCols=['ID','Symbol','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
+  const tradeCols=['ID','Symbol','Strategy','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
   const slotCols=['cl','t1','t2','t3'];
   const exitCols=[];
   slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
   const rows=[[...tradeCols,...exitCols]];
   data.records.forEach(r=>{
     const e=r.eval;const x=e.ext||{};
-    const row=[r.id,e.symbol,e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,
+    const row=[r.id,e.symbol,e.strategy||'',e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,
       e.grossPL!=null?e.grossPL:e.realizedPL,
       e.totalFees!=null?e.totalFees:0,
       e.realizedPL,
@@ -1600,8 +1895,10 @@ function buildSyncGuideUI(){
 
 function setRecSort(s){recSort=s;recArmId=null;renderRecords();}
 function setRecFilter(sym){recFilter=sym;recArmId=null;renderRecords();}
+function setStratFilter(st){stratFilter=st;recArmId=null;renderRecords();}
+function setRecPeriod(p){recPeriod=p;renderRecords();}
 function toggleRecEdit(){recEdit=!recEdit;recArmId=null;renderRecords();}
-function toggleRecNote(id){recExpandedId=recExpandedId===id?null:id;renderRecords();}
+function toggleRecExpand(id){recExpandedId=recExpandedId===id?null:id;renderRecords();}
 function armDeleteRecord(id){recArmId=recArmId===id?null:id;renderRecords();}
 function deleteRecord(id){
   const data=loadRecords();
@@ -1672,8 +1969,12 @@ function renderRecords(){
   }
   const symbols=[...new Set(all.map(r=>r.eval.symbol))];
   if(recFilter!=='all'&&!symbols.includes(recFilter))recFilter='all';
+  const strategies=[...new Set(all.map(r=>r.eval.strategy).filter(s=>s&&String(s).trim()))];
+  if(stratFilter!=='all'&&!strategies.includes(stratFilter))stratFilter='all';
   // filter
-  let recs=recFilter==='all'?all.slice():all.filter(r=>r.eval.symbol===recFilter);
+  let recs=all.slice();
+  if(recFilter!=='all')recs=recs.filter(r=>r.eval.symbol===recFilter);
+  if(stratFilter!=='all')recs=recs.filter(r=>(r.eval.strategy||'')===stratFilter);
   // sort
   const rank=o=>o==='win'?0:o==='breakeven'?1:2;
   if(recSort==='latest')recs.reverse();
@@ -1687,17 +1988,34 @@ function renderRecords(){
   const rVals=recs.map(r=>r.eval.rMultiple).filter(v=>isFinite(v));
   const avgR=rVals.length?rVals.reduce((a,b)=>a+b,0)/rVals.length:0;
   const plColor=totalPL>0?'var(--green)':totalPL<0?'var(--red)':'var(--text)';
+  // expanded portfolio stats (on filtered set)
+  const winRecs=recs.filter(r=>r.eval.outcome==='win');
+  const lossRecs=recs.filter(r=>r.eval.outcome==='loss');
+  const grossProfit=winRecs.reduce((s,r)=>s+(r.eval.realizedPL||0),0);
+  const grossLoss=Math.abs(lossRecs.reduce((s,r)=>s+(r.eval.realizedPL||0),0));
+  const profitFactor=grossLoss>0?grossProfit/grossLoss:(grossProfit>0?Infinity:0);
+  const expectancy=n?totalPL/n:0;
+  const avgWin=winRecs.length?grossProfit/winRecs.length:0;
+  const avgLoss=lossRecs.length?-grossLoss/lossRecs.length:0;
+  const maxDD=maxDrawdown(cumulativeEquity(recs));
+  const pfStr=profitFactor===Infinity?'∞':profitFactor.toFixed(2);
   let html='';
   // summary box
   html+=`<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:16px">
     <div style="width:64px;height:64px;border-radius:16px;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff">${n}</div>
     <div><div style="font-size:15px;font-weight:600;color:var(--text)">${recFilter==='all'?`Record${n!==1?'s':''}`:recFilter}</div><div style="font-size:12px;color:var(--hint)">${recFilter==='all'?fmtBytes(recordsBytes())+' ใช้ไป':`${n} of ${all.length} trades`}</div></div>
   </div>`;
+  // equity curve (Step 2)
+  html+=equityCurveSVG(recs);
   html+=`<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Total P/L</div><div style="font-size:16px;font-weight:600;color:${plColor}">${fSign(totalPL,2)}</div></div>
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Win rate</div><div style="font-size:16px;font-weight:600;color:var(--text)">${winRate.toFixed(0)}% <span style="font-size:12px;color:var(--hint)">(${wins}/${n})</span></div></div>
-    <div style="padding:12px 14px;border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg R</div><div style="font-size:16px;font-weight:600;color:${avgR>=0?'var(--green)':'var(--red)'}">${fSign(avgR,2)}R</div></div>
-    <div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Trades</div><div style="font-size:16px;font-weight:600;color:var(--text)">${n}</div></div>
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg R</div><div style="font-size:16px;font-weight:600;color:${avgR>=0?'var(--green)':'var(--red)'}">${fSign(avgR,2)}R</div></div>
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Profit Factor</div><div style="font-size:16px;font-weight:600;color:var(--text)">${pfStr}</div></div>
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Max Drawdown</div><div style="font-size:16px;font-weight:600;color:${maxDD>0?'var(--red)':'var(--text)'}">${maxDD>0?'−'+f(maxDD,2):'0.00'}</div></div>
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Expectancy</div><div style="font-size:16px;font-weight:600;color:${expectancy>=0?'var(--green)':'var(--red)'}">${fSign(expectancy,2)}<span style="font-size:11px;color:var(--hint)">/ไม้</span></div></div>
+    <div style="padding:12px 14px;border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg Win</div><div style="font-size:16px;font-weight:600;color:var(--green)">${winRecs.length?fSign(avgWin,2):'—'}</div></div>
+    <div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg Loss</div><div style="font-size:16px;font-weight:600;color:var(--red)">${lossRecs.length?fSign(avgLoss,2):'—'}</div></div>
   </div></div>`;
   // cloud sync section
   html+=buildCloudSyncUI();
@@ -1717,6 +2035,11 @@ function renderRecords(){
   // symbol chips
   const chip=(val,label)=>`<span onclick="setRecFilter('${val}')" style="font-size:13px;font-weight:${recFilter===val?'500':'400'};padding:5px 13px;border-radius:20px;cursor:pointer;${recFilter===val?'background:var(--acc);color:#fff':'background:var(--card);color:var(--sub);border:.5px solid var(--border)'}">${label}</span>`;
   html+=`<div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap">${chip('all','All')}${symbols.map(s=>chip(s,s)).join('')}</div>`;
+  // strategy chips (only if any record has a strategy)
+  if(strategies.length){
+    const schip=(val,label)=>`<span onclick="setStratFilter('${val}')" style="font-size:13px;font-weight:${stratFilter===val?'500':'400'};padding:5px 13px;border-radius:20px;cursor:pointer;${stratFilter===val?'background:var(--strat);color:#fff':'background:var(--card);color:var(--sub);border:.5px solid var(--border)'}">${label}</span>`;
+    html+=`<div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center"><span style="font-size:11px;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-right:1px">Strategy</span>${schip('all','All')}${strategies.map(s=>schip(s,s)).join('')}</div>`;
+  }
   // list
   html+='<div class="card">';
   recs.forEach((r,i)=>{
@@ -1735,20 +2058,87 @@ function renderRecords(){
     }else{
       const hasNote=(e.entryNote&&String(e.entryNote).trim())||(e.exitNote&&String(e.exitNote).trim());
       const expanded=recExpandedId===id;
-      const noteInline=hasNote?`<span onclick="event.stopPropagation();toggleRecNote('${id}')" style="color:var(--acc);font-size:11px;font-weight:500;cursor:pointer;margin-left:6px;white-space:nowrap"> · note ${expanded?'▾':'›'}</span>`:'';
-      const notePanel=(hasNote&&expanded)?`<div style="padding:2px 14px 12px;font-size:12px;color:var(--text);background:var(--bg);border-top:.5px solid var(--border)">${e.entryNote?`<div style="margin-top:8px"><span style="color:var(--hint);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Entry</span><div>${escHtml(e.entryNote)}</div></div>`:''}${e.exitNote?`<div style="margin-top:8px"><span style="color:var(--hint);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Exit</span><div>${escHtml(e.exitNote)}</div></div>`:''}</div>`:'';
-      html+=`<div style="${bb}"><div style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+      const chev=expanded?'▾':'›';
+      // build expanded panel
+      let panel='';
+      if(expanded){
+        const src=r.source||{};const en=src.entry||{};
+        const entryDate=en.date?(/^\d{4}\//.test(en.date)?dateDisplay(en.date):en.date):'';
+        const erow=(l,v)=>`<div class="rec-erow"><span class="rec-el">${l}</span><span class="rec-ev">${v}</span></div>`;
+        let p=`<div style="padding:14px;background:var(--bg);border-top:.5px solid var(--border)">`;
+        // timeline: entry → exits
+        p+='<div class="rec-tl">';
+        p+=`<div class="rec-evt">
+          <div class="rec-dot"></div>
+          <div class="rec-elab">Entry</div>
+          <div class="rec-edate">${escHtml(entryDate)||'—'}</div>
+          ${erow('Price · SL',`${f(e.entryPrice,e.entryPrice>100?2:5)} · ${f(e.entrySL,e.entrySL>100?2:5)}`)}
+          ${erow('Lot · Risk',`${f(e.ext?.usedLot||0,2)} · ${fSign(e.riskAmount||0,0)}`)}
+        </div>`;
+        if(e.exits&&e.exits.length){
+          e.exits.forEach(ex=>{
+            const xd=ex.date?(/^\d{4}\//.test(ex.date)?dateDisplay(ex.date):ex.date):'';
+            const xPlC=ex.pl>0?'var(--green)':ex.pl<0?'var(--red)':'';
+            const dotCls=ex.pl>0?'win':ex.pl<0?'loss':'';
+            p+=`<div class="rec-evt">
+              <div class="rec-dot ${dotCls}"></div>
+              <div class="rec-elab">${ex.slot.toUpperCase()} · ${escHtml(ex.method||'—')}</div>
+              <div class="rec-edate">${escHtml(xd)||'—'}</div>
+              ${erow('Price · Lot',`${f(parseFloat(ex.price)||0,(parseFloat(ex.price)||0)>100?2:5)} · ${f(parseFloat(ex.lot)||0,2)}`)}
+              <div class="rec-erow"><span class="rec-el">P/L</span><span class="rec-ev" style="color:${xPlC}">${fSign(ex.pl,2)}</span></div>
+            </div>`;
+          });
+        }
+        p+='</div>';
+        // 2-col Fees + Summary
+        const hasFee=e.totalFees!=null&&(e.totalFees!==0||e.grossPL!==e.realizedPL);
+        const swap=e.totalSwap||0,com=e.totalCom||0,vat=e.totalVat||0;
+        const swapShown=-swap;
+        const grossC=e.grossPL>0?'var(--green)':e.grossPL<0?'var(--red)':'';
+        const netC=e.realizedPL>0?'var(--green)':e.realizedPL<0?'var(--red)':'';
+        const outcomeC=e.outcome==='win'?'var(--green)':e.outcome==='loss'?'var(--red)':'var(--sub)';
+        const feesBox=hasFee?`<div class="rec-box">
+          <div class="rec-box-h">Fees</div>
+          <div class="rec-brow"><span class="rec-bl">Gross</span><span class="rec-bv" style="color:${grossC}">${fSign(e.grossPL,2)}</span></div>
+          <div class="rec-brow"><span class="rec-bl">Swap</span><span class="rec-bv" style="color:${swap<0?'var(--green)':''}">${fSign(swapShown,2)}</span></div>
+          <div class="rec-brow"><span class="rec-bl">Com</span><span class="rec-bv">−${Math.abs(com).toFixed(2)}</span></div>
+          <div class="rec-brow"><span class="rec-bl">VAT</span><span class="rec-bv">−${Math.abs(vat).toFixed(2)}</span></div>
+          <div class="rec-box-net"><span class="rec-box-net-l">Net</span><span class="rec-box-net-v" style="color:${netC}">${fSign(e.realizedPL,2)}</span></div>
+        </div>`:`<div class="rec-box">
+          <div class="rec-box-h">P/L</div>
+          <div class="rec-box-net" style="border:none;padding:0;margin:0"><span class="rec-box-net-l">Net</span><span class="rec-box-net-v" style="color:${netC}">${fSign(e.realizedPL,2)}</span></div>
+        </div>`;
+        const sumBox=`<div class="rec-box">
+          <div class="rec-box-h">Summary</div>
+          ${e.strategy?`<div class="rec-brow"><span class="rec-bl">Strategy</span><span class="rec-bv" style="color:var(--strat);font-weight:600">${escHtml(e.strategy)}</span></div>`:''}
+          <div class="rec-brow"><span class="rec-bl">R-mult</span><span class="rec-bv">${fSign(e.rMultiple,2)}R</span></div>
+          <div class="rec-brow"><span class="rec-bl">Outcome</span><span class="rec-bv" style="color:${outcomeC}">${e.outcome}</span></div>
+          <div class="rec-brow"><span class="rec-bl">Holding</span><span class="rec-bv">${escHtml(e.holdingStr||'—')}</span></div>
+        </div>`;
+        p+=`<div class="rec-2col">${sumBox}${feesBox}</div>`;
+        // notes
+        if(hasNote){
+          p+=`<div class="rec-note-sec">Note</div>`;
+          if(e.entryNote)p+=`<div style="font-size:12px;padding:2px 0"><span style="color:var(--hint)">Entry: </span>${escHtml(e.entryNote)}</div>`;
+          if(e.exitNote)p+=`<div style="font-size:12px;padding:2px 0"><span style="color:var(--hint)">Exit: </span>${escHtml(e.exitNote)}</div>`;
+        }
+        p+='</div>';
+        panel=p;
+      }
+      const noteHint=hasNote?' · note':'';
+      html+=`<div style="${bb}"><div onclick="toggleRecExpand('${id}')" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer">
         ${minus}
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:600;color:var(--text)">${e.symbol} <span style="color:${dirColor};font-size:12px;font-weight:500">${e.direction==='long'?'Long':'Short'}</span></div>
-          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${r.source?.entry?.date||r.archivedAt} · ${e.holdingStr}${noteInline}</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${e.symbol} <span style="color:${dirColor};font-size:12px;font-weight:500">${e.direction==='long'?'Long':'Short'}</span>${e.strategy?` <span class="strat-chip">${escHtml(e.strategy)}</span>`:''}</div>
+          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${r.source?.entry?.date||r.archivedAt} · ${e.holdingStr}${noteHint}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:14px;font-weight:600;color:${plC}">${fSign(e.realizedPL,2)}</div>
           <div style="font-size:11px;color:var(--hint)">${fSign(e.rMultiple,2)}R</div>
         </div>
         <span style="font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:${oc.bg};color:${oc.fg}">${e.outcome}</span>
-      </div>${notePanel}</div>`;
+        <span style="color:var(--hint);font-size:14px;margin-left:-4px">${chev}</span>
+      </div>${panel}</div>`;
     }
   });
   html+='</div>';
@@ -1765,8 +2155,22 @@ function buildPos(){
   const n=1;
   const pg=g('page-calc');
   pg.innerHTML=`
-    <p class="stitle">Trading Card</p>
+    <p class="stitle">Balance</p>
     <div class="card">
+      <div class="row"><div class="rl">Balance ($)</div>
+        <input type="text" id="balance" value="${getBalance()}" inputmode="decimal" oninput="saveBalance()" onblur="onPriceBlur(this)">
+      </div>
+    </div>
+    <div style="padding:2px 4px 6px;font-size:11px;color:var(--hint)">*รอเชื่อมกับ Port Summary Dash Board</div>
+
+    <p class="stitle">Trading Card</p>
+    <div class="card tcard">
+      <div class="row strat-row"><div class="rl">Strategy</div>
+        <select id="p1-strategy" onchange="saveData()">
+          <option value="">—</option>
+          ${STRATEGIES.map(s=>`<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>
       <div class="row"><div class="rl">Symbol</div>
         <select id="p1-inst" onchange="updateSymInfo(1);calcRisk(1);calcPos(1)">
           <option value="XAUUSD">XAUUSD</option>
@@ -1809,17 +2213,21 @@ function buildPos(){
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-bottom:4px">
       <span style="font-size:12px;color:var(--hint)" id="p1-sym-info">—</span>
-      <span style="font-size:12px;color:var(--acc);font-weight:500">ดู CTD Manual</span>
+      <span style="font-size:12px;color:var(--acc);font-weight:500;cursor:pointer" onclick="openManual()">ดู CTD Manual</span>
     </div>
 
     <p class="stitle">MM</p>
     <div class="toggle-bar">
       <button class="toggle-btn on" id="p1-tog-fixed" onclick="setRiskMode(1,'fixed')">Fixed</button>
       <button class="toggle-btn" id="p1-tog-vola" onclick="setRiskMode(1,'vola')">Vola</button>
+      <button class="toggle-btn" id="p1-tog-margin" onclick="setRiskMode(1,'margin')">Margin</button>
     </div>
     <div class="card">
-      <div class="row"><div class="rl">RpT ($)</div>
+      <div class="row" id="p1-rpt-row"><div class="rl">RpT ($)</div>
         <input type="number" id="p1-rpt" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
+      </div>
+      <div class="row" id="p1-margin-row" style="display:none"><div class="rl">Margin ($)</div>
+        <input type="number" id="p1-margin-in" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
       </div>
       <div class="row" id="p1-sf-row" style="display:none"><div class="rl">SF</div>
         <input type="number" id="p1-vsf" value="" inputmode="decimal" step="0.1" oninput="calcRisk(1)" onchange="calcRisk(1)">
@@ -1837,6 +2245,7 @@ function buildPos(){
         </div>
       </div>
       <div class="drow"><span class="dl">CV ($)</span><span class="dv cb" id="p1-rc-cv">—</span></div>
+      <div class="drow"><span class="dl">Margin ($)</span><span class="dv cb" id="p1-rc-margin">—</span></div>
       <div class="drow"><span class="dl">Lot Size</span><span class="dv" style="font-size:20px;font-weight:600;color:var(--acc)" id="p1-rc-lot">—</span></div>
     </div>
     <div style="padding:6px 4px 2px;font-size:11px;color:var(--hint);text-align:center">* Minimum lot size = 0.01 lot</div>
@@ -1935,6 +2344,7 @@ function buildPacket(n){
     entry:{
       date:g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value||'',
       inst,dir:g(`p${n}-dir`)?.value||'long',
+      strategy:g(`p${n}-strategy`)?.value||'',
       price:String(entry),sl:String(sl),
       rmode:riskMode[n]||'fixed',
       rpt:g(`p${n}-rpt`)?.value||'',
@@ -2084,11 +2494,11 @@ function loadDemoSession(){
   const demo={version:'v1',demoVer:DEMO_VER,positions:[
     {id:'XAUUSD.O.S.260523.0830',
      meta:{state:'PARTIAL',importedAt:'23/05/26 09:15:00',closedAt:null},
-     entry:{date:'23/05/26 08:30:00',inst:'XAUUSD',dir:'short',price:'3320.50',sl:'3334.12',rmode:'vola',rpt:'200',vsd:'0.565',vsf:'2',sld:'15.38',usedLot:'0.04',usedCV:'13282',lev:'25',entryScore:'4',entryNote:'Trend break + volume confirm. Watch 3310 support.'},
+     entry:{date:'23/05/26 08:30:00',inst:'XAUUSD',strategy:'Vector',dir:'short',price:'3320.50',sl:'3334.12',rmode:'vola',rpt:'200',vsd:'0.565',vsf:'2',sld:'15.38',usedLot:'0.04',usedCV:'13282',lev:'25',entryScore:'4',entryNote:'Trend break + volume confirm. Watch 3310 support.'},
      exit:{trailSL:'3315.00',note:'',cl:{price:'',date:'',method:'',lot:'',score:''},t1:{price:'3305.00',date:'24/05/26 14:30:00',method:'PC Float',lot:'0.02',score:'4'},t2:{price:'',date:'',method:'',lot:'',score:''},t3:{price:'',date:'',method:'',lot:'',score:''}}},
     {id:'EURUSD.O.L.260524.1005',
      meta:{state:'ACTIVE',importedAt:'24/05/26 10:05:00',closedAt:null},
-     entry:{date:'24/05/26 09:45:00',inst:'EURUSD',dir:'long',price:'1.16027',sl:'1.15681',rmode:'vola',rpt:'200',vsd:'0.346',vsf:'2',sld:'0.008026',usedLot:'0.04',usedCV:'4641.08',lev:'25',entryScore:'3',entryNote:''},
+     entry:{date:'24/05/26 09:45:00',inst:'EURUSD',strategy:'Vector',dir:'long',price:'1.16027',sl:'1.15681',rmode:'vola',rpt:'200',vsd:'0.346',vsf:'2',sld:'0.008026',usedLot:'0.04',usedCV:'4641.08',lev:'25',entryScore:'3',entryNote:''},
      exit:{trailSL:'',note:'',cl:{price:'',date:'',method:'',lot:'',score:''},t1:{price:'',date:'',method:'',lot:'',score:''},t2:{price:'',date:'',method:'',lot:'',score:''},t3:{price:'',date:'',method:'',lot:'',score:''}}}
   ]};
   saveSession(demo);
