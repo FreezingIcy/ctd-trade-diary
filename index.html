@@ -50,7 +50,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .m-symd{font-size:12px;color:var(--sub);flex:1}
 .m-symn{font-size:11px;color:var(--hint)}
 .m-ph{padding:12px 14px;font-size:13px;color:var(--hint)}
-.m-sub{font-size:12px;font-weight:600;color:var(--acc);margin:12px 0 5px 2px;text-transform:uppercase;letter-spacing:.03em}
 .m-ghd{font-size:12px;font-weight:700;color:var(--acc);letter-spacing:.02em;padding:9px 14px;background:var(--stratbg)}
 .m-gintro{font-size:13px;color:var(--sub);padding:12px 14px;line-height:1.5;border-bottom:.5px solid var(--border)}
 .m-step{display:flex;gap:11px;padding:11px 14px;border-bottom:.5px solid var(--border);align-items:flex-start}
@@ -309,6 +308,25 @@ if(typeof firebase==='undefined'){
   </div>
 </div>
 
+<!-- Import pop-up -->
+<div class="manual-overlay" id="import-overlay" onclick="closeImport(event)">
+  <div class="manual-sheet" onclick="event.stopPropagation()">
+    <div class="manual-sheet-h">
+      <div style="flex:1"><div class="manual-grab"></div><span style="font-size:16px;font-weight:600">Import Records</span></div>
+      <span class="manual-x" onclick="closeImport()">✕</span>
+    </div>
+    <div class="manual-body">
+      <div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 2px 12px">วางข้อมูลจาก <b style="color:var(--text)">CTD import template</b> (บันทึกเป็น <span style="font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);padding:1px 5px;border-radius:4px">.csv</span>) หรือเลือกไฟล์ · แอปคำนวณ P/L ให้เอง · ของเก่าไม่ถูกทับ (skip-if-exists)</div>
+      <label style="display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border:1.5px dashed var(--border);border-radius:10px;color:var(--acc);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:10px">
+        <input type="file" accept=".csv,.txt" onchange="onImportFile(this)" style="display:none">📄 เลือกไฟล์ CSV
+      </label>
+      <textarea id="import-text" placeholder="หรือวาง CSV ที่นี่…" style="width:100%;min-height:120px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;box-sizing:border-box"></textarea>
+      <button onclick="runImport()" style="width:100%;margin-top:10px;padding:13px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:15px;font-weight:600;cursor:pointer">Import</button>
+      <div id="import-result" style="margin-top:12px;font-size:14px"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Add Exit Sheet -->
 <div class="sheet-overlay" id="exit-overlay" onclick="closeExitSheet()"></div>
 <div class="sheet" id="exit-sheet">
@@ -435,6 +453,20 @@ function manualHTML(){
       ${em('EoWk','Fixed',T,'Exit ก่อนปิดสัปดาห์ ไม่ถือข้ามสัปดาห์')}
       ${em('Trail Cut','Float',O,'Cut ก่อนถึง SL เช่น ราคาไม่ไปหลังผ่านเวลา / ราคาหลุดฐานแต่สูงกว่า SL')}
     </div>
+    <p class="m-sec">Record · Portfolio</p>
+    <div class="m-card">
+      <div class="m-ghd">Equity Curve</div>
+      <div class="m-row top"><span class="m-l" style="flex:1;font-size:13px">กราฟ P/L สะสมตามเวลา · เลือกช่วง 1M·3M·6M·All · แกน P/L (ซ้าย) + เวลา (ล่าง)</span></div>
+      <div class="m-ghd">Stats</div>
+      <div class="m-row top"><span class="m-l" style="width:118px;flex-shrink:0;color:var(--text)">Total P/L</span><span class="m-v" style="flex:1;text-align:left">กำไร/ขาดทุนสุทธิรวม (หลัง fee)</span></div>
+      <div class="m-row top"><span class="m-l" style="width:118px;flex-shrink:0;color:var(--text)">Win rate</span><span class="m-v" style="flex:1;text-align:left">% ไม้ที่ชนะ</span></div>
+      <div class="m-row top"><span class="m-l" style="width:118px;flex-shrink:0;color:var(--text)">Avg R</span><span class="m-v" style="flex:1;text-align:left">R-multiple เฉลี่ยต่อไม้</span></div>
+      <div class="m-row top"><span class="m-l" style="width:118px;flex-shrink:0;color:var(--text)">Profit Factor</span><span class="m-v" style="flex:1;text-align:left">กำไรรวม ÷ ขาดทุนรวม (&gt;1 = มี edge)</span></div>
+      <div class="m-row top"><span class="m-l" style="width:118px;flex-shrink:0;color:var(--text)">Max Drawdown</span><span class="m-v" style="flex:1;text-align:left">ตกหนักสุดจากจุดสูงสุดของ P/L สะสม</span></div>
+      <div class="m-row top"><span class="m-l" style="width:118px;flex-shrink:0;color:var(--text)">Expectancy</span><span class="m-v" style="flex:1;text-align:left">กำไรเฉลี่ยต่อไม้ = Total P/L ÷ จำนวนไม้</span></div>
+      <div class="m-row top"><span class="m-l" style="width:118px;flex-shrink:0;color:var(--text)">Avg Win / Loss</span><span class="m-v" style="flex:1;text-align:left">กำไรเฉลี่ยไม้ชนะ / ขาดทุนเฉลี่ยไม้แพ้</span></div>
+    </div>
+    <div class="m-hint">ทุกตัวคำนวณจาก records ที่ filter อยู่ — เปลี่ยน chip symbol/strategy แล้วตัวเลข + กราฟอัปเดตตาม</div>
     <p class="m-sec">ID Format</p>
     <div class="m-card">
       <div class="m-row"><span class="m-l">Entry ID</span><span class="m-v">[SYMBOL].[O].[L/S].[ddmmyy].[hhmm]</span></div>
@@ -452,6 +484,17 @@ function manualHTML(){
       ${sym('XAUTHB','— · —','Pending',true)}
     </div>
     <div class="m-hint">* ต้องการเพิ่ม symbol ใหม่ให้แจ้ง Claude พร้อม unit และ pip size จาก broker</div>
+    <p class="m-sec">Import · Export</p>
+    <div class="m-card">
+      <div class="m-ghd">Export file</div>
+      <div class="m-row top"><span class="m-l" style="flex:1;font-size:13px">Tab Record → <b style="color:var(--text)">Export file</b> → ดาวน์โหลด JSON + CSV (backup ฉุกเฉิน)</span></div>
+      <div class="m-ghd">Import file</div>
+      <div class="m-step"><span class="m-num">1</span><span class="m-stext">เตรียมข้อมูลด้วย <b>CTD import template</b> (.xlsx) → กรอกแค่ค่าดิบ (ราคา/lot/วันที่/fee) → Save As <span class="mono">.csv</span></span></div>
+      <div class="m-step"><span class="m-num">2</span><span class="m-stext">Tab Record → <b>⬆ Import file</b> → เลือกไฟล์ หรือวาง CSV → กด Import</span></div>
+      <div class="m-step"><span class="m-num">3</span><span class="m-stext">แอปคำนวณ Gross/Net/R/Outcome/Holding ให้เอง · merge <b>skip-if-exists</b> (id ซ้ำ = ข้าม · ของเก่าไม่ทับ)</span></div>
+      <div class="m-step"><span class="m-num">4</span><span class="m-stext">กด <b>Push</b> เพื่อ sync ขึ้น cloud</span></div>
+    </div>
+    <div class="m-hint">ลำดับคอลัมน์ใน sheet ห้ามสลับ (อ่านตามตำแหน่ง) · CL ต้องมีอย่างน้อย 1 ไม้ · ดูวิธีกรอกในชีต "Legend"</div>
     <p class="m-sec">Cloud Sync + Hosting</p>
     <div class="m-card">
       <div class="m-gintro">ตั้งค่า Firebase Cloud Sync + GitHub Pages hosting (~10-15 นาที)</div>
@@ -514,12 +557,22 @@ service cloud.firestore {
 function openManual(){const b=g('manual-body');if(b)b.innerHTML=manualHTML();const o=g('manual-overlay');if(o){o.classList.add('on');b.scrollTop=0;}}
 function closeManual(e){if(e&&e.currentTarget!==e.target)return;const o=g('manual-overlay');if(o)o.classList.remove('on');}
 // ===== Portfolio stat helpers =====
+// ── Canonical date parsing (single source of truth) ──
+// string → {y,mo,d,h,mi,sec} | null. Accepts yyyy/mm/dd (year-first) & dd/mm/yy(yy) (day-first); sep / - . ; time after space/T/comma.
+function parseDateParts(s){
+  s=String(s||'').trim();if(!s)return null;let m;
+  if((m=s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:[\s,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/)))
+    return {y:+m[1],mo:+m[2],d:+m[3],h:+(m[4]||0),mi:+(m[5]||0),sec:+(m[6]||0)};
+  if((m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[\s,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))){
+    let y=+m[3];if(y<100)y+=2000;
+    return {y,mo:+m[2],d:+m[1],h:+(m[4]||0),mi:+(m[5]||0),sec:+(m[6]||0)};
+  }
+  return null;
+}
+function stampMs(s){const p=parseDateParts(s);return p?new Date(p.y,p.mo-1,p.d,p.h,p.mi,p.sec).getTime():0;}
 function recDateMs(r){
   const d=r.closedAt||r.archivedAt||(r.eval&&r.eval.exits&&r.eval.exits.length?r.eval.exits[r.eval.exits.length-1].date:'')||(r.source&&r.source.entry?r.source.entry.date:'')||'';
-  const m=String(d).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-  if(!m)return 0;
-  let yy=+m[3];if(yy<100)yy+=2000;
-  return new Date(yy,(+m[2])-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0)).getTime();
+  return stampMs(d);
 }
 // returns [{t, cum}] sorted ascending by date (cumulative net P/L)
 function cumulativeEquity(recs){
@@ -1873,8 +1926,13 @@ function buildSyncGuideUI(){
   h+=`<div style="height:.5px;background:var(--border);margin:14px 0"></div>`;
   // offline backup section
   h+=`<div style="font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.3px;margin:0 2px 6px">Offline backup</div>`;
-  h+=`<div style="background:rgba(128,128,128,.06);border:.5px solid var(--border);border-radius:10px;margin-bottom:4px">
-    <button onclick="exportFileStep(this)" data-step="0" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">${DL_ICON} Export file</button>
+  h+=`<div style="display:flex;gap:8px;margin-bottom:4px">
+    <div style="flex:1;background:rgba(128,128,128,.06);border:.5px solid var(--border);border-radius:10px">
+      <button onclick="exportFileStep(this)" data-step="0" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">${DL_ICON} Export file</button>
+    </div>
+    <div style="flex:1;background:rgba(128,128,128,.06);border:.5px solid var(--border);border-radius:10px">
+      <button onclick="openImport()" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--acc);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">⬆ Import file</button>
+    </div>
   </div>`;
   h+=`<div style="text-align:center;margin-bottom:14px"><span onclick="showExportModal()" style="font-size:11px;color:var(--hint);cursor:pointer">Copy JSON</span></div>`;
   // button guide
@@ -1897,6 +1955,80 @@ function setRecSort(s){recSort=s;recArmId=null;renderRecords();}
 function setRecFilter(sym){recFilter=sym;recArmId=null;renderRecords();}
 function setStratFilter(st){stratFilter=st;recArmId=null;renderRecords();}
 function setRecPeriod(p){recPeriod=p;renderRecords();}
+// ===== CSV Import (external data → records, skip-if-exists) =====
+function normStamp(s){const p=parseDateParts(s);if(!p)return String(s||'').trim();const z=v=>String(v).padStart(2,'0');return `${z(p.d)}/${z(p.mo)}/${String(p.y).slice(2)} ${z(p.h)}:${z(p.mi)}:${z(p.sec)}`;}
+function holdingBetween(a,b){const pa=stampMs(a),pb=stampMs(b);if(!pa||!pb||pb<pa)return '—';const ms=pb-pa,d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000);return d>0?`${d}d ${h}h`:`${h}h`;}
+function makeImportId(inst,dir,dateStr){const ds=dir==='short'?'S':'L';const p=parseDateParts(dateStr);const z=v=>String(v).padStart(2,'0');const ddmmyy=p?z(p.d)+z(p.mo)+String(p.y).slice(2):'000000';const hhmm=p?z(p.h)+z(p.mi):'0000';return `${String(inst).toUpperCase()}.O.${ds}.${ddmmyy}.${hhmm}`;}
+function parseImportCSV(text){
+  const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}
+    else{if(c==='"')q=true;else if(c===','){row.push(cur);cur='';}else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';}else if(c!=='\r')cur+=c;}
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+function importSlot(cells,base){
+  const price=(cells[base+1]||'').trim();if(!price)return null;
+  return {date:normStamp(cells[base]),price,lot:(cells[base+2]||'').trim(),method:(cells[base+3]||'').trim(),
+    score:(cells[base+4]||'').trim(),swap:(cells[base+5]||'').trim(),com:(cells[base+6]||'').trim(),vat:(cells[base+7]||'').trim()};
+}
+function posFromImportRow(cells){
+  const get=i=>(cells[i]||'').trim();
+  const inst=get(1).toUpperCase();
+  if(!inst)return {err:'ไม่มี Symbol'};
+  const sym=SYMBOLS[inst];
+  if(!sym||sym.unit==null)return {err:`Symbol ไม่รู้จัก: ${inst}`};
+  if(!get(5))return {err:'ไม่มี Entry'};
+  if(!get(4))return {err:'ไม่มี Entry Date'};
+  const dir=get(3).toLowerCase()==='short'?'short':'long';
+  const exit={trailSL:'',note:get(15)};let hasExit=false,lastDate='';
+  [['cl',16],['t1',24],['t2',32],['t3',40]].forEach(([k,b])=>{
+    const s=importSlot(cells,b);
+    exit[k]=s||{price:'',date:'',method:'',lot:'',score:'',swap:'',com:'',vat:''};
+    if(s&&s.lot){hasExit=true;if(stampMs(s.date)>stampMs(lastDate))lastDate=s.date;}
+  });
+  if(!hasExit)return {err:'ไม่มี exit (ยังไม่ปิด)'};
+  const entryN=parseNum(get(5))||0,slN=parseNum(get(6))||0,lot=parseFloat(get(7))||0,lev=parseFloat(get(8))||25;
+  const vsd=get(11),vsf=get(12);
+  const sld=entryN>0&&vsd?entryN*(parseFloat(vsd)/100)*(parseFloat(vsf)||1):Math.abs(entryN-slN);
+  const eStamp=normStamp(get(4));
+  const id=get(0)||makeImportId(inst,dir,get(4));
+  return {pos:{version:'v1',id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
+    entry:{date:eStamp,inst,dir,strategy:get(2),price:String(entryN),sl:String(slN),rmode:get(9),rpt:get(10),
+      vsd,vsf,sld:String(sld.toFixed(2)),usedLot:String(lot),usedCV:String((lot*sym.unit*entryN).toFixed(0)),
+      lev:String(lev),entryScore:get(13),entryNote:get(14)},
+    exit},eStamp,lastDate};
+}
+function runImport(){
+  const ta=g('import-text'),res=g('import-result');
+  const text=ta?ta.value:'';
+  if(!text.trim()){res.innerHTML='<span style="color:var(--red)">วางข้อมูล CSV ก่อน</span>';return;}
+  const rows=parseImportCSV(text);
+  const hi=rows.findIndex(r=>r.map(x=>(x||'').trim()).includes('Symbol'));
+  if(hi<0){res.innerHTML='<span style="color:var(--red)">ไม่พบหัวตาราง (คอลัมน์ Symbol) — ใช้ template ถูกไหม?</span>';return;}
+  const dataRows=rows.slice(hi+1).filter(r=>r.some(c=>(c||'').trim()!==''));
+  const data=loadRecords();const existing=new Set(data.records.map(r=>r.id));
+  let added=0,skipped=0;const errs=[];
+  dataRows.forEach((cells,idx)=>{
+    const out=posFromImportRow(cells);
+    if(out.err){errs.push(`แถว ${idx+1}: ${out.err}`);return;}
+    let rec;try{rec=buildRecord(out.pos);}catch(e){errs.push(`แถว ${idx+1}: คำนวณไม่ได้`);return;}
+    rec.eval.holdingStr=holdingBetween(out.eStamp,out.lastDate);
+    if(existing.has(rec.id)){skipped++;return;}
+    data.records.push(rec);existing.add(rec.id);added++;
+  });
+  if(added>0)saveRecords(data);
+  renderRecords();
+  let msg=`<div style="font-weight:700;color:var(--green);font-size:16px">+${added} เพิ่ม</div>`;
+  if(skipped)msg+=`<div style="color:var(--sub);margin-top:2px">${skipped} ข้าม (id ซ้ำ — ของเก่าไม่ถูกแตะ)</div>`;
+  if(errs.length)msg+=`<div style="color:var(--red);margin-top:8px;font-size:12px;line-height:1.6">${errs.length} error:<br>${errs.slice(0,8).join('<br>')}${errs.length>8?'<br>…':''}</div>`;
+  if(added>0)msg+=`<div style="color:var(--hint);margin-top:8px;font-size:12px">กด Push เพื่อ sync ขึ้น cloud</div>`;
+  res.innerHTML=msg;
+}
+function openImport(){const o=g('import-overlay');if(o){o.classList.add('on');const r=g('import-result');if(r)r.innerHTML='';const t=g('import-text');if(t)t.value='';}}
+function closeImport(e){if(e&&e.currentTarget!==e.target)return;const o=g('import-overlay');if(o)o.classList.remove('on');}
+function onImportFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{const ta=g('import-text');if(ta)ta.value=rd.result;};rd.readAsText(f);}
 function toggleRecEdit(){recEdit=!recEdit;recArmId=null;renderRecords();}
 function toggleRecExpand(id){recExpandedId=recExpandedId===id?null:id;renderRecords();}
 function armDeleteRecord(id){recArmId=recArmId===id?null:id;renderRecords();}
@@ -2312,15 +2444,9 @@ function buildEntryId(n){
   const inst=(g(`p${n}-inst`)?.value||'').toUpperCase();
   const dir=g(`p${n}-dir`)?.value==='long'?'L':'S';
   const raw=g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value||'';
-  // stored format: yyyy/mm/dd hh:mm:ss → id needs ddmmyy.hhmm
-  let ddmmyy='000000',hhmm='0000';
-  let m=raw.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
-  if(m){
-    ddmmyy=m[3]+m[2]+m[1].slice(2);hhmm=m[4]+m[5];
-  }else if((m=raw.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})/))){
-    // legacy day-first fallback
-    ddmmyy=m[1].padStart(2,'0')+m[2].padStart(2,'0')+m[3].slice(-2);hhmm=m[4].padStart(2,'0')+m[5];
-  }
+  const p=parseDateParts(raw);const z=v=>String(v).padStart(2,'0');
+  const ddmmyy=p?z(p.d)+z(p.mo)+String(p.y).slice(2):'000000';
+  const hhmm=p?z(p.h)+z(p.mi):'0000';
   return `${inst}.O.${dir}.${ddmmyy}.${hhmm}`;
 }
 function buildPacket(n){
@@ -2433,19 +2559,11 @@ function parseDateFlexible(raw){
            .replace(/Z\s*$/i,'')
            .replace(/\.\d+/,'')
            .trim();
-  // parse the bare datetime — support yyyy-mm-dd, yyyy/mm/dd, dd/mm/yy(yy), dd-mm-yy(yy)
+  // parse the bare datetime via canonical parser (TZ already stripped)
   let y,mo,d,h=0,mi=0,sec=0;
-  let m;
-  if((m=s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:[\s,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/))){
-    // ISO-ish: year first
-    y=+m[1];mo=+m[2];d=+m[3];h=+(m[4]||0);mi=+(m[5]||0);sec=+(m[6]||0);
-  }else if((m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[\s,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/))){
-    // day first
-    d=+m[1];mo=+m[2];y=+m[3];h=+(m[4]||0);mi=+(m[5]||0);sec=+(m[6]||0);
-    if(y<100)y+=2000;
-  }else{
-    return raw; // unparseable — keep raw
-  }
+  const pp=parseDateParts(s);
+  if(!pp)return raw; // unparseable — keep raw
+  y=pp.y;mo=pp.mo;d=pp.d;h=pp.h;mi=pp.mi;sec=pp.sec;
   // build a Date in UTC from the parsed components, then shift by tz
   let dt=new Date(Date.UTC(y,mo-1,d,h,mi,sec));
   if(srcOffset!==null){
