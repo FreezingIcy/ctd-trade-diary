@@ -253,6 +253,55 @@ option{color:#000}
 .sync-btn.push{background:var(--acc);color:#fff}
 .sync-btn.pull{background:rgba(13,115,119,.12);color:var(--acc);border:1.5px solid rgba(13,115,119,.35)}
 .auth-btn{width:100%;padding:11px;border:1.5px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-user-select:none;user-select:none}
+/* ── Edit Trade sheet ── */
+.ed-body{flex:1;overflow-y:auto;padding:12px 12px 6px}
+.ed-warn{font-size:11px;line-height:1.5;color:var(--sub);background:rgba(255,149,0,.1);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.ed-warn b{color:var(--orange)}
+.ed-sec{background:var(--card);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.ed-sech{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.05em;font-weight:700;padding:11px 14px 4px}
+.ed-exh{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 4px}
+.ed-exh .tag{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--acc)}
+.ed-exh .tag.cl{color:var(--red)}
+.ed-delx{background:none;border:none;color:var(--red);font-size:12px;font-weight:600;cursor:pointer}
+.ed-f{display:flex;align-items:center;min-height:44px;padding:0 14px;border-top:.5px solid var(--border)}
+.ed-f:first-of-type{border-top:none}
+.ed-f .k{flex:1;font-size:14px;color:var(--sub)}
+.ed-f .k.req::after{content:' *';color:var(--red)}
+.ed-f input,.ed-f select{background:transparent;border:none;font-size:15px;font-weight:500;color:var(--blue);text-align:right;width:150px;outline:none;font-family:inherit;-webkit-appearance:none}
+.ed-f select{color:var(--text)}
+.ed-f input::placeholder{color:var(--hint);font-weight:400}
+.ed-f input:disabled{color:var(--hint)}
+.ed-seg{display:flex;background:var(--bg);border-radius:9px;padding:2px;gap:2px;width:160px}
+.ed-seg button{flex:1;border:none;background:transparent;color:var(--sub);font-size:13px;font-weight:600;padding:5px 0;border-radius:7px;cursor:pointer}
+.ed-seg button.on{background:var(--card);color:var(--acc);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ed-addx{width:100%;padding:11px;border:1px dashed var(--border);border-radius:10px;background:none;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px}
+.ed-foot{flex-shrink:0;background:var(--card);border-top:.5px solid var(--border);padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
+.ed-err{font-size:12px;color:var(--red);text-align:center;padding:0 0 8px;font-weight:600;min-height:0}
+.ed-prev{display:flex;justify-content:space-around;background:var(--bg);border-radius:10px;padding:8px;margin-bottom:9px}
+.ed-prev .pl{font-size:10px;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;font-weight:600;text-align:center}
+.ed-prev .pv{font-size:15px;font-weight:700;margin-top:1px;text-align:center}
+.ed-arow{display:flex;gap:8px}
+.ed-btn{flex:1;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}
+.ed-btn.cancel{background:var(--bg);color:var(--sub)}
+.ed-btn.save{background:var(--acc);color:#fff}
+/* ── Tombstone inspector ── */
+.tomb{background:var(--card);border-radius:12px;overflow:hidden;margin-top:10px}
+.tomb-h{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer}
+.tomb-h .ic{font-size:15px}
+.tomb-h .tt{flex:1;font-size:14px;font-weight:600}
+.tomb-h .cnt{font-size:12px;font-weight:700;color:#fff;background:var(--red);border-radius:20px;padding:1px 9px}
+.tomb-body{border-top:.5px solid var(--border);padding:6px 0;display:none}
+.tomb-body.on{display:block}
+.tomb-row{display:flex;align-items:center;gap:8px;padding:8px 14px}
+.tomb-row .info{flex:1;min-width:0}
+.tomb-row .tid{font-size:12px;font-weight:600;font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tomb-row .tdate{font-size:10px;color:var(--hint)}
+.tomb-row .restore{background:var(--stratbg);color:var(--strat);border:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;flex-shrink:0}
+.tomb-clear{width:calc(100% - 28px);margin:6px 14px 10px;padding:9px;border:none;border-radius:9px;background:rgba(255,59,48,.1);color:var(--red);font-size:12px;font-weight:600;cursor:pointer}
+.rec-editbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:var(--stratbg);color:var(--strat);font-size:13px;font-weight:600;cursor:pointer}
+/* ── toast ── */
+.ctd-toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(20px);background:#34C759;color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:22px;opacity:0;transition:.25s;z-index:2000;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.2);max-width:88%;text-align:center}
+.ctd-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -323,6 +372,29 @@ if(typeof firebase==='undefined'){
       <textarea id="import-text" placeholder="หรือวาง CSV ที่นี่…" style="width:100%;min-height:120px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;box-sizing:border-box"></textarea>
       <button onclick="runImport()" style="width:100%;margin-top:10px;padding:13px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:15px;font-weight:600;cursor:pointer">Import</button>
       <div id="import-result" style="margin-top:12px;font-size:14px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Trade Sheet -->
+<div class="manual-overlay" id="edit-overlay" onclick="closeEditRecord(event)">
+  <div class="manual-sheet" onclick="event.stopPropagation()">
+    <div class="manual-sheet-h">
+      <div style="flex:1"><div class="manual-grab"></div><span style="font-size:16px;font-weight:600">แก้ไข Trade</span><div id="ed-idlabel" style="font-size:11px;opacity:.85;margin-top:1px"></div></div>
+      <span class="manual-x" onclick="closeEditRecord()">✕</span>
+    </div>
+    <div class="ed-body" id="edit-body"></div>
+    <div class="ed-foot">
+      <div class="ed-err" id="ed-err"></div>
+      <div class="ed-prev">
+        <div><div class="pl">Net P/L</div><div class="pv" id="ed-pv-net">—</div></div>
+        <div><div class="pl">R-mult</div><div class="pv" id="ed-pv-r">—</div></div>
+        <div><div class="pl">Outcome</div><div class="pv" id="ed-pv-out">—</div></div>
+      </div>
+      <div class="ed-arow">
+        <button class="ed-btn cancel" onclick="closeEditRecord()">ยกเลิก</button>
+        <button class="ed-btn save" onclick="editSave()">บันทึก</button>
+      </div>
     </div>
   </div>
 </div>
@@ -420,7 +492,7 @@ const SYMBOLS={
   XAUUSD:{unit:100,   pipM:10,   pipSize:0.01,  note:'Gold'},
   XAUTHB:{unit:null,  pipM:null, pipSize:null,  note:'Gold/THB — pending'},
 };
-function getSymbol(key){return SYMBOLS[key]||SYMBOLS['EURUSD'];}
+function getSymbol(key){return SYMBOLS[key]||null;}
 // Strategy list — extend here when new systems are added
 const STRATEGIES=['Vector'];
 // Account balance (global, persisted) — *pending Port Summary Dashboard link
@@ -624,23 +696,26 @@ function equityCurveSVG(recsFull){
     const tx=t=>X0+(endT>startT?(t-startT)/(endT-startT):0)*(X1-X0);
     const vy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
     const ylv=niceLevels(lo,hi,4);
-    const grid=ylv.map(v=>{const y=vy(v);if(y<Y0-1||y>Y1+1)return'';const dash=Math.abs(v)<1e-9?' stroke-dasharray="3 3"':'';const lbl=Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':String(Math.round(v));return `<line x1="${X0}" y1="${y.toFixed(1)}" x2="${X1}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" opacity=".4"${dash}/><text x="${(X0-4).toFixed(0)}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--hint)">${lbl}</text>`;}).join('');
+    const pctX=x=>((x+16)/392*100).toFixed(2);
+    const grid=ylv.map(v=>{const y=vy(v);if(y<Y0-1||y>Y1+1)return'';const dash=Math.abs(v)<1e-9?' stroke-dasharray="3 3"':'';return `<line x1="${X0}" y1="${y.toFixed(1)}" x2="${X1}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" opacity=".4"${dash}/>`;}).join('');
+    const ylabels=ylv.map(v=>{const y=vy(v);if(y<Y0-1||y>Y1+1)return'';const lbl=Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':String(Math.round(v));return `<div style="position:absolute;top:${y.toFixed(1)}px;left:0;width:calc(${pctX(X0)}% - 5px);text-align:right;transform:translateY(-50%);font-size:9px;line-height:1;color:var(--hint)">${lbl}</div>`;}).join('');
     const spanDays=(endT-startT)/86400000;let xb=[];
     if(spanDays<=45){for(let i=1;;i++){const tt=startT+i*7*86400000;if(tt>=endT)break;xb.push(tt);}}
     else{let d=new Date(startT);let cur=new Date(d.getFullYear(),d.getMonth()+1,1).getTime();while(cur<endT){xb.push(cur);cur=new Date(new Date(cur).getFullYear(),new Date(cur).getMonth()+1,1).getTime();}}
     const xgrid=xb.map(tt=>`<line x1="${tx(tt).toFixed(1)}" y1="${Y0}" x2="${tx(tt).toFixed(1)}" y2="${Y1}" stroke="var(--border)" stroke-width="1" opacity=".45"/>`).join('');
     let xlabels='';
-    if(spanDays<=45){xlabels=xb.map(tt=>{const dt=new Date(tt);return `<text x="${tx(tt).toFixed(1)}" y="132" text-anchor="middle" font-size="9" fill="var(--hint)">${dt.getDate()}/${dt.getMonth()+1}</text>`;}).join('');}
-    else{const bounds=[startT,...xb,endT];for(let i=0;i<bounds.length-1;i++){const mid=(bounds[i]+bounds[i+1])/2;const mon=new Date(bounds[i]).getMonth();xlabels+=`<text x="${tx(mid).toFixed(1)}" y="132" text-anchor="middle" font-size="9" fill="var(--hint)">${TH_MON[mon]}</text>`;}}
+    if(spanDays<=45){xlabels=xb.map(tt=>{const dt=new Date(tt);return `<div style="position:absolute;top:130px;left:${pctX(tx(tt))}%;transform:translateX(-50%);font-size:9px;line-height:1;color:var(--hint);white-space:nowrap">${dt.getDate()}/${dt.getMonth()+1}</div>`;}).join('');}
+    else{const bounds=[startT,...xb,endT];for(let i=0;i<bounds.length-1;i++){const mid=(bounds[i]+bounds[i+1])/2;const mon=new Date(bounds[i]).getMonth();xlabels+=`<div style="position:absolute;top:130px;left:${pctX(tx(mid))}%;transform:translateX(-50%);font-size:9px;line-height:1;color:var(--hint);white-space:nowrap">${TH_MON[mon]}</div>`;}}
     const line=pts.map((p,i)=>(i?'L':'M')+tx(p.t).toFixed(1)+','+vy(p.cum).toFixed(1)).join(' ');
     const area=line+` L${tx(endT).toFixed(1)},${Y1} L${tx(startT).toFixed(1)},${Y1} Z`;
-    chart=`<svg style="display:block;width:100%;height:150px" viewBox="0 0 360 150" preserveAspectRatio="none">
+    chart=`<div style="position:relative;width:100%;height:150px">
+      <svg style="display:block;width:100%;height:150px;overflow:visible" viewBox="-16 0 392 150" preserveAspectRatio="none">
       <defs><linearGradient id="eqfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0D7377" stop-opacity="0.20"/><stop offset="100%" stop-color="#0D7377" stop-opacity="0"/></linearGradient></defs>
-      ${grid}${xgrid}${xlabels}
+      ${grid}${xgrid}
       <path d="${area}" fill="url(#eqfill)"/>
       <path d="${line}" fill="none" stroke="#0D7377" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
       <circle cx="${tx(endT).toFixed(1)}" cy="${vy(pts[pts.length-1].cum).toFixed(1)}" r="3.5" fill="#0D7377"/>
-    </svg>`;
+    </svg>${ylabels}${xlabels}</div>`;
   }
   return `<div class="card">${head}${sel}${chart}<div style="text-align:center;padding:2px 15px 12px;font-size:11px;color:var(--hint)">cumulative net P/L</div></div>`;
 }
@@ -807,9 +882,10 @@ async function pullFromCloud(){
     snap.forEach(doc=>cloudRecs.push(doc.data()));
     const local=loadRecords();
     const localIds=new Set(local.records.map(r=>r.id));
-    let added=0, skipped=0, invalid=0;
+    let added=0, skipped=0, invalid=0, tomb=0;
     for(const rec of cloudRecs){
       if(!isValidRecord(rec)){invalid++;continue;}
+      if(isTombstoned(rec.id)){tomb++;continue;}
       if(localIds.has(rec.id)){
         skipped++;
       }else{
@@ -827,7 +903,7 @@ async function pullFromCloud(){
     }
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${invalid?' · '+invalid+' invalid':''}`;
     renderRecords();
     setTimeout(()=>{
       if(cloudStatus==='synced'){
@@ -865,6 +941,220 @@ function g(id){return document.getElementById(id)}
 function f(n,d=2){return isFinite(n)?n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'}
 function fSign(n,d=2){if(!isFinite(n))return '—'; return (n>=0?'+':'')+f(n,d);}
 const BIN_SVG='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>';
+const PEN_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+
+// ── transient toast ──
+function ctdToast(msg,bad){
+  let t=document.getElementById('ctd-toast');
+  if(!t){t=document.createElement('div');t.id='ctd-toast';t.className='ctd-toast';document.body.appendChild(t);}
+  t.textContent=msg;t.style.background=bad?'#FF3B30':'#34C759';
+  t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2400);
+}
+
+// ── Tombstones (deleted record ids — guards Pull from resurrecting) ──
+const TOMB_KEY='ctd_tombstones';
+function loadTombstones(){try{const r=localStorage.getItem(TOMB_KEY);return r?JSON.parse(r):[];}catch(e){return[];}}
+function saveTombstones(list){try{localStorage.setItem(TOMB_KEY,JSON.stringify(list));}catch(e){}}
+function isTombstoned(id){return loadTombstones().some(t=>t.id===id);}
+function addTombstone(id){const l=loadTombstones();if(!l.some(t=>t.id===id)){l.push({id,deletedAt:nowStamp()});saveTombstones(l);}}
+function removeTombstone(id){saveTombstones(loadTombstones().filter(t=>t.id!==id));renderRecords();}
+function clearTombstones(){saveTombstones([]);renderRecords();}
+function tombstonePanelHTML(){
+  const l=loadTombstones();if(!l.length)return '';
+  const rows=l.map(t=>`<div class="tomb-row"><div class="info"><div class="tid">${escHtml(t.id)}</div><div class="tdate">deleted ${escHtml(t.deletedAt||'')}</div></div><button class="restore" onclick="removeTombstone('${escHtml(t.id)}')">Restore</button></div>`).join('');
+  return `<div class="tomb"><div class="tomb-h" onclick="this.parentNode.querySelector('.tomb-body').classList.toggle('on')"><span class="ic">🗑</span><span class="tt">Deleted (tombstoned)</span><span class="cnt">${l.length}</span><span style="color:var(--hint);font-size:13px">▾</span></div><div class="tomb-body">${rows}<button class="tomb-clear" onclick="clearTombstones()">Clear all tombstones</button></div></div>`;
+}
+
+// ── targeted cloud writes (edit=overwrite doc · delete=remove doc) ──
+async function cloudSetRecord(rec){
+  if(!fbUser||!fbDb)return;
+  try{await userRecordsRef().doc(rec.id).set(JSON.parse(JSON.stringify(rec)));}
+  catch(e){console.error('cloud set failed',e);}
+}
+async function cloudDeleteRecord(id){
+  if(!fbUser||!fbDb)return;
+  try{await userRecordsRef().doc(id).delete();}
+  catch(e){console.error('cloud delete failed',e);}
+}
+
+// ── Edit Trade ──────────────────────────────────────
+let editState=null;
+function openEditRecord(id){
+  const rec=loadRecords().records.find(r=>r.id===id);
+  if(!rec){ctdToast('ไม่พบ record',true);return;}
+  const src=rec.source||{};const e=src.entry||{};
+  const exits=[];
+  ['cl','t1','t2','t3'].forEach(k=>{const x=src.exit&&src.exit[k];if(x&&x.price)exits.push(Object.assign({},x));});
+  editState={id,entry:{
+    inst:(e.inst||'').toUpperCase(),dir:e.dir==='short'?'short':'long',date:e.date||'',
+    price:e.price||'',sl:e.sl||'',usedLot:e.usedLot||'',lev:e.lev||'25',strategy:e.strategy||'',
+    rmode:e.rmode||'',rpt:e.rpt||'',vsd:e.vsd||'',vsf:e.vsf||'',
+    entryScore:e.entryScore||'',entryNote:e.entryNote||'',exitNote:(src.exit&&src.exit.note)||''
+  },exits};
+  const lbl=document.getElementById('ed-idlabel');if(lbl)lbl.textContent=id;
+  renderEditForm();
+  document.getElementById('edit-overlay').classList.add('on');
+}
+function closeEditRecord(e){
+  if(e&&e.currentTarget!==e.target)return;
+  const o=document.getElementById('edit-overlay');if(o)o.classList.remove('on');
+  editState=null;
+}
+function renderEditForm(){
+  if(!editState)return;
+  const en=editState.entry;
+  const symOpts=Object.keys(SYMBOLS).filter(k=>SYMBOLS[k].unit!=null)
+    .map(k=>`<option ${k===en.inst?'selected':''}>${k}</option>`).join('');
+  let h=`<div class="ed-warn">⚠️ การแก้ไขจะ <b>เขียนทับ record เดิม</b> (คง id เดิม) · Net/R/Outcome/Holding คำนวณใหม่ทั้งหมด · ${fbUser?'บันทึกแล้ว sync cloud อัตโนมัติ':'ยังไม่ sign-in — บันทึกเฉพาะเครื่อง'}</div>`;
+  // ENTRY
+  h+=`<div class="ed-sec"><div class="ed-sech">Entry / Position</div>
+    <div class="ed-f"><span class="k req">Symbol</span><select id="ed-inst" onchange="editRecalc()">${symOpts}</select></div>
+    <div class="ed-f"><span class="k req">Direction</span><div class="ed-seg">
+      <button class="${en.dir==='long'?'on':''}" onclick="editSetDir('long')">Long</button>
+      <button class="${en.dir==='short'?'on':''}" onclick="editSetDir('short')">Short</button></div></div>
+    <div class="ed-f"><span class="k req">Entry Date</span><input id="ed-date" value="${escAttr(en.date)}" placeholder="dd/mm/yy hh:mm"></div>
+    <div class="ed-f"><span class="k req">Entry</span><input id="ed-price" value="${escAttr(en.price)}" inputmode="decimal" oninput="editRecalc()"></div>
+    <div class="ed-f"><span class="k">SL (Border)</span><input id="ed-sl" value="${escAttr(en.sl)}" inputmode="decimal" oninput="editRecalc()"></div>
+    <div class="ed-f"><span class="k req">Lot (entry)</span><input id="ed-lot" value="${escAttr(en.usedLot)}" inputmode="decimal" oninput="editRecalc()"></div>
+    <div class="ed-f"><span class="k req">Lev</span><input id="ed-lev" value="${escAttr(en.lev)}" inputmode="decimal"></div>
+    <div class="ed-f"><span class="k">Strategy</span>${edSelect('id="ed-strategy" onchange="editRecalc()"',STRATEGIES,en.strategy)}</div>
+    <div class="ed-f"><span class="k">Vola %</span><input id="ed-vsd" value="${escAttr(en.vsd)}" inputmode="decimal"></div>
+    <div class="ed-f"><span class="k">SF</span><input id="ed-vsf" value="${escAttr(en.vsf)}" inputmode="decimal"></div>
+    <div class="ed-f"><span class="k">Entry Score</span><input id="ed-escore" value="${escAttr(en.entryScore)}" inputmode="decimal" placeholder="—"></div>
+  </div>`;
+  // EXITS
+  editState.exits.forEach((ex,i)=>{
+    const isCut=String(ex.method||'').trim().toLowerCase()==='cutloss';
+    h+=`<div class="ed-sec"><div class="ed-exh"><span class="tag ${isCut?'cl':''}">EXIT · ${isCut?'CL':'#'+(i+1)}</span><button class="ed-delx" data-step="0" onclick="editDelExit(${i},this)">Delete exit</button></div>
+      <div class="ed-f"><span class="k">Date</span><input data-ex="${i}" data-f="date" value="${escAttr(ex.date)}" placeholder="dd/mm/yy hh:mm"></div>
+      <div class="ed-f"><span class="k req">Price</span><input data-ex="${i}" data-f="price" value="${escAttr(ex.price)}" inputmode="decimal" oninput="editRecalc()"></div>
+      <div class="ed-f"><span class="k req">Lot</span><input data-ex="${i}" data-f="lot" value="${escAttr(ex.lot)}" inputmode="decimal" oninput="editRecalc()"></div>
+      <div class="ed-f"><span class="k">Method</span>${edSelect(`data-ex="${i}" data-f="method" onchange="editOnMethod()"`,EXIT_METHODS,ex.method)}</div>
+      <div class="ed-f"><span class="k">Swap</span><input data-ex="${i}" data-f="swap" value="${escAttr(ex.swap)}" inputmode="decimal" oninput="editRecalc()"></div>
+      <div class="ed-f"><span class="k">Com</span><input data-ex="${i}" data-f="com" value="${escAttr(ex.com)}" inputmode="decimal" oninput="editRecalc()"></div>
+    </div>`;
+  });
+  if(editState.exits.length<4)h+=`<button class="ed-addx" onclick="editAddExit()">+ Add exit</button>`;
+  // NOTES
+  h+=`<div class="ed-sec"><div class="ed-sech">Notes</div>
+    <div class="ed-f"><span class="k">Entry Note</span><input id="ed-enote" value="${escAttr(en.entryNote)}" placeholder="—"></div>
+    <div class="ed-f"><span class="k">Exit Note</span><input id="ed-xnote" value="${escAttr(en.exitNote)}" placeholder="—"></div>
+  </div>`;
+  document.getElementById('edit-body').innerHTML=h;
+  editRecalc();
+}
+function escAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function editSetDir(d){syncEditFromDOM();editState.entry.dir=d;renderEditForm();}
+function editAddExit(){syncEditFromDOM();if(editState.exits.length>=4){editErr('สูงสุด 4 ไม้');return;}editState.exits.push({date:'',price:'',lot:'',method:'',score:'',swap:'',com:'',vat:''});renderEditForm();}
+function editDelExit(i,btn){
+  const step=btn?(btn.dataset.step||'0'):'2';
+  if(step==='0'){btn.dataset.step='1';btn.textContent='Delete exit?';btn.style.fontWeight='700';clearTimeout(btn._t);btn._t=setTimeout(()=>resetDelX(btn),2500);return;}
+  if(step==='1'){btn.dataset.step='2';btn.textContent='Confirm delete ✕';clearTimeout(btn._t);btn._t=setTimeout(()=>resetDelX(btn),2500);return;}
+  if(btn)clearTimeout(btn._t);
+  syncEditFromDOM();editState.exits.splice(i,1);renderEditForm();
+}
+function resetDelX(btn){if(!btn)return;btn.dataset.step='0';btn.textContent='Delete exit';btn.style.fontWeight='600';}
+function editOnMethod(){syncEditFromDOM();renderEditForm();}
+const EXIT_METHODS=['Cutloss','MA Float','PC Float','Trail Float','Vola Fix','EoWk','Trail Cut'];
+function edSelect(attrs,options,cur){
+  cur=cur==null?'':String(cur);
+  const opts=['',...options];
+  if(cur&&!opts.includes(cur))opts.push(cur);
+  return `<select ${attrs}>`+opts.map(o=>`<option value="${escAttr(o)}"${o===cur?' selected':''}>${o===''?'—':escHtml(o)}</option>`).join('')+`</select>`;
+}
+function setP1Dir(d){
+  const inp=g('p1-dir');if(inp)inp.value=d;
+  syncP1DirSeg();
+  if(typeof calcPos==='function')calcPos(1);
+  if(typeof saveData==='function')saveData();
+}
+function syncP1DirSeg(){
+  const d=g('p1-dir')?.value||'long';
+  const seg=g('p1-dir-seg');if(!seg)return;
+  seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.textContent.trim().toLowerCase()===d));
+}
+function editErr(m){const el=document.getElementById('ed-err');if(el)el.textContent=m||'';}
+function syncEditFromDOM(){
+  if(!editState)return;
+  const v=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  const en=editState.entry;
+  en.inst=(v('ed-inst')||en.inst).toUpperCase();en.date=v('ed-date');en.price=v('ed-price');en.sl=v('ed-sl');
+  en.usedLot=v('ed-lot');en.lev=v('ed-lev');en.strategy=v('ed-strategy');en.vsd=v('ed-vsd');en.vsf=v('ed-vsf');
+  en.entryScore=v('ed-escore');en.entryNote=v('ed-enote');en.exitNote=v('ed-xnote');
+  editState.exits.forEach((ex,i)=>{
+    ['date','price','lot','method','swap','com'].forEach(f=>{
+      const el=document.querySelector(`#edit-body [data-ex="${i}"][data-f="${f}"]`);
+      if(el)ex[f]=el.value;
+    });
+  });
+}
+function editBuildPos(){
+  const en=editState.entry;
+  const inst=(en.inst||'').toUpperCase();
+  const sym=SYMBOLS[inst]||{unit:0};
+  const dir=en.dir==='short'?'short':'long';
+  const eStamp=normStamp(en.date);
+  const cut=[],rest=[];
+  editState.exits.forEach(ex=>{
+    if(!ex.price||!ex.lot)return;
+    if(String(ex.method||'').trim().toLowerCase()==='cutloss'&&!cut.length)cut.push(ex);
+    else rest.push(ex);
+  });
+  const mk=ex=>({date:normStamp(ex.date),price:String(ex.price),lot:String(ex.lot),method:ex.method||'',
+    score:ex.score||'',swap:ex.swap||'',com:ex.com||'',vat:ex.vat||''});
+  const exit={trailSL:'',note:en.exitNote||''};
+  ['cl','t1','t2','t3'].forEach(k=>exit[k]={price:'',date:'',method:'',lot:'',score:'',swap:'',com:'',vat:''});
+  if(cut.length)exit.cl=mk(cut[0]);
+  rest.slice(0,3).forEach((ex,i)=>{exit[['t1','t2','t3'][i]]=mk(ex);});
+  let lastDate='';['cl','t1','t2','t3'].forEach(k=>{const s=exit[k];if(s&&s.lot&&stampMs(s.date)>stampMs(lastDate))lastDate=s.date;});
+  const entryN=parseNum(en.price)||0,slN=parseNum(en.sl)||0,usedLot=parseFloat(en.usedLot)||0,lev=parseFloat(en.lev)||25;
+  const vsd=en.vsd||'',vsf=en.vsf||'';
+  const sld=entryN>0&&vsd?entryN*(parseFloat(vsd)/100)*(parseFloat(vsf)||1):Math.abs(entryN-slN);
+  return {version:'v1',id:editState.id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
+    entry:{date:eStamp,inst,dir,strategy:en.strategy||'',price:String(entryN),sl:String(slN),
+      rmode:en.rmode||'',rpt:en.rpt||'',vsd,vsf,sld:String(sld.toFixed(2)),
+      usedLot:String(usedLot),usedCV:String((usedLot*(sym.unit||0)*entryN).toFixed(0)),
+      lev:String(lev),entryScore:en.entryScore||'',entryNote:en.entryNote||''},
+    exit,eStamp,lastDate};
+}
+function editRecalc(){
+  if(!editState)return;editErr('');syncEditFromDOM();
+  try{
+    const pos=editBuildPos();const rec=buildRecord(pos);const e=rec.eval;
+    const col=e.realizedPL>0?'var(--green)':e.realizedPL<0?'var(--red)':'var(--text)';
+    const net=document.getElementById('ed-pv-net');net.textContent=fSign(e.realizedPL,2);net.style.color=col;
+    document.getElementById('ed-pv-r').textContent=fSign(e.rMultiple,2)+'R';
+    const out=document.getElementById('ed-pv-out');out.textContent=e.outcome;out.style.color=col;
+  }catch(err){}
+}
+function editSave(){
+  if(!editState)return;
+  syncEditFromDOM();
+  const en=editState.entry,inst=(en.inst||'').toUpperCase();
+  if(!SYMBOLS[inst]||SYMBOLS[inst].unit==null){editErr('Symbol ไม่ถูกต้อง');return;}
+  if(!(parseNum(en.price)>0)){editErr('ต้องมี Entry price');return;}
+  if(!normStamp(en.date)){editErr('ต้องมี Entry Date');return;}
+  const validExits=editState.exits.filter(x=>x.price&&x.lot);
+  if(!validExits.length){editErr('ต้องมีไม้ปิดอย่างน้อย 1 ไม้');return;}
+  const usedLot=parseFloat(en.usedLot)||0;
+  const sumExit=validExits.reduce((s,x)=>s+(parseFloat(x.lot)||0),0);
+  if(usedLot>0&&sumExit>usedLot+0.0001){editErr(`รวม lot ปิด (${f(sumExit,2)}) เกิน lot เข้า (${f(usedLot,2)})`);return;}
+  const pos=editBuildPos();
+  let rec;try{rec=buildRecord(pos);}catch(e){editErr('คำนวณไม่ได้');return;}
+  rec.eval.holdingStr=holdingBetween(pos.eStamp,pos.lastDate);
+  const data=loadRecords();
+  const i=data.records.findIndex(r=>r.id===rec.id);
+  const prev=i>=0?data.records[i]:null;
+  rec.editCount=((prev&&prev.editCount)||0)+1;
+  rec.lastEditedAt=nowStamp();
+  if(i>=0)data.records[i]=rec;else data.records.push(rec);
+  saveRecords(data);
+  removeTombstone(rec.id);
+  cloudSetRecord(rec);
+  closeEditRecord();
+  renderRecords();
+  ctdToast('✓ อัปเดตแล้ว'+(fbUser?' · synced':' · กด Push เพื่อ sync'));
+}
 function nowStamp(){const d=new Date();const p=v=>String(v).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${String(d.getFullYear()).slice(2)} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;}
 // strip commas/spaces from numeric input → float
 function parseNum(v){
@@ -918,7 +1208,7 @@ function updateSymInfo(n){
   const sym=getSymbol(g(`p${n}-inst`).value);
   const el=g(`p${n}-sym-info`);
   if(!el)return;
-  if(!sym.unit){el.textContent='⚠️ unit / pip size ยังไม่ได้กำหนด';el.style.color='var(--orange)';}
+  if(!sym||!sym.unit){el.textContent='⚠️ unit / pip size ยังไม่ได้กำหนด';el.style.color='var(--orange)';}
   else{el.textContent=`unit ${sym.unit.toLocaleString()} · pip size ${sym.pipSize} · ${sym.note}`;el.style.color='var(--hint)';}
 }
 function manualSave(){
@@ -984,6 +1274,7 @@ function loadData(){
       if(p.rmode&&p.rmode!=='fixed')setRiskMode(n,p.rmode);
       const ds=g(`p${n}-dir`);
       if(ds){ds.style.color=ds.value==='long'?'var(--green)':'var(--red)';ds.style.fontWeight='600';}
+      if(n===1)syncP1DirSeg();
       checkEntryScore(n);
     }
   }catch(e){}
@@ -1023,7 +1314,7 @@ function setRiskMode(n,mode){
 }
 function calcRisk(n){
   const sym=getSymbol(g(`p${n}-inst`).value);
-  const unit=sym.unit;const pipM=sym.pipM;
+  const unit=sym?sym.unit:null;const pipM=sym?sym.pipM:null;
   if(!unit){['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-margin','rc-lot'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});return;}
   const entry=parseNum(g(`p${n}-entry`).value)||0;
   const ids=['rc-slpct','rc-slpips','rc-sldist','rc-cv','rc-margin','rc-lot'];
@@ -1089,7 +1380,11 @@ function applyLot(n){
 }
 function calcPos(n){
   const sym=getSymbol(g(`p${n}-inst`).value);
-  const unit=sym.unit||100000;const pipM=sym.pipM||10000;
+  const unit=sym&&sym.unit?sym.unit:0;const pipM=sym&&sym.pipM?sym.pipM:0;
+  if(!unit){
+    ['margin','level','risk','cv','os-slpct','os-slpips'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
+    updateSymInfo(n);calcRisk(n);saveDataDebounced();return;
+  }
   const bal=parseNum(g('balance')?.value)||0;
   const lev=parseFloat(g(`p${n}-lev`).value)||25;
   const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
@@ -1123,7 +1418,8 @@ function saveSession(data){
 }
 function computePos(pos){
   const sym=getSymbol(pos.entry.inst);
-  const unit=sym.unit||100000;const pipM=sym.pipM||10000;
+  const badSymbol=!sym||sym.unit==null;
+  const unit=badSymbol?0:sym.unit;const pipM=badSymbol?0:sym.pipM;
   const entry=parseFloat(pos.entry.price)||0;
   const usedLot=parseFloat(pos.entry.usedLot)||0;
   const lev=parseFloat(pos.entry.lev)||25;
@@ -1168,7 +1464,7 @@ function computePos(pos){
   else if(totalExitLot>0)state='PARTIAL';
   else state='ACTIVE';
   const rr=risk>0?realizedPL/risk:0;
-  return{unit,pipM,entry,usedLot,lev,dir,sign,cv,margin,mlevel,slDist,risk,
+  return{unit,pipM,badSymbol,entry,usedLot,lev,dir,sign,cv,margin,mlevel,slDist,risk,
     realizedPL,totalExitLot,remainingLot,hasRealized,trailSL,trailSLD,trailSLDPips,
     totalSwap,totalCom,totalVat,totalFees,netPL,hasFees,
     holdingStr,state,rr};
@@ -1688,6 +1984,7 @@ function buildRecord(pos){
     eval:{
       // ── asset-agnostic core ──
       symbol:pos.entry.inst,
+      badSymbol:c.badSymbol||false,
       strategy:pos.entry.strategy||'',
       direction:pos.entry.dir,
       entryPrice:c.entry,
@@ -1749,6 +2046,138 @@ function toISODate(s){
   return `${2000+(+m[3])}-${m[2]}-${m[1]} ${(m[4]||'00').padStart(2,'0')}:${m[5]||'00'}:${m[6]||'00'}`;
 }
 function fmtLot(v){if(v===''||v==null)return '';const n=+v;return isFinite(n)?n.toFixed(8):'';}
+
+// ── Formatted Excel export (xlsx-js-style, lazy-loaded) ──
+function _num(v){const n=parseFloat(v);return (v===''||v==null||!isFinite(n))?'':n;}
+function _round2(v){return Math.round((+v||0)*100)/100;}
+function buildExportRows(){
+  const data=loadRecords();
+  const tradeCols=['ID','Symbol','Strategy','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode','Edited','Edits'];
+  const slotCols=['cl','t1','t2','t3'];
+  const exitCols=[];
+  slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Date`,`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
+  const rows=[[...tradeCols,...exitCols]];
+  data.records.forEach(r=>{
+    const e=r.eval;const x=e.ext||{};
+    const row=[r.id,e.symbol,e.strategy||'',e.direction,toISODate(r.source?.entry?.date||''),_num(e.entryPrice),_num(e.entrySL),_num(x.usedLot),_num(x.lev),_num(e.riskAmount),
+      _num(e.grossPL!=null?e.grossPL:e.realizedPL),_num(e.totalFees!=null?e.totalFees:0),_num(e.realizedPL),
+      _num(e.rMultiple),e.outcome,e.entryScore,e.holdingStr,x.riskMode||'',r.lastEditedAt||'',r.editCount||0];
+    const bySlot={};(e.exits||[]).forEach(ex=>bySlot[ex.slot]=ex);
+    slotCols.forEach(s=>{
+      const ex=bySlot[s];
+      if(ex){const gv=ex.gross!=null?ex.gross:ex.pl;row.push(toISODate(ex.date||''),_num(ex.price),_num(ex.lot),ex.method||'',ex.score||'',_num(ex.swap),_num(ex.com),_num(ex.vat),_num(gv),_num(ex.pl));}
+      else row.push('','','','','','','','','','');
+    });
+    rows.push(row);
+  });
+  return rows;
+}
+function portfolioSummary(records){
+  const recs=records||[];
+  const n=recs.length;
+  const totalPL=recs.reduce((s,r)=>s+(r.eval.realizedPL||0),0);
+  const winRecs=recs.filter(r=>r.eval.outcome==='win');
+  const lossRecs=recs.filter(r=>r.eval.outcome==='loss');
+  const wins=winRecs.length;
+  const winRate=n?wins/n*100:0;
+  const rVals=recs.map(r=>r.eval.rMultiple).filter(v=>isFinite(v));
+  const avgR=rVals.length?rVals.reduce((a,b)=>a+b,0)/rVals.length:0;
+  const grossProfit=winRecs.reduce((s,r)=>s+(r.eval.realizedPL||0),0);
+  const grossLoss=Math.abs(lossRecs.reduce((s,r)=>s+(r.eval.realizedPL||0),0));
+  const profitFactor=grossLoss>0?grossProfit/grossLoss:(grossProfit>0?Infinity:0);
+  const expectancy=n?totalPL/n:0;
+  const avgWin=winRecs.length?grossProfit/winRecs.length:0;
+  const avgLoss=lossRecs.length?-grossLoss/lossRecs.length:0;
+  const maxDD=maxDrawdown(cumulativeEquity(recs));
+  return {n,totalPL,wins,winRate,avgR,grossProfit,grossLoss,profitFactor,expectancy,avgWin,avgLoss,maxDD};
+}
+function buildSummaryAoa(records){
+  const s=portfolioSummary(records);
+  const pf=s.profitFactor===Infinity?'∞':_round2(s.profitFactor);
+  return [
+    ['CTD Portfolio Summary'],['Exported',nowStamp()],[],
+    ['Metric','Value'],
+    ['Total P/L',_round2(s.totalPL)],['Trades',s.n],
+    ['Win rate %',_round2(s.winRate)],['Wins / Losses',`${s.wins} / ${s.n-s.wins}`],
+    ['Avg R',_round2(s.avgR)],['Profit Factor',pf],
+    ['Expectancy /trade',_round2(s.expectancy)],
+    ['Avg Win',_round2(s.avgWin)],['Avg Loss',_round2(s.avgLoss)],
+    ['Max Drawdown',_round2(-s.maxDD)],
+    ['Gross Profit',_round2(s.grossProfit)],['Gross Loss',_round2(-s.grossLoss)],
+  ];
+}
+const XLSX_CDN='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+function loadXlsxLib(){
+  return new Promise((res,rej)=>{
+    if(window.XLSX&&window.XLSX.utils)return res(window.XLSX);
+    const sc=document.createElement('script');sc.src=XLSX_CDN;
+    sc.onload=()=>window.XLSX&&window.XLSX.utils?res(window.XLSX):rej(new Error('XLSX ไม่พร้อม'));
+    sc.onerror=()=>rej(new Error('โหลด Excel library ไม่ได้ (ต้องออนไลน์)'));
+    document.head.appendChild(sc);
+  });
+}
+async function exportXlsx(){
+  const data=loadRecords();if(!data.records.length){ctdToast('ยังไม่มี record',true);return;}
+  let XLSX;try{XLSX=await loadXlsxLib();}catch(err){ctdToast(err.message||'โหลด library ไม่ได้',true);return;}
+  const aoa=buildExportRows();
+  const head=aoa[0];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  const ref=XLSX.utils.decode_range(ws['!ref']);const ncol=ref.e.c+1;
+  const iNet=head.indexOf('Net $'),iOut=head.indexOf('Outcome'),iR=head.indexOf('R-mult');
+  const GREEN='1B7F3B',RED='C0392B',INK='2A2A2A',MUTE='8A8A8A',TEAL='0D7377',ZEB='F3F7F7';
+  // per-column number format (prices keep full precision; money 2dp)
+  const fmtFor=h=>{
+    if(h==='Entry'||h==='SL'||/Price$/.test(h))return '0.#####';
+    if(/Lot$/.test(h)||h==='Lot')return '0.###';
+    if(h==='R-mult')return '0.00';
+    if(h==='Lev'||h==='Edits'||/ Sc$/.test(h)||h==='EntryScore')return '0';
+    if(/\$$/.test(h)||/(Gross|Net|Swap|Com|VAT|Risk|Fees)/.test(h))return '#,##0.00';
+    return '';
+  };
+  const colFmt=head.map(fmtFor);
+  const groupStarts=new Set([head.indexOf('Dir'),'CL Date','T1 Date','T2 Date','T3 Date'].map(h=>typeof h==='number'?h:head.indexOf(h)).filter(i=>i>0));
+  const GDIV='B8C9C9';
+  // header row: teal fill, white bold, thin teal underline, white divider before each exit group
+  for(let c=0;c<ncol;c++){const a=XLSX.utils.encode_cell({r:0,c});if(!ws[a])continue;const bd={bottom:{style:'medium',color:{rgb:TEAL}}};if(groupStarts.has(c))bd.left={style:'medium',color:{rgb:'FFFFFF'}};ws[a].s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:TEAL}},alignment:{horizontal:'center',vertical:'center'},border:bd};}
+  // data rows: no borders, subtle zebra, right-align numbers, color Net/R/Outcome
+  for(let r=1;r<=ref.e.r;r++){
+    const zebra=(r%2===0);
+    for(let c=0;c<ncol;c++){
+      const a=XLSX.utils.encode_cell({r,c});const cell=ws[a];if(!cell)continue;
+      const s={alignment:{vertical:'center'}};
+      if(zebra)s.fill={fgColor:{rgb:ZEB}};
+      if(typeof cell.v==='number'){s.alignment.horizontal='right';if(colFmt[c])s.numFmt=colFmt[c];}
+      if((c===iNet||c===iR)&&typeof cell.v==='number')s.font={bold:c===iNet,color:{rgb:cell.v>0?GREEN:cell.v<0?RED:INK}};
+      if(c===iOut){const v=String(cell.v);s.font={bold:true,color:{rgb:v==='win'?GREEN:v==='loss'?RED:MUTE}};s.alignment.horizontal='center';}
+      if(groupStarts.has(c))s.border={left:{style:'thin',color:{rgb:GDIV}}};
+      cell.s=s;
+    }
+  }
+  ws['!cols']=head.map(h=>({wch:Math.max(9,Math.min(18,String(h).length+2))}));
+  ws['!rows']=[{hpt:20}];
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:0,c:ncol-1}})};
+  ws['!freeze']={xSplit:0,ySplit:1};
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Trades');
+  // Summary — clean
+  const ws2=XLSX.utils.aoa_to_sheet(buildSummaryAoa(data.records));
+  ws2['!cols']=[{wch:22},{wch:16}];
+  const R=a=>ws2[a];
+  if(R('A1'))R('A1').s={font:{bold:true,sz:14,color:{rgb:TEAL}}};
+  if(R('B2'))R('B2').s={font:{italic:true,color:{rgb:MUTE}}};
+  ['A4','B4'].forEach(a=>{if(R(a))R(a).s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:TEAL}},alignment:{horizontal:a[0]==='B'?'right':'left'}};});
+  const sref=XLSX.utils.decode_range(ws2['!ref']);
+  for(let r=4;r<=sref.e.r;r++){
+    const la='A'+(r+1),va='B'+(r+1),zebra=(r%2===1);
+    if(R(la))R(la).s={font:{color:{rgb:INK}},alignment:{horizontal:'left'},fill:zebra?{fgColor:{rgb:ZEB}}:undefined};
+    if(R(va)){const v=R(va).v,st={alignment:{horizontal:'right'},fill:zebra?{fgColor:{rgb:ZEB}}:undefined};if(typeof v==='number')st.numFmt='#,##0.00';R(va).s=st;}
+  }
+  if(R('B5')&&typeof R('B5').v==='number'){const v=R('B5').v;R('B5').s={alignment:{horizontal:'right'},numFmt:'#,##0.00',font:{bold:true,color:{rgb:v>0?GREEN:v<0?RED:INK}}};}
+  XLSX.utils.book_append_sheet(wb,ws2,'Summary');
+  const d=new Date();const p=v=>String(v).padStart(2,'0');
+  try{XLSX.writeFile(wb,`CTD_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.xlsx`);ctdToast('✓ Export Excel แล้ว');}
+  catch(err){ctdToast('เขียนไฟล์ไม่ได้',true);}
+}
 function downloadBlob(blob,filename){
   try{
     const url=URL.createObjectURL(blob);
@@ -1928,7 +2357,10 @@ function buildSyncGuideUI(){
   h+=`<div style="font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.3px;margin:0 2px 6px">Offline backup</div>`;
   h+=`<div style="display:flex;gap:8px;margin-bottom:4px">
     <div style="flex:1;background:rgba(128,128,128,.06);border:.5px solid var(--border);border-radius:10px">
-      <button onclick="exportFileStep(this)" data-step="0" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">${DL_ICON} Export file</button>
+      <button onclick="exportFileStep(this)" data-step="0" data-kind="csv" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--sub);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">${DL_ICON} Export file</button>
+    </div>
+    <div style="flex:1;background:rgba(128,128,128,.06);border:.5px solid var(--border);border-radius:10px">
+      <button onclick="exportXlsxStep(this)" data-step="0" data-kind="xlsx" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:#1D6F42;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">${DL_ICON} Excel</button>
     </div>
     <div style="flex:1;background:rgba(128,128,128,.06);border:.5px solid var(--border);border-radius:10px">
       <button onclick="openImport()" style="width:100%;padding:10px 0;border:none;border-radius:10px;background:transparent;color:var(--acc);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-user-select:none;user-select:none">⬆ Import file</button>
@@ -2037,17 +2469,16 @@ function deleteRecord(id){
   data.records=data.records.filter(r=>r.id!==id);
   if(data.exportedCount>data.records.length)data.exportedCount=data.records.length;
   saveRecords(data);recArmId=null;
+  addTombstone(id);          // guard Pull from resurrecting
+  cloudDeleteRecord(id);     // remove from cloud too (if signed in)
   if(!data.records.length)recEdit=false;
   renderRecords();
 }
 function exportFileStep(btn){
   const step=btn.dataset.step||'0';
   if(step==='0'){
-    btn.innerHTML=`${DL_ICON} Export JSON + CSV?`;
+    btn.innerHTML=`${DL_ICON} ยืนยัน Export?`;
     btn.dataset.step='1';btn.style.background='var(--acc)';btn.style.color='#fff';
-    clearTimeout(btn._te);btn._te=setTimeout(()=>resetExportBtn(btn),2500);
-  }else if(step==='1'){
-    btn.innerHTML=`${DL_ICON} ยืนยัน Export`;btn.dataset.step='2';
     clearTimeout(btn._te);btn._te=setTimeout(()=>resetExportBtn(btn),2500);
   }else{
     clearTimeout(btn._te);
@@ -2057,9 +2488,24 @@ function exportFileStep(btn){
     setTimeout(()=>resetExportBtn(btn),2000);
   }
 }
+function exportXlsxStep(btn){
+  const step=btn.dataset.step||'0';
+  if(step==='0'){
+    btn.innerHTML=`${DL_ICON} ยืนยัน Excel?`;
+    btn.dataset.step='1';btn.style.background='#1D6F42';btn.style.color='#fff';
+    clearTimeout(btn._te);btn._te=setTimeout(()=>resetExportBtn(btn),2500);
+  }else{
+    clearTimeout(btn._te);
+    exportXlsx();
+    btn.innerHTML='✓ กำลัง Export…';btn.style.background='#34C759';btn.style.color='#fff';
+    btn.dataset.step='done';
+    setTimeout(()=>resetExportBtn(btn),2200);
+  }
+}
 function resetExportBtn(btn){
-  btn.dataset.step='0';btn.style.background='';btn.style.color='';
-  btn.innerHTML=`${DL_ICON} Export file`;
+  btn.dataset.step='0';btn.style.background='transparent';
+  if(btn.dataset.kind==='xlsx'){btn.style.color='#1D6F42';btn.innerHTML=`${DL_ICON} Excel`;}
+  else{btn.style.color='var(--sub)';btn.innerHTML=`${DL_ICON} Export file`;}
   clearTimeout(btn._te);
 }
 function clearRecords(btn){
@@ -2109,7 +2555,7 @@ function renderRecords(){
   if(stratFilter!=='all')recs=recs.filter(r=>(r.eval.strategy||'')===stratFilter);
   // sort
   const rank=o=>o==='win'?0:o==='breakeven'?1:2;
-  if(recSort==='latest')recs.reverse();
+  if(recSort==='latest')recs.sort((a,b)=>recDateMs(b)-recDateMs(a)||(a.eval.symbol>b.eval.symbol?1:-1));
   else if(recSort==='pl')recs.sort((a,b)=>b.eval.realizedPL-a.eval.realizedPL);
   else if(recSort==='wl')recs.sort((a,b)=>rank(a.eval.outcome)-rank(b.eval.outcome)||b.eval.realizedPL-a.eval.realizedPL);
   // summary (on filtered set)
@@ -2246,6 +2692,7 @@ function renderRecords(){
           <div class="rec-brow"><span class="rec-bl">R-mult</span><span class="rec-bv">${fSign(e.rMultiple,2)}R</span></div>
           <div class="rec-brow"><span class="rec-bl">Outcome</span><span class="rec-bv" style="color:${outcomeC}">${e.outcome}</span></div>
           <div class="rec-brow"><span class="rec-bl">Holding</span><span class="rec-bv">${escHtml(e.holdingStr||'—')}</span></div>
+          ${r.lastEditedAt?`<div class="rec-brow"><span class="rec-bl">แก้ไข</span><span class="rec-bv" style="color:var(--orange)">${escHtml(r.lastEditedAt)} · ${r.editCount||1}×</span></div>`:''}
         </div>`;
         p+=`<div class="rec-2col">${sumBox}${feesBox}</div>`;
         // notes
@@ -2254,6 +2701,7 @@ function renderRecords(){
           if(e.entryNote)p+=`<div style="font-size:12px;padding:2px 0"><span style="color:var(--hint)">Entry: </span>${escHtml(e.entryNote)}</div>`;
           if(e.exitNote)p+=`<div style="font-size:12px;padding:2px 0"><span style="color:var(--hint)">Exit: </span>${escHtml(e.exitNote)}</div>`;
         }
+        p+=`<button class="rec-editbtn" onclick="event.stopPropagation();openEditRecord('${escAttr(id)}')">${PEN_SVG} Edit Trade</button>`;
         p+='</div>';
         panel=p;
       }
@@ -2261,8 +2709,8 @@ function renderRecords(){
       html+=`<div style="${bb}"><div onclick="toggleRecExpand('${id}')" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer">
         ${minus}
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:600;color:var(--text)">${e.symbol} <span style="color:${dirColor};font-size:12px;font-weight:500">${e.direction==='long'?'Long':'Short'}</span>${e.strategy?` <span class="strat-chip">${escHtml(e.strategy)}</span>`:''}</div>
-          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${r.source?.entry?.date||r.archivedAt} · ${e.holdingStr}${noteHint}</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);display:flex;flex-wrap:wrap;align-items:center;gap:3px 6px">${e.badSymbol?'<span title="unknown symbol — P/L may be invalid">⚠️</span>':''}<span>${e.symbol}</span><span style="color:${dirColor};font-size:12px;font-weight:500">${e.direction==='long'?'Long':'Short'}</span>${e.strategy?`<span class="strat-chip">${escHtml(e.strategy)}</span>`:''}</div>
+          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${r.source?.entry?.date||r.archivedAt} · ${e.holdingStr}${noteHint}${r.lastEditedAt?' · ✏️':''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:14px;font-weight:600;color:${plC}">${fSign(e.realizedPL,2)}</div>
@@ -2279,6 +2727,7 @@ function renderRecords(){
     <button onclick="clearRecords(this)" data-step="0" style="width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border:none;border-radius:12px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:600;cursor:pointer">${BIN_SVG} Clear all records</button>
     <div style="font-size:11px;color:var(--hint);text-align:center;padding:10px 0">localStorage + Cloud sync · กด Push เพื่อ backup ขึ้น cloud</div>
   </div>`;
+  html+=tombstonePanelHTML();
   el.innerHTML=html;
 }
 
@@ -2326,9 +2775,11 @@ function buildPos(){
         <input type="text" id="p1-edate" value="" placeholder="dd/mm/yy" style="width:140px;font-size:14px" oninput="saveData()" onblur="onEdateBlur(this)">
       </div>
       <div class="row"><div class="rl">Direction</div>
-        <select id="p1-dir" onchange="calcPos(1)">
-          <option value="long">Long</option><option value="short">Short</option>
-        </select>
+        <div class="ed-seg" id="p1-dir-seg" style="width:160px">
+          <button type="button" class="on" onclick="setP1Dir('long')">Long</button>
+          <button type="button" onclick="setP1Dir('short')">Short</button>
+        </div>
+        <input type="hidden" id="p1-dir" value="long">
       </div>
       <div class="row entry-row"><div class="rl">Entry price</div>
         <input type="text" id="p1-entry" value="" inputmode="decimal" oninput="calcPos(1);calcRisk(1)" onchange="calcPos(1);calcRisk(1)" onblur="onPriceBlur(this)">
@@ -2455,7 +2906,7 @@ function buildPacket(n){
   const entry=parseNum(g(`p${n}-entry`)?.value)||0;
   const sl=parseNum(g(`p${n}-sl`)?.value)||0;
   const lot=parseFloat(g(`p${n}-lot`)?.value)||0;
-  const cv=lot*sym.unit*entry;
+  const cv=lot*(sym&&sym.unit?sym.unit:0)*entry;
   const lev=parseFloat(g(`p${n}-lev`)?.value)||25;
   const vsd=g(`p${n}-vsd`)?.value||'';
   const vsf=g(`p${n}-vsf`)?.value||'';
