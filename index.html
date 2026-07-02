@@ -900,12 +900,13 @@ async function pullPositions(){
     const snap=await pref.get();
     const data=loadSession();
     const recIds=new Set(loadRecords().records.map(r=>r.id));
+    const posTomb=tombIds('position');
     const localMap={};data.positions.forEach(p=>localMap[p.id]=p);
     let added=0,updated=0,removed=0;
     let delBatch=fbDb.batch(),delCnt=0;
     snap.forEach(d=>{
       const cp=d.data(),id=d.id;
-      if(recIds.has(id)){delBatch.delete(pref.doc(id));delCnt++;removed++;return;} // closed here → clean cloud
+      if(recIds.has(id)||posTomb.has(id)){delBatch.delete(pref.doc(id));delCnt++;removed++;return;} // closed or deleted here → clean cloud
       const lp=localMap[id];
       if(!lp){data.positions.push(cp);added++;}
       else if((cp.updatedAt||0)>(lp.updatedAt||0)){
@@ -913,11 +914,55 @@ async function pullPositions(){
         if(idx>=0)data.positions[idx]=cp;updated++;
       }
     });
-    // raw write to preserve pulled updatedAt (bypass re-stamp)
     try{localStorage.setItem(SK2,JSON.stringify(data));}catch(e){}
     if(delCnt>0)await delBatch.commit();
     return {added,updated,removed};
   }catch(e){return {added:0,updated:0,removed:0};}
+}
+// ── Unified tombstone sync (records + positions) ──
+async function cloudDeletePosition(id){
+  const uref=userDocRef();if(!uref)return;
+  try{
+    await uref.collection('positions').doc(id).delete();
+    await uref.collection('tombstones').doc(id).set({id,kind:'position',deletedAt:nowStamp()});
+  }catch(e){}
+}
+async function pushTombstones(){
+  const uref=userDocRef();if(!uref)return 0;
+  const tref=uref.collection('tombstones');
+  const recRef=userRecordsRef(),posRef=uref.collection('positions');
+  try{
+    const local=loadTombstones();
+    if(!local.length)return 0;
+    let batch=fbDb.batch(),cnt=0,n=0;
+    for(const t of local){
+      const kind=t.kind||'record';
+      batch.set(tref.doc(t.id),{id:t.id,kind,deletedAt:t.deletedAt||nowStamp()});n++;cnt++;
+      if(kind==='record'&&recRef){batch.delete(recRef.doc(t.id));cnt++;}
+      else if(kind==='position'){batch.delete(posRef.doc(t.id));cnt++;}
+      if(cnt>=400){await batch.commit();batch=fbDb.batch();cnt=0;}
+    }
+    if(cnt>0)await batch.commit();
+    return n;
+  }catch(e){return 0;}
+}
+async function pullTombstones(){
+  const uref=userDocRef();if(!uref)return {added:0,recRemoved:0,posRemoved:0};
+  const tref=uref.collection('tombstones');
+  try{
+    const snap=await tref.get();
+    const local=loadTombstones();
+    const map={};local.forEach(t=>{map[t.id]=t;});
+    let added=0;
+    snap.forEach(d=>{const ct=d.data();if(!map[ct.id]){local.push({id:ct.id,kind:ct.kind||'record',deletedAt:ct.deletedAt||nowStamp()});map[ct.id]=ct;added++;}});
+    saveTombstones(local);
+    // apply locally: purge tombstoned records + positions
+    let recRemoved=0,posRemoved=0;
+    const recTomb=tombIds('record'),posTomb=tombIds('position');
+    if(recTomb.size){const rd=loadRecords();const b=rd.records.length;rd.records=rd.records.filter(r=>!recTomb.has(r.id));recRemoved=b-rd.records.length;if(recRemoved)saveRecords(rd);}
+    if(posTomb.size){const sd=loadSession();const b=sd.positions.length;sd.positions=sd.positions.filter(p=>!posTomb.has(p.id));posRemoved=b-sd.positions.length;if(posRemoved){try{localStorage.setItem(SK2,JSON.stringify(sd));}catch(e){}}}
+    return {added,recRemoved,posRemoved};
+  }catch(e){return {added:0,recRemoved:0,posRemoved:0};}
 }
 
 async function pushToCloud(){
@@ -954,9 +999,10 @@ async function pushToCloud(){
     if(batchCount>0) await batch.commit();
     await pushBalance();
     const posR=await pushPositions();
+    const tombN=await pushTombstones();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
     if(typeof renderSession==='function')renderSession();
     renderRecords();
     setTimeout(()=>{
@@ -977,6 +1023,7 @@ async function pullFromCloud(){
   isSyncing=true; cloudStatus='pending'; cloudMsg='กำลัง Pull...';
   renderRecords();
   try{
+    const tombR=await pullTombstones();
     const ref=userRecordsRef();
     const snap=await ref.get();
     const cloudRecs=[];
@@ -1006,7 +1053,7 @@ async function pullFromCloud(){
     const posR=await pullPositions();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
     if(typeof renderSession==='function')renderSession();
     renderRecords();
     setTimeout(()=>{
@@ -1060,7 +1107,8 @@ const TOMB_KEY='ctd_tombstones';
 function loadTombstones(){try{const r=localStorage.getItem(TOMB_KEY);return r?JSON.parse(r):[];}catch(e){return[];}}
 function saveTombstones(list){try{localStorage.setItem(TOMB_KEY,JSON.stringify(list));}catch(e){}}
 function isTombstoned(id){return loadTombstones().some(t=>t.id===id);}
-function addTombstone(id){const l=loadTombstones();if(!l.some(t=>t.id===id)){l.push({id,deletedAt:nowStamp()});saveTombstones(l);}}
+function addTombstone(id,kind){kind=kind||'record';const l=loadTombstones();const ex=l.find(t=>t.id===id);if(ex){if(!ex.kind)ex.kind=kind;}else{l.push({id,kind,deletedAt:nowStamp()});}saveTombstones(l);}
+function tombIds(kind){return new Set(loadTombstones().filter(t=>(t.kind||'record')===kind).map(t=>t.id));}
 function removeTombstone(id){saveTombstones(loadTombstones().filter(t=>t.id!==id));renderRecords();}
 function clearTombstones(){saveTombstones([]);renderRecords();}
 function tombstonePanelHTML(){
@@ -1743,9 +1791,11 @@ function deletePos(posId){
     btn._t=setTimeout(()=>resetDeleteBtn(btn),2500);
   }else{
     resetDeleteBtn(btn);
+    addTombstone(posId,'position');
     const data=loadSession();
     data.positions=data.positions.filter(p=>p.id!==posId);
     saveSession(data);renderSession();
+    if(typeof cloudDeletePosition==='function')cloudDeletePosition(posId);
   }
 }
 function resetDeleteBtn(btn){
