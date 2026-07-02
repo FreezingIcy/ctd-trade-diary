@@ -679,17 +679,22 @@ function equityCurveSVG(recsFull){
     const endT=all[all.length-1].t;const days={'1m':30,'3m':90,'6m':180}[recPeriod];
     pts=all.filter(p=>p.t>=endT-days*86400000);
   }
+  const BAL=parseFloat(getBalance())||0;
   const lastCum=all.length?all[all.length-1].cum:0;
+  const lastEq=BAL+lastCum;
+  const peakEqAll=all.length?Math.max(...all.map(p=>BAL+p.cum)):BAL;
   const vColor=lastCum>0?'var(--green)':lastCum<0?'var(--red)':'var(--text)';
-  const head=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:13px 15px 4px"><span style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Equity Curve</span><span style="font-size:18px;font-weight:700;color:${vColor}">${fSign(lastCum,2)}</span></div>`;
+  const fUSD=v=>'$'+Math.round(v).toLocaleString('en-US');
+  const head=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:13px 15px 2px"><span style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Equity Curve</span><span style="font-size:18px;font-weight:700;color:${vColor}">${fSign(lastCum,2)}</span></div>`+
+    `<div style="display:flex;gap:14px;padding:0 15px 8px;font-size:11px;color:var(--sub)"><span>Balance <b style="color:var(--text)">${fUSD(BAL)}</b></span><span>Peak <b style="color:#E08A1E">${fUSD(peakEqAll)}</b></span><span>Now <b style="color:${vColor}">${fUSD(lastEq)}</b></span></div>`;
   let chart;
   if(pts.length<2){
     chart=`<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--hint)">ต้องมีอย่างน้อย 2 ไม้ในช่วงนี้</div>`;
   }else{
     const X0=34,X1=356,Y0=14,Y1=116;
-    const cums=pts.map(p=>p.cum);
-    let lo=Math.min(...cums),hi=Math.max(...cums);
-    if(recPeriod==='all'){lo=Math.min(0,lo);hi=Math.max(0,hi);}
+    const eqp=pts.map(p=>BAL+p.cum);
+    let pk=-Infinity;const peaks=eqp.map(v=>{pk=Math.max(pk,v);return pk;});
+    let lo=Math.min(BAL,Math.min(...eqp)),hi=Math.max(...peaks);
     if(lo===hi){lo-=1;hi+=1;}
     const padv=(hi-lo)*0.12;lo-=padv;hi+=padv;
     const startT=pts[0].t,endT=pts[pts.length-1].t;
@@ -706,18 +711,24 @@ function equityCurveSVG(recsFull){
     let xlabels='';
     if(spanDays<=45){xlabels=xb.map(tt=>{const dt=new Date(tt);return `<div style="position:absolute;top:130px;left:${pctX(tx(tt))}%;transform:translateX(-50%);font-size:9px;line-height:1;color:var(--hint);white-space:nowrap">${dt.getDate()}/${dt.getMonth()+1}</div>`;}).join('');}
     else{const bounds=[startT,...xb,endT];for(let i=0;i<bounds.length-1;i++){const mid=(bounds[i]+bounds[i+1])/2;const mon=new Date(bounds[i]).getMonth();xlabels+=`<div style="position:absolute;top:130px;left:${pctX(tx(mid))}%;transform:translateX(-50%);font-size:9px;line-height:1;color:var(--hint);white-space:nowrap">${TH_MON[mon]}</div>`;}}
-    const line=pts.map((p,i)=>(i?'L':'M')+tx(p.t).toFixed(1)+','+vy(p.cum).toFixed(1)).join(' ');
+    const line=pts.map((p,i)=>(i?'L':'M')+tx(p.t).toFixed(1)+','+vy(BAL+p.cum).toFixed(1)).join(' ');
+    const peakLine=pts.map((p,i)=>(i?'L':'M')+tx(p.t).toFixed(1)+','+vy(peaks[i]).toFixed(1)).join(' ');
+    const ddBand=peakLine+' '+pts.slice().reverse().map((p,j)=>{const i=pts.length-1-j;return 'L'+tx(p.t).toFixed(1)+','+vy(BAL+p.cum).toFixed(1);}).join(' ')+' Z';
+    const yBal=vy(BAL);
+    const balLine=`<line x1="${X0}" y1="${yBal.toFixed(1)}" x2="${X1}" y2="${yBal.toFixed(1)}" stroke="var(--hint)" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>`;
     const area=line+` L${tx(endT).toFixed(1)},${Y1} L${tx(startT).toFixed(1)},${Y1} Z`;
     chart=`<div style="position:relative;width:100%;height:150px">
       <svg style="display:block;width:100%;height:150px;overflow:visible" viewBox="-16 0 392 150" preserveAspectRatio="none">
       <defs><linearGradient id="eqfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0D7377" stop-opacity="0.20"/><stop offset="100%" stop-color="#0D7377" stop-opacity="0"/></linearGradient></defs>
-      ${grid}${xgrid}
+      ${grid}${xgrid}${balLine}
       <path d="${area}" fill="url(#eqfill)"/>
+      <path d="${ddBand}" fill="#E08A1E" fill-opacity="0.13"/>
+      <path d="${peakLine}" fill="none" stroke="#E08A1E" stroke-width="1.5" stroke-dasharray="4 3" stroke-opacity=".9"/>
       <path d="${line}" fill="none" stroke="#0D7377" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${tx(endT).toFixed(1)}" cy="${vy(pts[pts.length-1].cum).toFixed(1)}" r="3.5" fill="#0D7377"/>
+      <circle cx="${tx(endT).toFixed(1)}" cy="${vy(BAL+pts[pts.length-1].cum).toFixed(1)}" r="3.5" fill="#0D7377"/>
     </svg>${ylabels}${xlabels}</div>`;
   }
-  return `<div class="card">${head}${sel}${chart}<div style="text-align:center;padding:2px 15px 12px;font-size:11px;color:var(--hint)">cumulative net P/L</div></div>`;
+  return `<div class="card">${head}${sel}${chart}<div style="text-align:center;padding:2px 15px 12px;font-size:11px;color:var(--hint)">account value (balance + cumulative P/L)</div></div>`;
 }
 const N_POS=1;
 const SK1='cfd_dash_v2';
@@ -2588,12 +2599,15 @@ function renderRecords(){
   html+=`<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Total P/L</div><div style="font-size:16px;font-weight:600;color:${plColor}">${fSign(totalPL,2)}</div></div>
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Win rate</div><div style="font-size:16px;font-weight:600;color:var(--text)">${winRate.toFixed(0)}% <span style="font-size:12px;color:var(--hint)">(${wins}/${n})</span></div></div>
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg R</div><div style="font-size:16px;font-weight:600;color:${avgR>=0?'var(--green)':'var(--red)'}">${fSign(avgR,2)}R</div></div>
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Profit Factor</div><div style="font-size:16px;font-weight:600;color:var(--text)">${pfStr}</div></div>
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Max Drawdown</div><div style="font-size:16px;font-weight:600;color:${maxDD>0?'var(--red)':'var(--text)'}">${maxDD>0?'−'+f(maxDD,2):'0.00'}</div></div>
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg Win</div><div style="font-size:16px;font-weight:600;color:var(--green)">${winRecs.length?fSign(avgWin,2):'—'}</div></div>
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg Loss</div><div style="font-size:16px;font-weight:600;color:var(--red)">${lossRecs.length?fSign(avgLoss,2):'—'}</div></div>
+    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Profit Factor</div><div style="font-size:16px;font-weight:600;color:var(--text)">${pfStr}</div></div>
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Expectancy</div><div style="font-size:16px;font-weight:600;color:${expectancy>=0?'var(--green)':'var(--red)'}">${fSign(expectancy,2)}<span style="font-size:11px;color:var(--hint)">/ไม้</span></div></div>
-    <div style="padding:12px 14px;border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg Win</div><div style="font-size:16px;font-weight:600;color:var(--green)">${winRecs.length?fSign(avgWin,2):'—'}</div></div>
-    <div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg Loss</div><div style="font-size:16px;font-weight:600;color:var(--red)">${lossRecs.length?fSign(avgLoss,2):'—'}</div></div>
+    <div style="padding:12px 14px;border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg R</div><div style="font-size:16px;font-weight:600;color:${avgR>=0?'var(--green)':'var(--red)'}">${fSign(avgR,2)}R</div></div>
+    <div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Max Drawdown</div><div style="font-size:16px;font-weight:600;color:${maxDD>0?'var(--red)':'var(--text)'}">${maxDD>0?'−'+f(maxDD,2):'0.00'}</div></div>
+  </div>
+  <div style="padding:9px 14px 11px;border-top:.5px solid var(--border);font-size:10px;line-height:1.6;color:var(--hint)">
+    <b style="color:var(--sub)">PF (trading edge):</b> Gross Profit ÷ Gross Loss (&gt;1 = has edge) · <b style="color:var(--sub)">Expec (expected P/L per trade):</b> Total P/L ÷ Trades · <b style="color:var(--sub)">Avg R:</b> avg profit per 1R
   </div></div>`;
   // cloud sync section
   html+=buildCloudSyncUI();
