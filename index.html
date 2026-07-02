@@ -495,9 +495,14 @@ const SYMBOLS={
 function getSymbol(key){return SYMBOLS[key]||null;}
 // Strategy list — extend here when new systems are added
 const STRATEGIES=['Vector'];
-// Account balance (global, persisted) — *pending Port Summary Dashboard link
+// Account balance (global, persisted) — synced via Tab3/cloud (last-write-wins)
 function getBalance(){return localStorage.getItem('ctd_balance')||'10000';}
-function saveBalance(){const el=g('balance');if(el)localStorage.setItem('ctd_balance',el.value);calcPos(1);}
+function getBalanceAt(){return parseInt(localStorage.getItem('ctd_balance_at')||'0',10)||0;}
+function setBalanceRaw(v,at){try{localStorage.setItem('ctd_balance',String(v));localStorage.setItem('ctd_balance_at',String(at));}catch(e){}}
+function setBalance(v){setBalanceRaw(v,Date.now());}
+function onBalanceInput(el){setBalance((el.value||'').replace(/,/g,''));}
+function onBalanceBlur(el){if(typeof onPriceBlur==='function')onPriceBlur(el);setBalance((el.value||'').replace(/,/g,''));if(typeof renderRecords==='function')renderRecords();if(typeof calcPos==='function')calcPos(1);}
+function saveBalance(){const el=g('balance-edit')||g('balance');if(el)setBalance((el.value||'').replace(/,/g,''));if(typeof calcPos==='function')calcPos(1);}
 // ===== Manual pop-up (in-app, full content minus Strategy) =====
 function manualHTML(){
   const T='var(--acc)',O='var(--orange)';
@@ -587,7 +592,7 @@ function manualHTML(){
       <div class="m-code">rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId}/records/{recordId} {
+    match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null
         &amp;&amp; request.auth.uid == userId;
     }
@@ -686,7 +691,7 @@ function equityCurveSVG(recsFull){
   const vColor=lastCum>0?'var(--green)':lastCum<0?'var(--red)':'var(--text)';
   const fUSD=v=>'$'+Math.round(v).toLocaleString('en-US');
   const head=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:13px 15px 2px"><span style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Equity Curve</span><span style="font-size:18px;font-weight:700;color:${vColor}">${fSign(lastCum,2)}</span></div>`+
-    `<div style="display:flex;gap:14px;padding:0 15px 8px;font-size:11px;color:var(--sub)"><span>Balance <b style="color:var(--text)">${fUSD(BAL)}</b></span><span>Peak <b style="color:#E08A1E">${fUSD(peakEqAll)}</b></span><span>Now <b style="color:${vColor}">${fUSD(lastEq)}</b></span></div>`;
+    `<div style="display:flex;gap:14px;padding:0 15px 8px;font-size:11px;color:var(--sub)"><span>Peak <b style="color:#E08A1E">${fUSD(peakEqAll)}</b></span><span>Now <b style="color:${vColor}">${fUSD(lastEq)}</b></span></div>`;
   let chart;
   if(pts.length<2){
     chart=`<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--hint)">ต้องมีอย่างน้อย 2 ไม้ในช่วงนี้</div>`;
@@ -832,6 +837,88 @@ function userRecordsRef(){
   if(!fbUser||!fbDb)return null;
   return fbDb.collection('users').doc(fbUser.uid).collection('records');
 }
+function userDocRef(){
+  if(!fbUser||!fbDb)return null;
+  return fbDb.collection('users').doc(fbUser.uid);
+}
+// Balance last-write-wins on the user doc {balance, balanceAt}
+async function pushBalance(){
+  const uref=userDocRef();if(!uref)return;
+  try{
+    const cur=await uref.get();
+    const cloudAt=(cur.exists&&cur.data().balanceAt)||0;
+    if(getBalanceAt()>cloudAt){
+      await uref.set({balance:parseFloat(getBalance())||0,balanceAt:getBalanceAt()},{merge:true});
+    }
+  }catch(e){}
+}
+async function pullBalance(){
+  const uref=userDocRef();if(!uref)return false;
+  try{
+    const cur=await uref.get();
+    if(cur.exists){
+      const cb=cur.data();
+      if(cb&&cb.balance!=null&&(cb.balanceAt||0)>getBalanceAt()){
+        setBalanceRaw(cb.balance,cb.balanceAt||Date.now());
+        return true;
+      }
+    }
+  }catch(e){}
+  return false;
+}
+// ── Open-position sync (subcollection users/{uid}/positions) ──
+async function pushPositions(){
+  const uref=userDocRef();if(!uref)return {up:0,del:0};
+  const pref=uref.collection('positions');
+  try{
+    const data=loadSession();
+    const open=data.positions.filter(p=>p.meta.state!=='CLOSED');
+    const recIds=new Set(loadRecords().records.map(r=>r.id));
+    const snap=await pref.get();
+    const cloud={};snap.forEach(d=>cloud[d.id]=d.data());
+    let batch=fbDb.batch(),cnt=0,up=0,del=0;
+    for(const p of open){
+      const c=cloud[p.id];
+      if(!c||(p.updatedAt||0)>(c.updatedAt||0)){
+        batch.set(pref.doc(p.id),JSON.parse(JSON.stringify(p)));up++;cnt++;
+        if(cnt>=450){await batch.commit();batch=fbDb.batch();cnt=0;}
+      }
+    }
+    // remove cloud positions that are now closed locally (archived → in records)
+    for(const id of Object.keys(cloud)){
+      if(recIds.has(id)){batch.delete(pref.doc(id));del++;cnt++;if(cnt>=450){await batch.commit();batch=fbDb.batch();cnt=0;}}
+    }
+    if(cnt>0)await batch.commit();
+    setPosPushAt(Date.now());
+    return {up,del};
+  }catch(e){return {up:0,del:0};}
+}
+async function pullPositions(){
+  const uref=userDocRef();if(!uref)return {added:0,updated:0,removed:0};
+  const pref=uref.collection('positions');
+  try{
+    const snap=await pref.get();
+    const data=loadSession();
+    const recIds=new Set(loadRecords().records.map(r=>r.id));
+    const localMap={};data.positions.forEach(p=>localMap[p.id]=p);
+    let added=0,updated=0,removed=0;
+    let delBatch=fbDb.batch(),delCnt=0;
+    snap.forEach(d=>{
+      const cp=d.data(),id=d.id;
+      if(recIds.has(id)){delBatch.delete(pref.doc(id));delCnt++;removed++;return;} // closed here → clean cloud
+      const lp=localMap[id];
+      if(!lp){data.positions.push(cp);added++;}
+      else if((cp.updatedAt||0)>(lp.updatedAt||0)){
+        const idx=data.positions.findIndex(p=>p.id===id);
+        if(idx>=0)data.positions[idx]=cp;updated++;
+      }
+    });
+    // raw write to preserve pulled updatedAt (bypass re-stamp)
+    try{localStorage.setItem(SK2,JSON.stringify(data));}catch(e){}
+    if(delCnt>0)await delBatch.commit();
+    return {added,updated,removed};
+  }catch(e){return {added:0,updated:0,removed:0};}
+}
 
 async function pushToCloud(){
   if(!fbUser||!fbDb||isSyncing)return;
@@ -865,9 +952,12 @@ async function pushToCloud(){
       }
     }
     if(batchCount>0) await batch.commit();
+    await pushBalance();
+    const posR=await pushPositions();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${invalid?' · '+invalid+' invalid':''}`;
+    if(typeof renderSession==='function')renderSession();
     renderRecords();
     setTimeout(()=>{
       if(cloudStatus==='synced'){
@@ -912,9 +1002,12 @@ async function pullFromCloud(){
       renderRecords();
       return;
     }
+    const balPulled=await pullBalance();
+    const posR=await pullPositions();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${invalid?' · '+invalid+' invalid':''}`;
+    if(typeof renderSession==='function')renderSession();
     renderRecords();
     setTimeout(()=>{
       if(cloudStatus==='synced'){
@@ -1396,7 +1489,7 @@ function calcPos(n){
     ['margin','level','risk','cv','os-slpct','os-slpips'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
     updateSymInfo(n);calcRisk(n);saveDataDebounced();return;
   }
-  const bal=parseNum(g('balance')?.value)||0;
+  const bal=parseNum(getBalance())||0;
   const lev=parseFloat(g(`p${n}-lev`).value)||25;
   const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
   const dsel=g(`p${n}-dir`);
@@ -1425,8 +1518,23 @@ function loadSession(){
   catch(e){return{version:'v1',positions:[]};}
 }
 function saveSession(data){
-  try{localStorage.setItem(SK2,JSON.stringify(data));}catch(e){}
+  try{
+    // auto-stamp updatedAt only on positions whose content changed (for last-write-wins sync)
+    const prev=loadSession();
+    const prevMap={};prev.positions.forEach(p=>{prevMap[p.id]=p;});
+    const now=Date.now();
+    const strip=p=>{const c=Object.assign({},p);delete c.updatedAt;return JSON.stringify(c);};
+    data.positions.forEach(p=>{
+      const old=prevMap[p.id];
+      if(!old||!p.updatedAt||strip(old)!==strip(p))p.updatedAt=now;
+      else p.updatedAt=old.updatedAt;
+    });
+    localStorage.setItem(SK2,JSON.stringify(data));
+  }catch(e){try{localStorage.setItem(SK2,JSON.stringify(data));}catch(_){}}
 }
+// last successful positions-push time (positions with updatedAt<=this are "synced")
+function getPosPushAt(){return parseInt(localStorage.getItem('ctd_pos_push_at')||'0',10)||0;}
+function setPosPushAt(ms){try{localStorage.setItem('ctd_pos_push_at',String(ms));}catch(e){}}
 function computePos(pos){
   const sym=getSymbol(pos.entry.inst);
   const badSymbol=!sym||sym.unit==null;
@@ -1438,7 +1546,7 @@ function computePos(pos){
   const sl=parseFloat(pos.entry.sl)||0;
   const cv=usedLot*unit*entry;
   const margin=lev>0&&entry>0?cv/lev:0;
-  const bal=parseNum(g('balance')?.value)||10000;
+  const bal=parseNum(getBalance())||10000;
   const mlevel=margin>0?((bal)/margin)*100:0;
   const slDist=Math.abs(entry-sl);
   const risk=slDist*unit*usedLot;
@@ -1479,6 +1587,25 @@ function computePos(pos){
     realizedPL,totalExitLot,remainingLot,hasRealized,trailSL,trailSLD,trailSLDPips,
     totalSwap,totalCom,totalVat,totalFees,netPL,hasFees,
     holdingStr,state,rr};
+}
+function sessionSyncBarHTML(){
+  const openN=loadSession().positions.filter(p=>p.meta.state!=='CLOSED').length;
+  if(!(typeof fbUser!=='undefined'&&fbUser&&firebaseReady())){
+    return `<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;padding:11px 13px"><span style="font-size:15px">☁</span><div style="flex:1;font-size:12px;color:var(--hint)">Sign in ที่ Tab3 · Portfolio เพื่อ sync ข้ามเครื่อง</div></div></div>`;
+  }
+  const dotColor=cloudStatus==='synced'?'var(--green)':cloudStatus==='error'?'var(--red)':'#FFB800';
+  const status=cloudStatus==='pending'?(cloudMsg||'กำลัง sync...'):(cloudLastSync?('synced '+fmtSyncTime(cloudLastSync)):'ยังไม่ sync');
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:.5px solid var(--border)">
+      <span style="font-size:15px">☁</span>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">Cloud Sync</div><div style="font-size:11px;color:var(--hint)">${openN} ไม้เปิด · ${escHtml(status)}</div></div>
+      <span style="width:8px;height:8px;border-radius:50%;background:${dotColor}"></span>
+    </div>
+    <div style="display:flex;gap:8px;padding:10px 13px">
+      <button onclick="pullFromCloud()" ${isSyncing?'disabled':''} style="flex:1;border:none;border-radius:9px;padding:9px 0;font-size:13px;font-weight:600;background:rgba(13,115,119,.12);color:var(--acc);cursor:pointer;opacity:${isSyncing?'.5':'1'}">↓ Pull</button>
+      <button onclick="pushToCloud()" ${isSyncing?'disabled':''} style="flex:1;border:none;border-radius:9px;padding:9px 0;font-size:13px;font-weight:600;background:var(--acc);color:#fff;cursor:pointer;opacity:${isSyncing?'.5':'1'}">↑ Push</button>
+    </div>
+  </div>`;
 }
 function renderSession(){
   const data=loadSession();
@@ -1547,7 +1674,7 @@ function renderSession(){
             <div class="pos-sym">${pos.entry.inst}<span class="pos-dir-tag ${dirClass}">${dirLabel}</span></div>
             <div style="display:flex;align-items:center;gap:7px;margin-top:2px">${pos.entry.strategy?`<span class="strat-chip">${escHtml(pos.entry.strategy)}</span>`:''}<div class="pos-id-txt">${pos.id}</div></div>
           </div>
-          <span class="state-badge ${badgeClass}">${badgeLabel}</span>
+          <span style="display:flex;align-items:center;gap:6px"><span title="${(pos.updatedAt||0)<=getPosPushAt()?'synced':'แก้แล้ว · รอ push'}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${(pos.updatedAt||0)<=getPosPushAt()?'var(--green)':'var(--orange)'}"></span><span class="state-badge ${badgeClass}">${badgeLabel}</span></span>
         </div>
         <div class="pos-g2">
           <div class="pos-stat"><div class="pos-slbl">Margin</div><div class="pos-sval blue">${c.margin?'$'+f(c.margin):'—'}</div></div>
@@ -1592,7 +1719,7 @@ function renderSession(){
       </div>`;
     });
   }
-  g('session-content').innerHTML=html;
+  g('session-content').innerHTML=sessionSyncBarHTML()+html;
   // apply lot status bar colors
   loadSession().positions.forEach(pos=>{
     const c=computePos(pos);
@@ -2542,12 +2669,19 @@ function resetClearBtn(btn){
   btn.innerHTML=`${BIN_SVG} Clear all records`;
   clearTimeout(btn._t);
 }
+function balanceCardHTML(){
+  return `<div class="card" style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;padding:12px 15px">
+    <div><div style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Balance</div><div style="font-size:10px;color:var(--hint);margin-top:1px">ทุนเริ่มต้น · ฐานของ equity curve</div></div>
+    <div style="display:flex;align-items:center;gap:3px"><span style="font-size:15px;color:var(--sub);font-weight:600">$</span><input type="text" id="balance-edit" value="${(parseFloat(getBalance())||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}" inputmode="decimal" oninput="onBalanceInput(this)" onblur="onBalanceBlur(this)" style="width:110px;text-align:right;font-size:16px;font-weight:600;color:var(--text);background:transparent;border:none;border-bottom:1.5px solid var(--border);padding:2px 0"></div>
+  </div></div>`;
+}
 function renderRecords(){
   const el=g('record-content');if(!el)return;
   const data=loadRecords();
   const all=data.records;
   if(!all.length){
-    let emptyHtml=`<div style="padding:40px 16px;text-align:center;color:var(--hint);font-size:14px">ยังไม่มี record<br><span style="font-size:12px">trade ที่ archive จาก Position จะมาเก็บที่นี่</span></div>`;
+    let emptyHtml=balanceCardHTML();
+    emptyHtml+=`<div style="padding:40px 16px;text-align:center;color:var(--hint);font-size:14px">ยังไม่มี record<br><span style="font-size:12px">trade ที่ archive จาก Position จะมาเก็บที่นี่</span></div>`;
     emptyHtml+=buildCloudSyncUI();
     emptyHtml+=buildSyncGuideUI();
     if(fbUser&&firebaseReady()){
@@ -2594,6 +2728,8 @@ function renderRecords(){
     <div style="width:64px;height:64px;border-radius:16px;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff">${n}</div>
     <div><div style="font-size:15px;font-weight:600;color:var(--text)">${recFilter==='all'?`Record${n!==1?'s':''}`:recFilter}</div><div style="font-size:12px;color:var(--hint)">${recFilter==='all'?fmtBytes(recordsBytes())+' ใช้ไป':`${n} of ${all.length} trades`}</div></div>
   </div>`;
+  // starting balance (editable here; Tab1 shows read-only) — syncs via cloud
+  html+=balanceCardHTML();
   // equity curve (Step 2)
   html+=equityCurveSVG(recs);
   html+=`<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
@@ -2753,10 +2889,10 @@ function buildPos(){
     <p class="stitle">Balance</p>
     <div class="card">
       <div class="row"><div class="rl">Balance ($)</div>
-        <input type="text" id="balance" value="${getBalance()}" inputmode="decimal" oninput="saveBalance()" onblur="onPriceBlur(this)">
+        <div style="font-size:15px;font-weight:600;color:var(--text)">${(parseFloat(getBalance())||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
       </div>
     </div>
-    <div style="padding:2px 4px 6px;font-size:11px;color:var(--hint)">*รอเชื่อมกับ Port Summary Dash Board</div>
+    <div style="padding:2px 4px 6px;font-size:11px;color:var(--hint)">*แก้ไขได้ที่ Tab3 · Portfolio (sync ข้ามเครื่อง)</div>
 
     <p class="stitle">Trading Card</p>
     <div class="card tcard">
