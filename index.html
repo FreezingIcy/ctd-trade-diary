@@ -502,7 +502,6 @@ function setBalanceRaw(v,at){try{localStorage.setItem('ctd_balance',String(v));l
 function setBalance(v){setBalanceRaw(v,Date.now());}
 function onBalanceInput(el){setBalance((el.value||'').replace(/,/g,''));}
 function onBalanceBlur(el){if(typeof onPriceBlur==='function')onPriceBlur(el);setBalance((el.value||'').replace(/,/g,''));if(typeof renderRecords==='function')renderRecords();if(typeof calcPos==='function')calcPos(1);}
-function saveBalance(){const el=g('balance-edit')||g('balance');if(el)setBalance((el.value||'').replace(/,/g,''));if(typeof calcPos==='function')calcPos(1);}
 // ===== Manual pop-up (in-app, full content minus Strategy) =====
 function manualHTML(){
   const T='var(--acc)',O='var(--orange)';
@@ -946,15 +945,30 @@ async function pushTombstones(){
     return n;
   }catch(e){return 0;}
 }
+async function cloudDeleteTombstone(id){
+  const uref=userDocRef();if(!uref)return;
+  try{
+    await uref.collection('tombstones').doc(id).delete();
+    saveUntomb(loadUntomb().filter(x=>x!==id));
+  }catch(e){}
+}
 async function pullTombstones(){
   const uref=userDocRef();if(!uref)return {added:0,recRemoved:0,posRemoved:0};
   const tref=uref.collection('tombstones');
   try{
     const snap=await tref.get();
+    const un=new Set(loadUntomb());
     const local=loadTombstones();
     const map={};local.forEach(t=>{map[t.id]=t;});
     let added=0;
-    snap.forEach(d=>{const ct=d.data();if(!map[ct.id]){local.push({id:ct.id,kind:ct.kind||'record',deletedAt:ct.deletedAt||nowStamp()});map[ct.id]=ct;added++;}});
+    let unBatch=fbDb.batch(),unCnt=0;
+    snap.forEach(d=>{
+      const ct=d.data();
+      if(un.has(ct.id)){unBatch.delete(tref.doc(ct.id));unCnt++;return;} // resurrected here → clean cloud tombstone
+      if(!map[ct.id]){local.push({id:ct.id,kind:ct.kind||'record',deletedAt:ct.deletedAt||nowStamp()});map[ct.id]=ct;added++;}
+    });
+    if(unCnt>0)await unBatch.commit();
+    saveUntomb([]); // pull confirmed cloud state → queue resolved
     saveTombstones(local);
     // apply locally: purge tombstoned records + positions
     let recRemoved=0,posRemoved=0;
@@ -1109,8 +1123,16 @@ function saveTombstones(list){try{localStorage.setItem(TOMB_KEY,JSON.stringify(l
 function isTombstoned(id){return loadTombstones().some(t=>t.id===id);}
 function addTombstone(id,kind){kind=kind||'record';const l=loadTombstones();const ex=l.find(t=>t.id===id);if(ex){if(!ex.kind)ex.kind=kind;}else{l.push({id,kind,deletedAt:nowStamp()});}saveTombstones(l);}
 function tombIds(kind){return new Set(loadTombstones().filter(t=>(t.kind||'record')===kind).map(t=>t.id));}
-function removeTombstone(id){saveTombstones(loadTombstones().filter(t=>t.id!==id));renderRecords();}
-function clearTombstones(){saveTombstones([]);renderRecords();}
+function removeTombstone(id){untombstone(id);renderRecords();}
+function clearTombstones(){loadTombstones().forEach(t=>untombstone(t.id));renderRecords();}
+// resurrection: clear tombstone locally + queue cloud tombstone-doc delete (offline-safe)
+function loadUntomb(){try{const r=localStorage.getItem('ctd_untomb');return r?JSON.parse(r):[];}catch(e){return[];}}
+function saveUntomb(l){try{localStorage.setItem('ctd_untomb',JSON.stringify(l));}catch(e){}}
+function untombstone(id){
+  saveTombstones(loadTombstones().filter(t=>t.id!==id));
+  const u=loadUntomb();if(!u.includes(id)){u.push(id);saveUntomb(u);}
+  if(typeof cloudDeleteTombstone==='function')cloudDeleteTombstone(id);
+}
 function tombstonePanelHTML(){
   const l=loadTombstones();if(!l.length)return '';
   const rows=l.map(t=>`<div class="tomb-row"><div class="info"><div class="tid">${escHtml(t.id)}</div><div class="tdate">deleted ${escHtml(t.deletedAt||'')}</div></div><button class="restore" onclick="removeTombstone('${escHtml(t.id)}')">Restore</button></div>`).join('');
@@ -1299,6 +1321,7 @@ function editSave(){
   const prev=i>=0?data.records[i]:null;
   rec.editCount=((prev&&prev.editCount)||0)+1;
   rec.lastEditedAt=nowStamp();
+  if(isTombstoned(rec.id))untombstone(rec.id);
   if(i>=0)data.records[i]=rec;else data.records.push(rec);
   saveRecords(data);
   removeTombstone(rec.id);
@@ -2216,6 +2239,7 @@ function addRecord(pos){
     while(data.records.some(r=>r.id===`${base}-${n}`))n++;
     rec.id=`${base}-${n}`;
   }
+  if(isTombstoned(rec.id))untombstone(rec.id); // re-archive = intentional resurrection
   data.records.push(rec);
   saveRecords(data);
   return rec;
@@ -2636,6 +2660,7 @@ function runImport(){
     let rec;try{rec=buildRecord(out.pos);}catch(e){errs.push(`แถว ${idx+1}: คำนวณไม่ได้`);return;}
     rec.eval.holdingStr=holdingBetween(out.eStamp,out.lastDate);
     if(existing.has(rec.id)){skipped++;return;}
+    if(isTombstoned(rec.id))untombstone(rec.id); // re-import = intentional resurrection
     data.records.push(rec);existing.add(rec.id);added++;
   });
   if(added>0)saveRecords(data);
@@ -3174,6 +3199,7 @@ function importToSession(n){
     finalId=finalId+'-'+suffix;
     packet.id=finalId;
   }
+  if(isTombstoned(packet.id))untombstone(packet.id); // re-add packet = intentional resurrection
   data.positions.push(packet);
   saveSession(data);
   // feedback
