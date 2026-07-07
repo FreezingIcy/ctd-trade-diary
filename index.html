@@ -46,9 +46,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .m-l{font-size:14px;color:var(--sub)}
 .m-v{font-size:13px;color:var(--sub);text-align:right}
 .m-hint{font-size:11px;color:var(--hint);padding:3px 2px 8px}
-.m-sym{font-size:14px;font-weight:500;width:80px;flex-shrink:0;color:var(--text)}
-.m-symd{font-size:12px;color:var(--sub);flex:1}
-.m-symn{font-size:11px;color:var(--hint)}
 .m-ph{padding:12px 14px;font-size:13px;color:var(--hint)}
 .m-ghd{font-size:12px;font-weight:700;color:var(--acc);letter-spacing:.02em;padding:9px 14px;background:var(--stratbg)}
 .m-gintro{font-size:13px;color:var(--sub);padding:12px 14px;line-height:1.5;border-bottom:.5px solid var(--border)}
@@ -489,7 +486,7 @@ const SYMBOLS={
   EURUSD:{unit:100000,pipM:10000,pipSize:0.0001,note:'Forex'},
   GBPUSD:{unit:100000,pipM:10000,pipSize:0.0001,note:'Forex'},
   USDCHF:{unit:100000,pipM:10000,pipSize:0.0001,note:'Forex'},
-  XAUUSD:{unit:100,   pipM:10,   pipSize:0.01,  note:'Gold'},
+  XAUUSD:{unit:100,   pipM:10,   pipSize:0.10,  note:'Gold'},
   XAUTHB:{unit:null,  pipM:null, pipSize:null,  note:'Gold/THB — pending'},
 };
 function getSymbol(key){return SYMBOLS[key]||null;}
@@ -506,7 +503,6 @@ function onBalanceBlur(el){if(typeof onPriceBlur==='function')onPriceBlur(el);se
 function manualHTML(){
   const T='var(--acc)',O='var(--orange)';
   const em=(n,t,c,d)=>`<div class="m-row top"><span class="m-l" style="font-weight:500;width:74px;flex-shrink:0;color:var(--text)">${n}</span><span class="m-l" style="width:42px;flex-shrink:0;color:${c}">${t}</span><span class="m-l" style="font-size:13px;flex:1">${d}</span></div>`;
-  const sym=(n,d,note,dim)=>`<div class="m-row"${dim?' style="opacity:.5"':''}><span class="m-sym">${n}</span><span class="m-symd">${d}</span><span class="m-symn">${note}</span></div>`;
   return `
     <p class="m-sec">Formula</p>
     <div class="m-card">
@@ -553,13 +549,40 @@ function manualHTML(){
     <div class="m-card"><div class="m-ph">— รอ research และกำหนด criterion</div></div>
     <p class="m-sec">Manage Symbols</p>
     <div class="m-card">
-      ${sym('EURUSD','100,000 · 0.0001','Forex')}
-      ${sym('GBPUSD','100,000 · 0.0001','Forex')}
-      ${sym('USDCHF','100,000 · 0.0001','Forex')}
-      ${sym('XAUUSD','100 · 0.01','Gold')}
-      ${sym('XAUTHB','— · —','Pending',true)}
+      <div class="m-ghd">Pip Value / lot</div>
+      <div style="display:grid;grid-template-columns:1fr .8fr .8fr .9fr;padding:8px 14px 6px;border-bottom:.5px solid var(--border)">
+        <span></span>
+        <span style="font-size:11px;color:var(--hint);text-align:right"><b style="color:var(--sub);font-weight:600">1.00</b><br>Std</span>
+        <span style="font-size:11px;color:var(--hint);text-align:right"><b style="color:var(--sub);font-weight:600">0.10</b><br>Mini</span>
+        <span style="font-size:11px;color:var(--hint);text-align:right"><b style="color:var(--sub);font-weight:600">0.01</b><br>Micro</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr .8fr .8fr .9fr;padding:9px 14px;border-bottom:.5px solid var(--border);align-items:center">
+        <span style="font-size:13px;font-weight:500;color:var(--text)">XAUUSD</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$10</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$1</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$0.10</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr .8fr .8fr .9fr;padding:9px 14px;border-bottom:.5px solid var(--border);align-items:center">
+        <span style="font-size:13px;font-weight:500;color:var(--text)">EURUSD</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$10</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$1</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$0.10</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr .8fr .8fr .9fr;padding:9px 14px;border-bottom:.5px solid var(--border);align-items:center">
+        <span style="font-size:13px;font-weight:500;color:var(--text)">GBPUSD</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$10</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$1</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">$0.10</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr .8fr .8fr .9fr;padding:9px 14px;align-items:center">
+        <span style="font-size:13px;font-weight:500;color:var(--text)">USDCHF</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">₣10</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">₣1</span>
+        <span style="font-size:13px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums">₣0.10</span>
+      </div>
     </div>
-    <div class="m-hint">* ต้องการเพิ่ม symbol ใหม่ให้แจ้ง Claude พร้อม unit และ pip size จาก broker</div>
+    <div class="m-hint">* 1 lot = 100,000 U (Fx) · 100 oz (Gold)</div>
+    <div class="m-hint">* USDCHF pip = CHF (₣) · อื่นๆ = USD · gold pip = $0.10 = $10/lot</div>
     <p class="m-sec">Import · Export</p>
     <div class="m-card">
       <div class="m-ghd">Export file</div>
@@ -1533,7 +1556,7 @@ function calcRisk(n){
     const slEl=g(`p${n}-sl`);if(slEl)slEl.value=slPrice;
   }
   if(!slDist){clear();return;}
-  const cv=rpt/slDist;const lot=cv/(unit*entry);
+  const cv=rpt*entry/slDist;const lot=cv/(unit*entry);
   const slPct=entry>0?((slDist/entry)*100):0;
   const slPctEl=g(`p${n}-rc-slpct`);if(slPctEl)slPctEl.textContent=f(slPct,2)+'%';
   const slPipsEl=g(`p${n}-rc-slpips`);if(slPipsEl)slPipsEl.textContent=f(slDist*pipM,1)+' pip';
