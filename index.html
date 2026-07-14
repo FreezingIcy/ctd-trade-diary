@@ -1805,8 +1805,8 @@ function renderSession(){
         </div>
         <div class="exit-section-hd">Entry Setting</div>
         <div class="pos-row"><span class="pos-rl">Entry Date</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryDateEdit('${pos.id}',this)">${pos.entry.date?escHtml(entryDateShow(pos.entry.date)):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
-        <div class="pos-row"><span class="pos-rl">Entry</span><span class="pos-rv">${f(c.entry,c.entry>100?2:5)}</span></div>
-        <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'}</span></div>
+        <div class="pos-row"><span class="pos-rl">Entry</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','price',this)">${f(c.entry,c.entry>100?2:5)} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
+        <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','sl',this)">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         ${trailRow}
         <div class="exit-section-hd">Exit Records</div>
         <div class="lot-status-bar" id="lot-bar-${pos.id}" style="background:rgba(0,0,0,.3);border-bottom:.5px solid rgba(255,255,255,.15)">
@@ -1957,6 +1957,41 @@ function commitEntryDateEdit(posId,raw){
   saveSession(d);                   // auto re-stamps updatedAt → orange dot (รอ push)
   renderSession();
   ctdToast(newId!==oldId?'อัปเดต Entry Date · ID ใหม่':'อัปเดต Entry Date');
+}
+
+// ── Entry price / Entry SL inline edit (Tab2) — re-stamps derived sld + usedCV ──
+function startEntryNumEdit(posId,field,el){
+  if(el.querySelector('input'))return;
+  const pos=loadSession().positions.find(p=>p.id===posId);
+  if(!pos)return;
+  const cur=field==='price'?pos.entry.price:pos.entry.sl;
+  el.innerHTML='';
+  const inp=document.createElement('input');
+  inp.type='text';inp.inputMode='decimal';inp.value=cur||'';
+  inp.style.cssText='background:var(--bg);border:1px solid var(--acc);border-radius:7px;outline:none;font-size:13px;color:var(--text);font-family:inherit;padding:5px 9px;width:110px;text-align:right';
+  inp.onblur=()=>commitEntryNumEdit(posId,field,inp.value);
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}};
+  el.appendChild(inp);inp.focus();inp.select();
+}
+function commitEntryNumEdit(posId,field,raw){
+  const d=loadSession();
+  const pos=d.positions.find(p=>p.id===posId);
+  if(!pos){renderSession();return;}
+  const v=parseNum(String(raw||'').trim());
+  if(!v||v<=0){ctdToast('ราคาไม่ถูกต้อง',true);renderSession();return;}
+  if(field==='price')pos.entry.price=String(v);else pos.entry.sl=String(v);
+  // re-stamp derived stored fields (archive reads entry.sld — stale value would leak into the immutable record)
+  const sym=getSymbol(pos.entry.inst);
+  const entryN=parseFloat(pos.entry.price)||0;
+  const slN=parseFloat(pos.entry.sl)||0;
+  const vsd=parseFloat(pos.entry.vsd)||0;
+  const vsf=parseFloat(pos.entry.vsf)||1;
+  const sld=entryN>0&&vsd?entryN*(vsd/100)*vsf:Math.abs(entryN-slN);
+  pos.entry.sld=String(sld.toFixed(2));
+  pos.entry.usedCV=String(((parseFloat(pos.entry.usedLot)||0)*((sym&&sym.unit)||0)*entryN).toFixed(0));
+  saveSession(d);  // auto re-stamps updatedAt → orange dot (รอ push)
+  renderSession();
+  ctdToast(field==='price'?'อัปเดต Entry':'อัปเดต Entry SL');
 }
 
 function lotStatusMsg(totalExitLot,usedLot){
