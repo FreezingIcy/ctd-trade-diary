@@ -1406,7 +1406,8 @@ function updateSymInfo(n){
   const sym=getSymbol(g(`p${n}-inst`).value);
   const el=g(`p${n}-sym-info`);
   if(!el)return;
-  if(!sym||!sym.unit){el.textContent='⚠️ unit / pip size ยังไม่ได้กำหนด';el.style.color='var(--orange)';}
+  if(!g(`p${n}-inst`).value){el.textContent='— เลือก symbol';el.style.color='var(--hint)';}
+  else if(!sym||!sym.unit){el.textContent='⚠️ unit / pip size ยังไม่ได้กำหนด';el.style.color='var(--orange)';}
   else{el.textContent=`unit ${sym.unit.toLocaleString()} · pip size ${sym.pipSize} · ${sym.note}`;el.style.color='var(--hint)';}
 }
 function manualSave(){
@@ -1660,13 +1661,11 @@ function computePos(pos){
   const trailSL=parseFloat(pos.exit.trailSL)||0;
   const trailSLD=trailSL&&entry?Math.abs(entry-trailSL):0;
   const trailSLDPips=trailSLD*pipM;
-  // holding period
+  // holding period — from entry date (fallback import time)
   let holdingStr='—';
-  if(pos.meta.importedAt){
-    const parts=pos.meta.importedAt.split(' ');
-    const dp=parts[0].split('/');const tp=(parts[1]||'00:00:00').split(':');
-    const importDate=new Date(+('20'+dp[2]),+dp[1]-1,+dp[0],+tp[0],+tp[1],+tp[2]||0);
-    const diffMs=Date.now()-importDate.getTime();
+  const holdFrom=stampMs(pos.entry.date||pos.meta.importedAt||'');
+  if(holdFrom){
+    const diffMs=Date.now()-holdFrom;
     const diffD=Math.floor(diffMs/86400000);
     const diffH=Math.floor((diffMs%86400000)/3600000);
     holdingStr=diffD>0?`${diffD}d ${diffH}h`:`${diffH}h`;
@@ -1708,15 +1707,39 @@ function renderSession(){
   if(!active.length){
     html='<div style="text-align:center;padding:48px 16px;color:var(--hint)"><div style="font-size:32px;margin-bottom:12px">—</div><div style="font-size:15px">ยังไม่มี position ที่ active</div><div style="font-size:13px;margin-top:6px">Import จาก Calculator เพื่อเริ่ม session</div></div>';
   }else{
-    const states=active.map(p=>computePos(p).state);
+    const comps=active.map(p=>computePos(p));
+    const states=comps.map(c=>c.state);
     const activeCount=states.filter(s=>s!=='CLOSED').length;
     const closedCount=states.filter(s=>s==='CLOSED').length;
+    let totalMargin=0,totalRisk=0;
+    comps.forEach(c=>{if(c.state!=='CLOSED'){totalMargin+=c.margin||0;totalRisk+=c.risk||0;}});
+    const aggBal=parseNum(getBalance())||10000;
+    const aggMlevel=totalMargin>0?(aggBal/totalMargin)*100:0;
+    const aggMlCol=aggMlevel<100?'var(--red)':aggMlevel<200?'var(--orange)':aggMlevel<500?'var(--text)':'var(--green)';
     const noBoxBg=activeCount>0?'#FFB800':'var(--acc)';
     const noBoxFg=activeCount>0?'#5E4200':'#fff';
-    html+=`<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:16px">
-      <div style="width:64px;height:64px;border-radius:16px;background:${noBoxBg};display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:${noBoxFg}">${activeCount}</div>
-      <div><div style="font-size:15px;font-weight:600;color:var(--text)">Position${activeCount!==1?'s':''} Active</div><div style="font-size:12px;color:var(--hint)">${active.length} total · ${closedCount} closed</div></div>
-    </div>`;
+    if(activeCount>0){
+      html+=`<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px">
+          <div style="width:56px;height:56px;border-radius:14px;background:${noBoxBg};display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:${noBoxFg}">${activeCount}</div>
+          <div><div style="font-size:13.5px;font-weight:600;color:var(--text)">Position${activeCount!==1?'s':''} Active</div><div style="font-size:11px;color:var(--hint)">${active.length} total · ${closedCount} closed</div></div>
+        </div>
+        <div style="flex:1.18;background:var(--card);border-radius:14px;padding:12px 10px">
+          <div style="display:flex;text-align:center">
+            <div style="flex:1"><div style="font-size:10px;color:var(--hint);margin-bottom:3px">Total Margin</div><div style="font-size:15px;font-weight:700;color:var(--blue)">$${f(totalMargin)}</div></div>
+            <div style="width:.5px;background:var(--border);margin:2px 0"></div>
+            <div style="flex:1"><div style="font-size:10px;color:var(--hint);margin-bottom:3px">Margin Lv.</div><div style="font-size:15px;font-weight:700;color:${aggMlCol}">${aggMlevel?f(aggMlevel,1)+'%':'—'}</div></div>
+          </div>
+          <div style="height:.5px;background:var(--border);margin:10px 0"></div>
+          <div style="text-align:center"><div style="font-size:10px;color:var(--hint);margin-bottom:3px">Total Risk</div><div style="font-size:15px;font-weight:700;color:var(--red)">$${f(totalRisk)}</div></div>
+        </div>
+      </div>`;
+    }else{
+      html+=`<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:16px">
+        <div style="width:64px;height:64px;border-radius:16px;background:${noBoxBg};display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:${noBoxFg}">${activeCount}</div>
+        <div><div style="font-size:15px;font-weight:600;color:var(--text)">Position${activeCount!==1?'s':''} Active</div><div style="font-size:12px;color:var(--hint)">${active.length} total · ${closedCount} closed</div></div>
+      </div>`;
+    }
     active.forEach(pos=>{
       const c=computePos(pos);
       const dirClass=pos.entry.dir==='short'?'short':'long';
@@ -1781,6 +1804,7 @@ function renderSession(){
           <div class="pos-stat"><div class="pos-slbl">Holding Period</div><div class="pos-sval">${c.holdingStr}</div></div>
         </div>
         <div class="exit-section-hd">Entry Setting</div>
+        <div class="pos-row"><span class="pos-rl">Entry Date</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryDateEdit('${pos.id}',this)">${pos.entry.date?escHtml(entryDateShow(pos.entry.date)):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry</span><span class="pos-rv">${f(c.entry,c.entry>100?2:5)}</span></div>
         <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'}</span></div>
         ${trailRow}
@@ -1894,6 +1918,45 @@ function startNoteEdit(posId,el){
   el.appendChild(ta);
   ta.focus();
   ta.style.height=ta.scrollHeight+'px';
+}
+
+// ── Entry Date inline edit (Tab2) — regenerates position id from the new date ──
+function entryDateShow(s){const p=parseDateParts(s);if(!p)return String(s||'');const z=v=>String(v).padStart(2,'0');return `${z(p.d)}/${z(p.mo)}/${String(p.y).slice(2)} ${z(p.h)}:${z(p.mi)}`;}
+function startEntryDateEdit(posId,el){
+  if(el.querySelector('input'))return;
+  const pos=loadSession().positions.find(p=>p.id===posId);
+  if(!pos)return;
+  el.innerHTML='';
+  const inp=document.createElement('input');
+  inp.type='text';inp.value=pos.entry.date?entryDateShow(pos.entry.date):'';inp.placeholder='dd/mm/yy hh:mm';
+  inp.style.cssText='background:var(--bg);border:1px solid var(--acc);border-radius:7px;outline:none;font-size:13px;color:var(--text);font-family:inherit;padding:5px 9px;width:160px;text-align:right';
+  inp.onblur=()=>commitEntryDateEdit(posId,inp.value);
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}};
+  el.appendChild(inp);inp.focus();inp.select();
+}
+function commitEntryDateEdit(posId,raw){
+  const d=loadSession();
+  const pos=d.positions.find(p=>p.id===posId);
+  if(!pos){renderSession();return;}
+  const val=String(raw||'').trim();
+  const p=val?parseDateParts(val):null;
+  if(!val||!p){if(val)ctdToast('รูปแบบวันที่ไม่ถูกต้อง',true);renderSession();return;}
+  const newDate=normStamp(val);
+  const z=v=>String(v).padStart(2,'0');
+  const dir=pos.entry.dir==='long'?'L':'S';
+  const inst=(pos.entry.inst||'').toUpperCase();
+  const newId=`${inst}.O.${dir}.${z(p.d)}${z(p.mo)}${String(p.y).slice(2)}.${z(p.h)}${z(p.mi)}`;
+  const oldId=pos.id;
+  if(newId!==oldId && d.positions.some(x=>x.id===newId)){ctdToast('มี position ID นี้อยู่แล้ว',true);renderSession();return;}
+  pos.entry.date=newDate;
+  if(newId!==oldId){
+    addTombstone(oldId,'position'); // rename = kill old cloud doc + local resurrection guard
+    untombstone(newId);             // intentional re-add → clear any stale tombstone
+    pos.id=newId;
+  }
+  saveSession(d);                   // auto re-stamps updatedAt → orange dot (รอ push)
+  renderSession();
+  ctdToast(newId!==oldId?'อัปเดต Entry Date · ID ใหม่':'อัปเดต Entry Date');
 }
 
 function lotStatusMsg(totalExitLot,usedLot){
@@ -3002,6 +3065,7 @@ function buildPos(){
       </div>
       <div class="row"><div class="rl">Symbol</div>
         <select id="p1-inst" onchange="updateSymInfo(1);calcRisk(1);calcPos(1)">
+          <option value="" selected>-</option>
           <option value="XAUUSD">XAUUSD</option>
           <option value="EURUSD">EURUSD</option>
           <option disabled>──────────</option>
@@ -3299,6 +3363,8 @@ if(document.readyState==='complete'){
   window.addEventListener('load',()=>{ try{ initFirebase(); }catch(e){ console.error('Firebase init skipped:',e); } });
 }
 
+// ── Build mode ── PREVIEW seeds demo positions for testing; set false for production
+const PREVIEW_MODE=false;
 // Demo data for testing
 function loadDemoSession(){
   const DEMO_VER='d2';
@@ -3321,7 +3387,7 @@ function loadDemoSession(){
   ]};
   saveSession(demo);
 }
-loadDemoSession();
+if(PREVIEW_MODE)loadDemoSession();
 </script>
 </body>
 </html>
