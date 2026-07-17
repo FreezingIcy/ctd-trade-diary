@@ -503,7 +503,15 @@ function onBalanceBlur(el){if(typeof onPriceBlur==='function')onPriceBlur(el);se
 function manualHTML(){
   const T='var(--acc)',O='var(--orange)';
   const em=(n,t,c,d)=>`<div class="m-row top"><span class="m-l" style="font-weight:500;width:74px;flex-shrink:0;color:var(--text)">${n}</span><span class="m-l" style="width:42px;flex-shrink:0;color:${c}">${t}</span><span class="m-l" style="font-size:13px;flex:1">${d}</span></div>`;
+  const vrow=(v,note,vc,nc)=>`<div class="m-row top"><span class="m-l mono" style="width:96px;flex-shrink:0;color:${vc}">${v}</span><span class="m-l" style="flex:1;font-size:13px;color:${nc}">${note}</span></div>`;
+  const vlog=VERSION_LOG.map((e,i)=>vrow(e.v,e.note,i===0?T:'var(--sub)',i===0?'var(--text)':'var(--sub)')).join('')+vrow('legacy','record ก่อนมีระบบ version (ver = —)','var(--hint)','var(--hint)');
   return `
+    <p class="m-sec">Version</p>
+    <div class="m-card">
+      <div class="m-row"><span class="m-l">version ปัจจุบัน</span><span class="m-v mono">${APP_VER}</span></div>
+      <div class="m-ghd">Changelog</div>
+      ${vlog}
+    </div>
     <p class="m-sec">Formula</p>
     <div class="m-card">
       <div class="m-row"><span class="m-l">SLD</span><span class="m-v">entry × vola% × SF</span></div>
@@ -669,6 +677,20 @@ function parseDateParts(s){
   return null;
 }
 function stampMs(s){const p=parseDateParts(s);return p?new Date(p.y,p.mo-1,p.d,p.h,p.mi,p.sec).getTime():0;}
+// ── ISO 8601 helpers (Phase D1) ── device TZ auto-captured; no user input.
+function deviceOffset(){return -new Date().getTimezoneOffset()/60;} // hours from UTC (Bangkok → 7)
+function offsetStr(h){const sign=h<0?'-':'+';h=Math.abs(h);const hh=Math.floor(h),mm=Math.round((h-hh)*60);const z=v=>String(v).padStart(2,'0');return `${sign}${z(hh)}:${z(mm)}`;} // 7 → +07:00 · 5.5 → +05:30
+// toISO(anything) → yyyy-mm-ddThh:mm:ss±hh:mm. Preserves an existing offset/Z; else stamps device offset. Unparseable → returns input unchanged.
+function toISO(s){
+  s=String(s||'').trim();if(!s)return '';
+  const p=parseDateParts(s);if(!p)return s;
+  const z=v=>String(v).padStart(2,'0');
+  let off;const om=s.match(/([+-])(\d{2}):?(\d{2})\s*$/);
+  if(om)off=`${om[1]}${om[2]}:${om[3]}`;
+  else if(/\dZ\s*$/i.test(s))off='+00:00';
+  else off=offsetStr(deviceOffset());
+  return `${p.y}-${z(p.mo)}-${z(p.d)}T${z(p.h)}:${z(p.mi)}:${z(p.sec)}${off}`;
+}
 function recDateMs(r){
   const d=r.closedAt||r.archivedAt||(r.eval&&r.eval.exits&&r.eval.exits.length?r.eval.exits[r.eval.exits.length-1].date:'')||(r.source&&r.source.entry?r.source.entry.date:'')||'';
   return stampMs(d);
@@ -1158,7 +1180,7 @@ function untombstone(id){
 }
 function tombstonePanelHTML(){
   const l=loadTombstones();if(!l.length)return '';
-  const rows=l.map(t=>`<div class="tomb-row"><div class="info"><div class="tid">${escHtml(t.id)}</div><div class="tdate">deleted ${escHtml(t.deletedAt||'')}</div></div><button class="restore" onclick="removeTombstone('${escHtml(t.id)}')">Restore</button></div>`).join('');
+  const rows=l.map(t=>`<div class="tomb-row"><div class="info"><div class="tid">${escHtml(t.id)}</div><div class="tdate">deleted ${escHtml(dateDisplay(t.deletedAt||''))}</div></div><button class="restore" onclick="removeTombstone('${escHtml(t.id)}')">Restore</button></div>`).join('');
   return `<div class="tomb"><div class="tomb-h" onclick="this.parentNode.querySelector('.tomb-body').classList.toggle('on')"><span class="ic">🗑</span><span class="tt">Deleted (tombstoned)</span><span class="cnt">${l.length}</span><span style="color:var(--hint);font-size:13px">▾</span></div><div class="tomb-body">${rows}<button class="tomb-clear" onclick="clearTombstones()">Clear all tombstones</button></div></div>`;
 }
 
@@ -1209,7 +1231,7 @@ function renderEditForm(){
     <div class="ed-f"><span class="k req">Direction</span><div class="ed-seg">
       <button class="${en.dir==='long'?'on':''}" onclick="editSetDir('long')">Long</button>
       <button class="${en.dir==='short'?'on':''}" onclick="editSetDir('short')">Short</button></div></div>
-    <div class="ed-f"><span class="k req">Entry Date</span><input id="ed-date" value="${escAttr(en.date)}" placeholder="dd/mm/yy hh:mm"></div>
+    <div class="ed-f"><span class="k req">Entry Date</span><input id="ed-date" value="${escAttr(editDateShow(en.date))}" placeholder="dd/mm/yy hh:mm"></div>
     <div class="ed-f"><span class="k req">Entry</span><input id="ed-price" value="${escAttr(en.price)}" inputmode="decimal" oninput="editRecalc()"></div>
     <div class="ed-f"><span class="k">SL (Border)</span><input id="ed-sl" value="${escAttr(en.sl)}" inputmode="decimal" oninput="editRecalc()"></div>
     <div class="ed-f"><span class="k req">Lot (entry)</span><input id="ed-lot" value="${escAttr(en.usedLot)}" inputmode="decimal" oninput="editRecalc()"></div>
@@ -1223,7 +1245,7 @@ function renderEditForm(){
   editState.exits.forEach((ex,i)=>{
     const isCut=String(ex.method||'').trim().toLowerCase()==='cutloss';
     h+=`<div class="ed-sec"><div class="ed-exh"><span class="tag ${isCut?'cl':''}">EXIT · ${isCut?'CL':'#'+(i+1)}</span><button class="ed-delx" data-step="0" onclick="editDelExit(${i},this)">Delete exit</button></div>
-      <div class="ed-f"><span class="k">Date</span><input data-ex="${i}" data-f="date" value="${escAttr(ex.date)}" placeholder="dd/mm/yy hh:mm"></div>
+      <div class="ed-f"><span class="k">Date</span><input data-ex="${i}" data-f="date" value="${escAttr(editDateShow(ex.date))}" placeholder="dd/mm/yy hh:mm"></div>
       <div class="ed-f"><span class="k req">Price</span><input data-ex="${i}" data-f="price" value="${escAttr(ex.price)}" inputmode="decimal" oninput="editRecalc()"></div>
       <div class="ed-f"><span class="k req">Lot</span><input data-ex="${i}" data-f="lot" value="${escAttr(ex.lot)}" inputmode="decimal" oninput="editRecalc()"></div>
       <div class="ed-f"><span class="k">Method</span>${edSelect(`data-ex="${i}" data-f="method" onchange="editOnMethod()"`,EXIT_METHODS,ex.method)}</div>
@@ -1307,7 +1329,7 @@ function editBuildPos(){
   const entryN=parseNum(en.price)||0,slN=parseNum(en.sl)||0,usedLot=parseFloat(en.usedLot)||0,lev=parseFloat(en.lev)||25;
   const vsd=en.vsd||'',vsf=en.vsf||'';
   const sld=entryN>0&&vsd?entryN*(parseFloat(vsd)/100)*(parseFloat(vsf)||1):Math.abs(entryN-slN);
-  return {version:'v1',id:editState.id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
+  return {version:'v1',ver:APP_VER,id:editState.id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
     entry:{date:eStamp,inst,dir,strategy:en.strategy||'',price:String(entryN),sl:String(slN),
       rmode:en.rmode||'',rpt:en.rpt||'',vsd,vsf,sld:String(sld.toFixed(2)),
       usedLot:String(usedLot),usedCV:String((usedLot*(sym.unit||0)*entryN).toFixed(0)),
@@ -1353,7 +1375,7 @@ function editSave(){
   renderRecords();
   ctdToast('✓ อัปเดตแล้ว'+(fbUser?' · synced':' · กด Push เพื่อ sync'));
 }
-function nowStamp(){const d=new Date();const p=v=>String(v).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${String(d.getFullYear()).slice(2)} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;}
+function nowStamp(){const d=new Date();const p=v=>String(v).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}${offsetStr(deviceOffset())}`;}
 // strip commas/spaces from numeric input → float
 function parseNum(v){
   if(v==null)return NaN;
@@ -1456,8 +1478,7 @@ function loadData(){
         const isDate=dateIds.some(dk=>id.endsWith(dk));
         if(isDate&&val){
           el.dataset.full=val;
-          const parts=val.split(' ')[0].split('/');
-          el.value=parts.length===3?parts[0]+'/'+parts[1]+'/'+parts[2].slice(2):val;
+          el.value=dateDisplay(val); // legacy + ISO both → dd/mm/yy hh:mm; junk passthrough
           el.style.color='var(--blue)';
         }else{el.value=val;}
       };
@@ -1763,7 +1784,7 @@ function renderSession(){
           const xPL=(xPrice-c.entry)*c.sign*c.unit*parseFloat(data.lot);
           const priceClass=xPL>=0?'profit':'loss';
           // date display: new yyyy/mm/dd → dd/mm/yy hh:mm; legacy passthrough
-          const dateShown=data.date?(/^\d{4}\//.test(data.date)?dateDisplay(data.date):data.date):'';
+          const dateShown=data.date?dateDisplay(data.date):'';
           return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="openExitSheet('${pos.id}','${key}')">
             <span class="exit-tag">${label}</span>
             <span class="exit-date-val">${escHtml(dateShown)||'—'}</span>
@@ -1922,6 +1943,8 @@ function startNoteEdit(posId,el){
 
 // ── Entry Date inline edit (Tab2) — regenerates position id from the new date ──
 function entryDateShow(s){const p=parseDateParts(s);if(!p)return String(s||'');const z=v=>String(v).padStart(2,'0');return `${z(p.d)}/${z(p.mo)}/${String(p.y).slice(2)} ${z(p.h)}:${z(p.mi)}`;}
+// D3: edit-form display — keeps SECONDS so unedited save round-trips without precision loss (input → normStamp → ISO)
+function editDateShow(s){const p=parseDateParts(s);if(!p)return String(s||'');const z=v=>String(v).padStart(2,'0');return `${z(p.d)}/${z(p.mo)}/${String(p.y).slice(2)} ${z(p.h)}:${z(p.mi)}:${z(p.sec)}`;}
 function startEntryDateEdit(posId,el){
   if(el.querySelector('input'))return;
   const pos=loadSession().positions.find(p=>p.id===posId);
@@ -2052,8 +2075,9 @@ function openExitSheet(posId, slotKey){
     g('exit-price').value=ex.price||'';
     // date: if stored in new yyyy/mm/dd format show short, else show as-is
     const storedDate=ex.date||'';
-    dateEl.value=/^\d{4}\//.test(storedDate)?dateDisplay(storedDate):(storedDate||'');
-    dateEl.dataset.full=/^\d{4}\//.test(storedDate)?storedDate:'';
+    const isFull=/^\d{4}[-\/]/.test(storedDate||''); // yyyy/mm/dd legacy OR ISO
+    dateEl.value=isFull?dateDisplay(storedDate):(storedDate||'');
+    dateEl.dataset.full=isFull?storedDate:'';
     dateEl.style.color='';
     g('exit-lot').value=ex.lot||'';
     g('exit-method').value=ex.method||'';
@@ -2194,7 +2218,7 @@ function setExitFullLot(){
 function onExitDateBlur(el){
   const raw=el.value.trim();if(!raw)return;
   const stored=parseDateFlexible(raw);
-  if(stored&&/^\d{4}\//.test(stored)){
+  if(stored&&/^\d{4}[-\/]/.test(stored)){
     el.dataset.full=stored;
     el.value=dateDisplay(stored);
     el.style.color='var(--blue)';
@@ -2373,11 +2397,8 @@ function csvCell(v){
   v=v==null?'':String(v);
   return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
 }
-function toISODate(s){
-  const m=/^(\d{2})\/(\d{2})\/(\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(s||'');
-  if(!m)return s||'';
-  return `${2000+(+m[3])}-${m[2]}-${m[1]} ${(m[4]||'00').padStart(2,'0')}:${m[5]||'00'}:${m[6]||'00'}`;
-}
+// D2: export dates = full ISO 8601 with offset. Wraps toISO — handles dd/mm/yy, yyyy/mm/dd, and ISO inputs.
+function toISODate(s){return toISO(s);}
 function fmtLot(v){if(v===''||v==null)return '';const n=+v;return isFinite(n)?n.toFixed(8):'';}
 
 // ── Formatted Excel export (xlsx-js-style, lazy-loaded) ──
@@ -2394,7 +2415,7 @@ function buildExportRows(){
     const e=r.eval;const x=e.ext||{};
     const row=[r.id,e.symbol,e.strategy||'',e.direction,toISODate(r.source?.entry?.date||''),_num(e.entryPrice),_num(e.entrySL),_num(x.usedLot),_num(x.lev),_num(e.riskAmount),
       _num(e.grossPL!=null?e.grossPL:e.realizedPL),_num(e.totalFees!=null?e.totalFees:0),_num(e.realizedPL),
-      _num(e.rMultiple),e.outcome,e.entryScore,e.holdingStr,x.riskMode||'',r.lastEditedAt||'',r.editCount||0];
+      _num(e.rMultiple),e.outcome,e.entryScore,e.holdingStr,x.riskMode||'',toISODate(r.lastEditedAt||''),r.editCount||0];
     const bySlot={};(e.exits||[]).forEach(ex=>bySlot[ex.slot]=ex);
     slotCols.forEach(s=>{
       const ex=bySlot[s];
@@ -2721,7 +2742,8 @@ function setRecFilter(sym){recFilter=sym;recArmId=null;renderRecords();}
 function setStratFilter(st){stratFilter=st;recArmId=null;renderRecords();}
 function setRecPeriod(p){recPeriod=p;renderRecords();}
 // ===== CSV Import (external data → records, skip-if-exists) =====
-function normStamp(s){const p=parseDateParts(s);if(!p)return String(s||'').trim();const z=v=>String(v).padStart(2,'0');return `${z(p.d)}/${z(p.mo)}/${String(p.y).slice(2)} ${z(p.h)}:${z(p.mi)}:${z(p.sec)}`;}
+// D2: canonical storage stamp is ISO 8601 (+device offset). Unparseable → input unchanged (same fallback as before).
+function normStamp(s){return toISO(s);}
 function holdingBetween(a,b){const pa=stampMs(a),pb=stampMs(b);if(!pa||!pb||pb<pa)return '—';const ms=pb-pa,d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000);return d>0?`${d}d ${h}h`:`${h}h`;}
 function makeImportId(inst,dir,dateStr){const ds=dir==='short'?'S':'L';const p=parseDateParts(dateStr);const z=v=>String(v).padStart(2,'0');const ddmmyy=p?z(p.d)+z(p.mo)+String(p.y).slice(2):'000000';const hhmm=p?z(p.h)+z(p.mi):'0000';return `${String(inst).toUpperCase()}.O.${ds}.${ddmmyy}.${hhmm}`;}
 function parseImportCSV(text){
@@ -2759,7 +2781,7 @@ function posFromImportRow(cells){
   const sld=entryN>0&&vsd?entryN*(parseFloat(vsd)/100)*(parseFloat(vsf)||1):Math.abs(entryN-slN);
   const eStamp=normStamp(get(4));
   const id=get(0)||makeImportId(inst,dir,get(4));
-  return {pos:{version:'v1',id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
+  return {pos:{version:'v1',ver:APP_VER,id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
     entry:{date:eStamp,inst,dir,strategy:get(2),price:String(entryN),sl:String(slN),rmode:get(9),rpt:get(10),
       vsd,vsf,sld:String(sld.toFixed(2)),usedLot:String(lot),usedCV:String((lot*sym.unit*entryN).toFixed(0)),
       lev:String(lev),entryScore:get(13),entryNote:get(14)},
@@ -2987,7 +3009,7 @@ function renderRecords(){
       let panel='';
       if(expanded){
         const src=r.source||{};const en=src.entry||{};
-        const entryDate=en.date?(/^\d{4}\//.test(en.date)?dateDisplay(en.date):en.date):'';
+        const entryDate=en.date?dateDisplay(en.date):'';
         const erow=(l,v)=>`<div class="rec-erow"><span class="rec-el">${l}</span><span class="rec-ev">${v}</span></div>`;
         let p=`<div style="padding:14px;background:var(--bg);border-top:.5px solid var(--border)">`;
         // timeline: entry → exits
@@ -3001,7 +3023,7 @@ function renderRecords(){
         </div>`;
         if(e.exits&&e.exits.length){
           e.exits.forEach(ex=>{
-            const xd=ex.date?(/^\d{4}\//.test(ex.date)?dateDisplay(ex.date):ex.date):'';
+            const xd=ex.date?dateDisplay(ex.date):'';
             const xPlC=ex.pl>0?'var(--green)':ex.pl<0?'var(--red)':'';
             const dotCls=ex.pl>0?'win':ex.pl<0?'loss':'';
             p+=`<div class="rec-evt">
@@ -3038,7 +3060,7 @@ function renderRecords(){
           <div class="rec-brow"><span class="rec-bl">R-mult</span><span class="rec-bv">${fSign(e.rMultiple,2)}R</span></div>
           <div class="rec-brow"><span class="rec-bl">Outcome</span><span class="rec-bv" style="color:${outcomeC}">${e.outcome}</span></div>
           <div class="rec-brow"><span class="rec-bl">Holding</span><span class="rec-bv">${escHtml(e.holdingStr||'—')}</span></div>
-          ${r.lastEditedAt?`<div class="rec-brow"><span class="rec-bl">แก้ไข</span><span class="rec-bv" style="color:var(--orange)">${escHtml(r.lastEditedAt)} · ${r.editCount||1}×</span></div>`:''}
+          ${r.lastEditedAt?`<div class="rec-brow"><span class="rec-bl">แก้ไข</span><span class="rec-bv" style="color:var(--orange)">${escHtml(dateDisplay(r.lastEditedAt))} · ${r.editCount||1}×</span></div>`:''}
         </div>`;
         p+=`<div class="rec-2col">${sumBox}${feesBox}</div>`;
         // notes
@@ -3056,7 +3078,7 @@ function renderRecords(){
         ${minus}
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:600;color:var(--text);display:flex;flex-wrap:wrap;align-items:center;gap:3px 6px">${e.badSymbol?'<span title="unknown symbol — P/L may be invalid">⚠️</span>':''}<span>${e.symbol}</span><span style="color:${dirColor};font-size:12px;font-weight:500">${e.direction==='long'?'Long':'Short'}</span>${e.strategy?`<span class="strat-chip">${escHtml(e.strategy)}</span>`:''}</div>
-          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${r.source?.entry?.date||r.archivedAt} · ${e.holdingStr}${noteHint}${r.lastEditedAt?' · ✏️':''}</div>
+          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${dateDisplay(r.source?.entry?.date||r.archivedAt||'')} · ${e.holdingStr}${noteHint}${r.lastEditedAt?' · ✏️':''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:14px;font-weight:600;color:${plC}">${fSign(e.realizedPL,2)}</div>
@@ -3258,11 +3280,10 @@ function buildPacket(n){
   const vsd=g(`p${n}-vsd`)?.value||'';
   const vsf=g(`p${n}-vsf`)?.value||'';
   const sld=entry>0&&vsd?entry*(parseFloat(vsd)/100)*(parseFloat(vsf)||1):Math.abs(entry-sl);
-  const now=new Date();
-  const pad=v=>String(v).padStart(2,'0');
-  const importedAt=`${pad(now.getDate())}/${pad(now.getMonth()+1)}/${String(now.getFullYear()).slice(2)} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const importedAt=nowStamp();
   return {
     version:'v1',
+    ver:APP_VER,
     id:buildEntryId(n),
     meta:{state:'ACTIVE',importedAt,closedAt:null},
     entry:{
@@ -3338,10 +3359,10 @@ function importToSession(n){
 // Accepts: 17/6/26 21:28 · 17/06/2026 21:28 · 2026-06-17 21:28:29
 //          17/06/2026 21:28:29.881(UTC+7:00) · GMT-5 · UTC etc.
 // Converts to UTC+7 (Bangkok). Returns storage format: yyyy/mm/dd hh:mm:ss
-const TARGET_TZ_OFFSET=7; // UTC+7 Bangkok
 function parseDateFlexible(raw){
   if(!raw||!raw.trim())return '';
   raw=raw.trim();
+  const tgt=deviceOffset(); // D2: target TZ auto from device (was hardcoded +7)
   // extract timezone offset if present: (UTC+7:00) (UTC-5) GMT+7 GMT-05:00 +07:00 Z
   let srcOffset=null; // hours from UTC
   const tzM=raw.match(/(?:UTC|GMT)\s*([+-])(\d{1,2})(?::?(\d{2}))?/i)
@@ -3356,7 +3377,7 @@ function parseDateFlexible(raw){
   let s=raw.replace(/\(?\s*(?:UTC|GMT)\s*[+-]?\d{0,2}:?\d{0,2}\s*\)?/ig,'')
            .replace(/[+-]\d{2}:?\d{2}\s*$/,'')
            .replace(/Z\s*$/i,'')
-           .replace(/\.\d+/,'')
+           .replace(/(:\d{2})\.\d+/,'$1')
            .trim();
   // parse the bare datetime via canonical parser (TZ already stripped)
   let y,mo,d,h=0,mi=0,sec=0;
@@ -3366,24 +3387,27 @@ function parseDateFlexible(raw){
   // build a Date in UTC from the parsed components, then shift by tz
   let dt=new Date(Date.UTC(y,mo-1,d,h,mi,sec));
   if(srcOffset!==null){
-    // convert: source local → UTC → target (UTC+7)
-    dt=new Date(dt.getTime()-srcOffset*3600000+TARGET_TZ_OFFSET*3600000);
+    // convert: source local → UTC → device TZ
+    dt=new Date(dt.getTime()-srcOffset*3600000+tgt*3600000);
   }
-  // if no tz given, assume already in target tz (no shift)
+  // if no tz given, assume already in device tz (no shift)
   const p=v=>String(v).padStart(2,'0');
-  return `${dt.getUTCFullYear()}/${p(dt.getUTCMonth()+1)}/${p(dt.getUTCDate())} ${p(dt.getUTCHours())}:${p(dt.getUTCMinutes())}:${p(dt.getUTCSeconds())}`;
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth()+1)}-${p(dt.getUTCDate())}T${p(dt.getUTCHours())}:${p(dt.getUTCMinutes())}:${p(dt.getUTCSeconds())}${offsetStr(tgt)}`;
 }
-// display: yyyy/mm/dd hh:mm:ss → dd/mm/yy hh:mm
+// display: yyyy/mm/dd hh:mm:ss OR ISO yyyy-mm-ddThh:mm[±offset] → dd/mm/yy hh:mm
 function dateDisplay(stored){
   if(!stored)return '';
-  const m=stored.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
-  if(!m)return stored;
-  return `${m[3]}/${m[2]}/${m[1].slice(2)} ${m[4]}:${m[5]}`;
+  let m=stored.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+  if(m)return `${m[3]}/${m[2]}/${m[1].slice(2)} ${m[4]}:${m[5]}`;
+  m=stored.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/); // ISO
+  if(m)return `${m[3]}/${m[2]}/${m[1].slice(2)} ${m[4]}:${m[5]}`;
+  return stored;
 }
+const fromISODisplay=dateDisplay; // ISO → dd/mm/yy hh:mm (same reader)
 function onEdateBlur(el){
   const raw=el.value.trim();if(!raw){saveData();return;}
-  const stored=parseDateFlexible(raw);  // yyyy/mm/dd hh:mm:ss
-  if(stored&&/^\d{4}\//.test(stored)){
+  const stored=parseDateFlexible(raw);  // ISO yyyy-mm-ddThh:mm:ss±hh:mm
+  if(stored&&/^\d{4}[-\/]/.test(stored)){
     el.dataset.full=stored;
     el.value=dateDisplay(stored);       // dd/mm/yy hh:mm
     el.style.color='var(--blue)';
@@ -3397,6 +3421,17 @@ if(document.readyState==='complete'){
 }else{
   window.addEventListener('load',()=>{ try{ initFirebase(); }catch(e){ console.error('Firebase init skipped:',e); } });
 }
+
+// ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
+// Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
+// New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
+const APP_VER='2026.07.16.B';
+const VERSION_LOG=[
+  {v:'2026.07.16.B',note:'D2: เขียน date เป็น ISO 8601 (+offset) · export = ISO · CSV import TZ auto จากเครื่อง'},
+  {v:'2026.07.16.A',note:'ระบบ version + provenance stamp'}
+];
+// provenance reader: build version that wrote a record, or null (legacy / pre-version)
+function recBuildVer(r){return r&&r.ver?r.ver:null;}
 
 // ── Build mode ── PREVIEW seeds demo positions for testing; set false for production
 const PREVIEW_MODE=false;
