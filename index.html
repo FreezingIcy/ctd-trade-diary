@@ -917,6 +917,7 @@ async function pushPositions(){
   try{
     const data=loadSession();
     const open=data.positions.filter(p=>p.meta.state!=='CLOSED');
+    console.log('pushPositions: uid =',fbUser&&fbUser.uid,'· open =',open.length,open.map(p=>p.id+' ['+p.meta.state+'] updatedAt='+(p.updatedAt||'MISSING')));
     const recIds=new Set(loadRecords().records.map(r=>r.id));
     const snap=await pref.get();
     const cloud={};snap.forEach(d=>cloud[d.id]=d.data());
@@ -935,7 +936,7 @@ async function pushPositions(){
     if(cnt>0)await batch.commit();
     setPosPushAt(Date.now());
     return {up,del};
-  }catch(e){return {up:0,del:0};}
+  }catch(e){console.error('pushPositions error:',e);return {up:0,del:0,err:e.message||String(e)};}
 }
 async function pullPositions(){
   const uref=userDocRef();if(!uref)return {added:0,updated:0,removed:0};
@@ -945,6 +946,13 @@ async function pullPositions(){
     const data=loadSession();
     const recIds=new Set(loadRecords().records.map(r=>r.id));
     const posTomb=tombIds('position');
+    console.log('pullPositions: uid =',fbUser&&fbUser.uid,'· cloud docs =',snap.size,'· local positions =',data.positions.length,'· local records =',recIds.size,'· position tombstones =',posTomb.size);
+    snap.forEach(d=>{
+      const why=recIds.has(d.id)?'DELETED (already a local record → closed here)'
+        :posTomb.has(d.id)?'DELETED (local position tombstone)'
+        :'kept';
+      console.log('  cloud pos',d.id,'→',why);
+    });
     const localMap={};data.positions.forEach(p=>localMap[p.id]=p);
     let added=0,updated=0,removed=0;
     let delBatch=fbDb.batch(),delCnt=0;
@@ -961,7 +969,7 @@ async function pullPositions(){
     try{localStorage.setItem(SK2,JSON.stringify(data));}catch(e){}
     if(delCnt>0)await delBatch.commit();
     return {added,updated,removed};
-  }catch(e){return {added:0,updated:0,removed:0};}
+  }catch(e){console.error('pullPositions error:',e);return {added:0,updated:0,removed:0,err:e.message||String(e)};}
 }
 // ── Unified tombstone sync (records + positions) ──
 async function cloudDeletePosition(id){
@@ -1061,7 +1069,7 @@ async function pushToCloud(){
     const tombN=await pushTombstones();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
     if(typeof renderSession==='function')renderSession();
     renderRecords();
     setTimeout(()=>{
@@ -1112,7 +1120,7 @@ async function pullFromCloud(){
     const posR=await pullPositions();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
     if(typeof renderSession==='function')renderSession();
     renderRecords();
     setTimeout(()=>{
