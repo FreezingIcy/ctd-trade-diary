@@ -917,7 +917,6 @@ async function pushPositions(){
   try{
     const data=loadSession();
     const open=data.positions.filter(p=>p.meta.state!=='CLOSED');
-    console.log('pushPositions: uid =',fbUser&&fbUser.uid,'· open =',open.length,open.map(p=>p.id+' ['+p.meta.state+'] updatedAt='+(p.updatedAt||'MISSING')));
     const recIds=new Set(loadRecords().records.map(r=>r.id));
     const snap=await pref.get();
     const cloud={};snap.forEach(d=>cloud[d.id]=d.data());
@@ -946,19 +945,16 @@ async function pullPositions(){
     const data=loadSession();
     const recIds=new Set(loadRecords().records.map(r=>r.id));
     const posTomb=tombIds('position');
-    console.log('pullPositions: uid =',fbUser&&fbUser.uid,'· cloud docs =',snap.size,'· local positions =',data.positions.length,'· local records =',recIds.size,'· position tombstones =',posTomb.size);
-    snap.forEach(d=>{
-      const why=recIds.has(d.id)?'DELETED (already a local record → closed here)'
-        :posTomb.has(d.id)?'DELETED (local position tombstone)'
-        :'kept';
-      console.log('  cloud pos',d.id,'→',why);
-    });
     const localMap={};data.positions.forEach(p=>localMap[p.id]=p);
-    let added=0,updated=0,removed=0;
-    let delBatch=fbDb.batch(),delCnt=0;
+    let added=0,updated=0,skipped=0;
     snap.forEach(d=>{
       const cp=d.data(),id=d.id;
-      if(recIds.has(id)||posTomb.has(id)){delBatch.delete(pref.doc(id));delCnt++;removed++;return;} // closed or deleted here → clean cloud
+      // Closed or deleted on THIS device → don't pull it back down.
+      // NOTE: pull must NEVER delete the cloud doc. A reading device deciding from
+      // its own local state used to wipe another device's live position (ping-pong
+      // loop: A pushes → B pulls & deletes → A re-pushes...). Cloud cleanup is the
+      // owning device's job, in pushPositions (archived → in records → delete).
+      if(recIds.has(id)||posTomb.has(id)){skipped++;return;}
       const lp=localMap[id];
       if(!lp){data.positions.push(cp);added++;}
       else if((cp.updatedAt||0)>(lp.updatedAt||0)){
@@ -966,9 +962,14 @@ async function pullPositions(){
         if(idx>=0)data.positions[idx]=cp;updated++;
       }
     });
+    // Local purge: a record arrived (trade closed on another device) while this
+    // device still holds the matching position → drop the stale open position.
+    // Local-only: never touches records, tombstones, or the cloud.
+    const before=data.positions.length;
+    data.positions=data.positions.filter(p=>!recIds.has(p.id));
+    const purged=before-data.positions.length;
     try{localStorage.setItem(SK2,JSON.stringify(data));}catch(e){}
-    if(delCnt>0)await delBatch.commit();
-    return {added,updated,removed};
+    return {added,updated,removed:0,purged,skipped,cloudN:snap.size};
   }catch(e){console.error('pullPositions error:',e);return {added:0,updated:0,removed:0,err:e.message||String(e)};}
 }
 // ── Unified tombstone sync (records + positions) ──
@@ -1070,8 +1071,6 @@ async function pushToCloud(){
     cloudLastSync=new Date();
     cloudStatus='synced';
     cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
-    if(typeof renderSession==='function')renderSession();
-    renderRecords();
     setTimeout(()=>{
       if(cloudStatus==='synced'){
         cloudMsg=`Synced · ${local.records.length} records · ${fmtSyncTime(cloudLastSync)}`;
@@ -1081,8 +1080,11 @@ async function pushToCloud(){
   }catch(e){
     cloudStatus='error'; cloudMsg='Push ล้มเหลว: '+e.message;
     console.error('Push error:',e);
+  }finally{
+    isSyncing=false;                 // clear BEFORE the final render so buttons re-enable
+    if(typeof renderSession==='function')renderSession();
     renderRecords();
-  }finally{ isSyncing=false; }
+  }
 }
 
 async function pullFromCloud(){
@@ -1120,9 +1122,7 @@ async function pullFromCloud(){
     const posR=await pullPositions();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
-    if(typeof renderSession==='function')renderSession();
-    renderRecords();
+    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${posR.purged?' · '+posR.purged+' pos ปิดแล้ว':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
     setTimeout(()=>{
       if(cloudStatus==='synced'){
         cloudMsg=`Synced · ${local.records.length} records · ${fmtSyncTime(cloudLastSync)}`;
@@ -1132,8 +1132,11 @@ async function pullFromCloud(){
   }catch(e){
     cloudStatus='error'; cloudMsg='Pull ล้มเหลว: '+e.message;
     console.error('Pull error:',e);
+  }finally{
+    isSyncing=false;                 // clear BEFORE the final render so buttons re-enable
+    if(typeof renderSession==='function')renderSession();
     renderRecords();
-  }finally{ isSyncing=false; }
+  }
 }
 
 // validate a record from cloud before trusting it
@@ -3433,8 +3436,10 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.07.16.B';
+const APP_VER='2026.07.22.B';
 const VERSION_LOG=[
+  {v:'2026.07.22.B',note:'แก้ปุ่ม Push/Pull ค้าง disabled หลัง sync เสร็จ (isSyncing race)'},
+  {v:'2026.07.22.A',note:'Sync fix: pull ไม่ลบ position บน cloud · purge position ที่ปิดจากเครื่องอื่น'},
   {v:'2026.07.16.B',note:'D2: เขียน date เป็น ISO 8601 (+offset) · export = ISO · CSV import TZ auto จากเครื่อง'},
   {v:'2026.07.16.A',note:'ระบบ version + provenance stamp'}
 ];
