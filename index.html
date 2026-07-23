@@ -1851,14 +1851,13 @@ function renderSession(){
           <div class="pos-stat"><div class="pos-slbl">R : R</div><div class="pos-sval ${c.rr>=2?'green':c.rr>0?'':'sub'}">${c.hasRealized&&c.risk?f(c.rr,2)+'x':'—'}</div></div>
           <div class="pos-stat"><div class="pos-slbl">Realized P/L</div><div class="pos-sval ${c.realizedPL>0?'green':c.realizedPL<0?'red':'sub'}">${c.hasRealized?fSign(c.realizedPL):'—'}</div></div>
           <div class="pos-stat"><div class="pos-slbl">Available lot</div><div class="pos-sval acc">${f(c.remainingLot,2)}</div></div>
-          <div class="pos-stat"><div class="pos-slbl">Entry Score</div><div class="pos-sval">${pos.entry.entryScore?'★ '+pos.entry.entryScore:'—'}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">Entry Score</div><div class="pos-sval" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryScoreEdit('${pos.id}',this)">${pos.entry.entryScore?'★ '+escHtml(pos.entry.entryScore):'—'} <span style="color:var(--acc);font-size:10px">✎</span></div></div>
           <div class="pos-stat"><div class="pos-slbl">Holding Period</div><div class="pos-sval">${c.holdingStr}</div></div>
         </div>
         <div class="exit-section-hd">Entry Setting</div>
         <div class="pos-row"><span class="pos-rl">Entry Date</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryDateEdit('${pos.id}',this)">${pos.entry.date?escHtml(entryDateShow(pos.entry.date)):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','price',this)">${f(c.entry,c.entry>100?2:5)} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','sl',this)">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
-        <div class="pos-row"><span class="pos-rl">Entry Score</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryScoreEdit('${pos.id}',this)">${pos.entry.entryScore?escHtml('★ '+pos.entry.entryScore):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         ${trailRow}
         <div class="exit-section-hd">Exit Records</div>
         <div class="lot-status-bar" id="lot-bar-${pos.id}" style="background:rgba(0,0,0,.3);border-bottom:.5px solid rgba(255,255,255,.15)">
@@ -2029,16 +2028,17 @@ function startEntryNumEdit(posId,field,el){
 }
 // ── Entry Score inline edit (Tab2) — no derived re-stamp (score doesn't affect calc) ──
 function startEntryScoreEdit(posId,el){
-  if(el.querySelector('input'))return;
+  if(el.querySelector('select'))return;
   const pos=loadSession().positions.find(p=>p.id===posId);
   if(!pos)return;
+  const cur=pos.entry.entryScore||'';
   el.innerHTML='';
-  const inp=document.createElement('input');
-  inp.type='text';inp.inputMode='decimal';inp.value=pos.entry.entryScore||'';
-  inp.style.cssText='background:var(--bg);border:1px solid var(--acc);border-radius:7px;outline:none;font-size:13px;color:var(--text);font-family:inherit;padding:5px 9px;width:90px;text-align:right';
-  inp.onblur=()=>commitEntryScoreEdit(posId,inp.value);
-  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}};
-  el.appendChild(inp);inp.focus();inp.select();
+  const sel=document.createElement('select');
+  sel.innerHTML='<option value="">—</option>'+[1,2,3,4,5].map(v=>`<option value="${v}"${String(cur)===String(v)?' selected':''}>${v}</option>`).join('');
+  sel.style.cssText='background:var(--bg);border:1px solid var(--acc);border-radius:7px;outline:none;font-size:13px;color:var(--text);font-family:inherit;padding:4px 6px';
+  sel.onchange=()=>commitEntryScoreEdit(posId,sel.value);
+  sel.onblur=()=>renderSession();
+  el.appendChild(sel);sel.focus();
 }
 function commitEntryScoreEdit(posId,raw){
   const d=loadSession();
@@ -3478,8 +3478,9 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.07.22.E';
+const APP_VER='2026.07.22.F';
 const VERSION_LOG=[
+  {v:'2026.07.22.F',note:'Tab2 Entry Score แก้ที่ช่อง status ได้เลย (dropdown) · เอา row ใต้ Entry SL ออก'},
   {v:'2026.07.22.E',note:'Tombstone: ลบทับ resurrect ได้ · queue ไม่ถูกล้างทิ้ง — แก้ลบไม่ติด/ลบผิดตัว'},
   {v:'2026.07.22.D',note:'Sync: ยุบ position id ซ้ำอัตโนมัติ (self-heal) แก้ปัญหา pos ซ้อนตอน pull'},
   {v:'2026.07.22.C',note:'Tab2 แก้ Entry Score inline ได้ · ช่อง vola/rpt/sf/lot/margin เอา spinner ออก กรอกตรงๆ'},
