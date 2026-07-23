@@ -966,7 +966,7 @@ async function pullPositions(){
     // device still holds the matching position → drop the stale open position.
     // Local-only: never touches records, tombstones, or the cloud.
     const before=data.positions.length;
-    data.positions=data.positions.filter(p=>!recIds.has(p.id));
+    data.positions=dedupPositions(data.positions.filter(p=>!recIds.has(p.id))); // purge closed + collapse exact-id dups
     const purged=before-data.positions.length;
     try{localStorage.setItem(SK2,JSON.stringify(data));}catch(e){}
     return {added,updated,removed:0,purged,skipped,cloudN:snap.size};
@@ -1015,14 +1015,17 @@ async function pullTombstones(){
     const local=loadTombstones();
     const map={};local.forEach(t=>{map[t.id]=t;});
     let added=0;
+    const resolved=new Set();
     let unBatch=fbDb.batch(),unCnt=0;
     snap.forEach(d=>{
       const ct=d.data();
-      if(un.has(ct.id)){unBatch.delete(tref.doc(ct.id));unCnt++;return;} // resurrected here → clean cloud tombstone
+      if(un.has(ct.id)){unBatch.delete(tref.doc(ct.id));unCnt++;resolved.add(ct.id);return;} // resurrected here → clean cloud tombstone
       if(!map[ct.id]){local.push({id:ct.id,kind:ct.kind||'record',deletedAt:ct.deletedAt||nowStamp()});map[ct.id]=ct;added++;}
     });
     if(unCnt>0)await unBatch.commit();
-    saveUntomb([]); // pull confirmed cloud state → queue resolved
+    // Keep unresolved entries: their cloud tombstone wasn't in this snapshot yet, so
+    // another device may still push it later — the resurrection intent must survive.
+    saveUntomb([...un].filter(id=>!resolved.has(id)));
     saveTombstones(local);
     // apply locally: purge tombstoned records + positions
     let recRemoved=0,posRemoved=0;
@@ -1177,7 +1180,10 @@ const TOMB_KEY='ctd_tombstones';
 function loadTombstones(){try{const r=localStorage.getItem(TOMB_KEY);return r?JSON.parse(r):[];}catch(e){return[];}}
 function saveTombstones(list){try{localStorage.setItem(TOMB_KEY,JSON.stringify(list));}catch(e){}}
 function isTombstoned(id){return loadTombstones().some(t=>t.id===id);}
-function addTombstone(id,kind){kind=kind||'record';const l=loadTombstones();const ex=l.find(t=>t.id===id);if(ex){if(!ex.kind)ex.kind=kind;}else{l.push({id,kind,deletedAt:nowStamp()});}saveTombstones(l);}
+function addTombstone(id,kind){kind=kind||'record';const l=loadTombstones();const ex=l.find(t=>t.id===id);if(ex){if(!ex.kind)ex.kind=kind;}else{l.push({id,kind,deletedAt:nowStamp()});}saveTombstones(l);
+  // delete overrides a pending resurrection — otherwise pullTombstones would treat the
+  // cloud tombstone as "resurrected here" and delete it, so the deletion never propagates.
+  const u=loadUntomb();if(u.includes(id))saveUntomb(u.filter(x=>x!==id));}
 function tombIds(kind){return new Set(loadTombstones().filter(t=>(t.kind||'record')===kind).map(t=>t.id));}
 function removeTombstone(id){untombstone(id);renderRecords();}
 function clearTombstones(){loadTombstones().forEach(t=>untombstone(t.id));renderRecords();}
@@ -1644,8 +1650,21 @@ function loadSession(){
   try{const raw=localStorage.getItem(SK2);return raw?JSON.parse(raw):{version:'v1',positions:[]};}
   catch(e){return{version:'v1',positions:[]};}
 }
+// collapse positions that share an EXACT id (a sync/legacy artifact — importToSession
+// gives genuinely-different trades distinct ids via the -2 suffix, so an exact dup is
+// always a bug). Keep the newest updatedAt = last-write-wins, so an edit on any device wins.
+function dedupPositions(list){
+  const byId={};
+  (list||[]).forEach(p=>{
+    if(!p||!p.id)return;
+    const ex=byId[p.id];
+    if(!ex||(p.updatedAt||0)>=(ex.updatedAt||0))byId[p.id]=p;
+  });
+  return Object.values(byId);
+}
 function saveSession(data){
   try{
+    if(data&&data.positions)data.positions=dedupPositions(data.positions); // self-heal exact-id duplicates
     // auto-stamp updatedAt only on positions whose content changed (for last-write-wins sync)
     const prev=loadSession();
     const prevMap={};prev.positions.forEach(p=>{prevMap[p.id]=p;});
@@ -1839,6 +1858,7 @@ function renderSession(){
         <div class="pos-row"><span class="pos-rl">Entry Date</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryDateEdit('${pos.id}',this)">${pos.entry.date?escHtml(entryDateShow(pos.entry.date)):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','price',this)">${f(c.entry,c.entry>100?2:5)} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','sl',this)">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
+        <div class="pos-row"><span class="pos-rl">Entry Score</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryScoreEdit('${pos.id}',this)">${pos.entry.entryScore?escHtml('★ '+pos.entry.entryScore):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         ${trailRow}
         <div class="exit-section-hd">Exit Records</div>
         <div class="lot-status-bar" id="lot-bar-${pos.id}" style="background:rgba(0,0,0,.3);border-bottom:.5px solid rgba(255,255,255,.15)">
@@ -2006,6 +2026,28 @@ function startEntryNumEdit(posId,field,el){
   inp.onblur=()=>commitEntryNumEdit(posId,field,inp.value);
   inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}};
   el.appendChild(inp);inp.focus();inp.select();
+}
+// ── Entry Score inline edit (Tab2) — no derived re-stamp (score doesn't affect calc) ──
+function startEntryScoreEdit(posId,el){
+  if(el.querySelector('input'))return;
+  const pos=loadSession().positions.find(p=>p.id===posId);
+  if(!pos)return;
+  el.innerHTML='';
+  const inp=document.createElement('input');
+  inp.type='text';inp.inputMode='decimal';inp.value=pos.entry.entryScore||'';
+  inp.style.cssText='background:var(--bg);border:1px solid var(--acc);border-radius:7px;outline:none;font-size:13px;color:var(--text);font-family:inherit;padding:5px 9px;width:90px;text-align:right';
+  inp.onblur=()=>commitEntryScoreEdit(posId,inp.value);
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}};
+  el.appendChild(inp);inp.focus();inp.select();
+}
+function commitEntryScoreEdit(posId,raw){
+  const d=loadSession();
+  const pos=d.positions.find(p=>p.id===posId);
+  if(!pos){renderSession();return;}
+  pos.entry.entryScore=String(raw||'').trim();
+  saveSession(d);  // auto re-stamps updatedAt → orange dot (รอ push)
+  renderSession();
+  ctdToast('อัปเดต Entry Score');
 }
 function commitEntryNumEdit(posId,field,raw){
   const d=loadSession();
@@ -3171,7 +3213,7 @@ function buildPos(){
         <span style="font-size:14px;font-weight:500;color:var(--sub)" id="p1-sl-auto">—</span>
       </div>
       <div class="row"><div class="rl">Vola (%)</div>
-        <input type="number" id="p1-vsd" value="" inputmode="decimal" step="0.01" oninput="calcRisk(1)" onchange="calcRisk(1)">
+        <input type="text" id="p1-vsd" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-bottom:4px">
@@ -3187,13 +3229,13 @@ function buildPos(){
     </div>
     <div class="card">
       <div class="row" id="p1-rpt-row"><div class="rl">RpT ($)</div>
-        <input type="number" id="p1-rpt" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
+        <input type="text" id="p1-rpt" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
       </div>
       <div class="row" id="p1-margin-row" style="display:none"><div class="rl">Margin ($)</div>
-        <input type="number" id="p1-margin-in" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
+        <input type="text" id="p1-margin-in" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
       </div>
       <div class="row" id="p1-sf-row" style="display:none"><div class="rl">SF</div>
-        <input type="number" id="p1-vsf" value="" inputmode="decimal" step="0.1" oninput="calcRisk(1)" onchange="calcRisk(1)">
+        <input type="text" id="p1-vsf" value="" inputmode="decimal" oninput="calcRisk(1)" onchange="calcRisk(1)">
       </div>
     </div>
 
@@ -3217,7 +3259,7 @@ function buildPos(){
     <p class="stitle">Order Setup</p>
     <div class="card" style="margin-bottom:6px">
       <div class="row"><div class="rl">Used Lot</div>
-        <input type="number" id="p1-lot" value="" inputmode="decimal" step="0.01" min="0.01" oninput="validateLot(1);calcPos(1)" onchange="validateLot(1);calcPos(1)">
+        <input type="text" id="p1-lot" value="" inputmode="decimal" oninput="validateLot(1);calcPos(1)" onchange="validateLot(1);calcPos(1)">
       </div>
     </div>
     <div class="card" style="margin-bottom:6px">
@@ -3436,8 +3478,11 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.07.22.B';
+const APP_VER='2026.07.22.E';
 const VERSION_LOG=[
+  {v:'2026.07.22.E',note:'Tombstone: ลบทับ resurrect ได้ · queue ไม่ถูกล้างทิ้ง — แก้ลบไม่ติด/ลบผิดตัว'},
+  {v:'2026.07.22.D',note:'Sync: ยุบ position id ซ้ำอัตโนมัติ (self-heal) แก้ปัญหา pos ซ้อนตอน pull'},
+  {v:'2026.07.22.C',note:'Tab2 แก้ Entry Score inline ได้ · ช่อง vola/rpt/sf/lot/margin เอา spinner ออก กรอกตรงๆ'},
   {v:'2026.07.22.B',note:'แก้ปุ่ม Push/Pull ค้าง disabled หลัง sync เสร็จ (isSyncing race)'},
   {v:'2026.07.22.A',note:'Sync fix: pull ไม่ลบ position บน cloud · purge position ที่ปิดจากเครื่องอื่น'},
   {v:'2026.07.16.B',note:'D2: เขียน date เป็น ISO 8601 (+offset) · export = ISO · CSV import TZ auto จากเครื่อง'},
