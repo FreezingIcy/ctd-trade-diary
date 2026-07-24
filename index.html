@@ -442,15 +442,15 @@ if(typeof firebase==='undefined'){
   <div class="sh-row3">
     <div class="sh-fld">
       <label class="sh-fld-l">Swap</label>
-      <input class="sh-inp" id="exit-swap" type="text" inputmode="decimal" placeholder="0 · pos = -7" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+      <input class="sh-inp" id="exit-swap" type="text" inputmode="decimal" placeholder="+ ได้ / − เสีย" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
     </div>
     <div class="sh-fld">
       <label class="sh-fld-l">Com</label>
-      <input class="sh-inp" id="exit-com" type="text" inputmode="decimal" placeholder="0" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+      <input class="sh-inp" id="exit-com" type="text" inputmode="decimal" placeholder="+ ได้ / − เสีย" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
     </div>
     <div class="sh-fld">
       <label class="sh-fld-l">VAT</label>
-      <input class="sh-inp" id="exit-vat" type="text" inputmode="decimal" placeholder="0" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+      <input class="sh-inp" id="exit-vat" type="text" inputmode="decimal" placeholder="+ ได้ / − เสีย" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
     </div>
   </div>
   <div class="sh-fee-box" id="exit-fee-preview" style="display:none">
@@ -1681,6 +1681,14 @@ function saveSession(data){
 // last successful positions-push time (positions with updatedAt<=this are "synced")
 function getPosPushAt(){return parseInt(localStorage.getItem('ctd_pos_push_at')||'0',10)||0;}
 function setPosPushAt(ms){try{localStorage.setItem('ctd_pos_push_at',String(ms));}catch(e){}}
+// ── Fee sign convention ────────────────────────────────────────────────
+// FEE_VER 2 (current): swap/com/vat are stored SIGNED as the user types them —
+//   + adds to Net, − deducts.  Net = Gross + swap + com + vat
+// FEE_VER 1 / absent (legacy): every value was stored as a COST (positive = money out)
+//   and the formula deducted all three.  Net = Gross − swap − com − vat
+// Readers normalise via feeSgn() so un-migrated data still computes correctly.
+const FEE_VER=2;
+function feeSgn(o){return (o&&o.feeVer>=2)?1:-1;}
 function computePos(pos){
   const sym=getSymbol(pos.entry.inst);
   const badSymbol=!sym||sym.unit==null;
@@ -1696,18 +1704,19 @@ function computePos(pos){
   const mlevel=margin>0?((bal)/margin)*100:0;
   const slDist=Math.abs(entry-sl);
   const risk=slDist*unit*usedLot;
+  const fs=feeSgn(pos);
   const exits=Object.entries(pos.exit)
     .filter(([k])=>k!=='trailSL'&&k!=='note')
     .map(([,v])=>({price:parseFloat(v?.price)||0,lot:parseFloat(v?.lot)||0,
-                   swap:parseNum(v?.swap)||0,com:parseNum(v?.com)||0,vat:parseNum(v?.vat)||0}));
+                   swap:fs*(parseNum(v?.swap)||0),com:fs*(parseNum(v?.com)||0),vat:fs*(parseNum(v?.vat)||0)}));
   let realizedPL=0,totalExitLot=0,hasRealized=false;
   let totalSwap=0,totalCom=0,totalVat=0,hasFees=false;
   exits.forEach(({price,lot,swap,com,vat})=>{
     if(price&&lot){realizedPL+=(price-entry)*sign*unit*lot;totalExitLot+=lot;hasRealized=true;}
     if(swap||com||vat){totalSwap+=swap;totalCom+=com;totalVat+=vat;hasFees=true;}
   });
-  const totalFees=totalSwap+totalCom+totalVat;
-  const netPL=realizedPL-totalFees;
+  const totalFees=totalSwap+totalCom+totalVat;  // signed: negative = net cost
+  const netPL=realizedPL+totalFees;
   const remainingLot=Math.max(usedLot-totalExitLot,0);
   const trailSL=parseFloat(pos.exit.trailSL)||0;
   const trailSLD=trailSL&&entry?Math.abs(entry-trailSL):0;
@@ -1877,7 +1886,7 @@ function renderSession(){
         <div class="exit-section-hd">Position Sum</div>
         <div class="bd-section">
           <div class="bd-row"><span class="bd-lbl">Realized P/L</span><span class="bd-val ${c.realizedPL>0?'cg':c.realizedPL<0?'cr':''}">${c.hasRealized?fSign(c.realizedPL):'—'}</span></div>
-          <div class="bd-row"><span class="bd-lbl">Fees${c.hasFees?` <span style="color:var(--hint);font-size:11px">(swap ${fSign(-c.totalSwap)} · com −${Math.abs(c.totalCom).toFixed(2)} · vat −${Math.abs(c.totalVat).toFixed(2)})</span>`:''}</span><span class="bd-val" style="color:var(--sub)">${c.hasFees?('−'+Math.abs(c.totalFees).toFixed(2)):'—'}</span></div>
+          <div class="bd-row"><span class="bd-lbl">Fees${c.hasFees?` <span style="color:var(--hint);font-size:11px">(swap ${fSign(c.totalSwap)} · com ${fSign(c.totalCom)} · vat ${fSign(c.totalVat)})</span>`:''}</span><span class="bd-val ${c.totalFees>0?'cg':c.totalFees<0?'cr':''}">${c.hasFees?fSign(c.totalFees):'—'}</span></div>
           <div class="bd-row"><span class="bd-lbl">Net P/L</span><span class="bd-val ${c.netPL>0?'cg':c.netPL<0?'cr':''}">${c.hasRealized?fSign(c.netPL):'—'}</span></div>
           <div class="bd-row"><span class="bd-lbl">R : R</span><span class="bd-val" style="color:var(--sub)">${c.hasRealized&&c.risk?f(c.rr,2)+'x':'—'}</span></div>
         </div>
@@ -2181,9 +2190,9 @@ function confirmExit(){
 }
 
 // ── Exit fees: live preview & helpers ─────────────────
-// Net = Gross − Swap − Com − VAT (pos swap = -7 → adds back; com/vat positive = deduct)
+// FEE_VER 2 — values are signed as typed: Net = Gross + Swap + Com + VAT
 function feeNet(gross, swap, com, vat){
-  return (gross||0) - (parseNum(swap)||0) - (parseNum(com)||0) - (parseNum(vat)||0);
+  return (gross||0) + (parseNum(swap)||0) + (parseNum(com)||0) + (parseNum(vat)||0);
 }
 function fmtSigned(n,d){
   d=d==null?2:d;
@@ -2209,18 +2218,17 @@ function updateExitPreview(){
   const entry=parseNum(pos.entry.price);
   const sign=pos.entry.dir==='long'?1:-1;
   const gross=(price-entry)*sign*unit*lot;
-  const net=gross-(isFinite(swap)?swap:0)-(isFinite(com)?com:0)-(isFinite(vat)?vat:0);
+  const net=gross+(isFinite(swap)?swap:0)+(isFinite(com)?com:0)+(isFinite(vat)?vat:0);
   box.style.display='block';
   g('exfp-gross').textContent=fmtSigned(gross);
   g('exfp-gross').style.color=gross>0?'var(--green)':(gross<0?'var(--red)':'');
-  // swap: stored value -7 means pos swap (got money back) → display as +7 green
-  const swapShown=isFinite(swap)?-swap:0;
-  g('exfp-swap').textContent=isFinite(swap)?fmtSigned(swapShown):'0.00';
-  g('exfp-swap').style.color=swapShown>0?'var(--green)':(swapShown<0?'var(--sub)':'');
-  g('exfp-com').textContent=isFinite(com)&&com!==0?('−'+Math.abs(com).toFixed(2)):'0.00';
-  g('exfp-com').style.color=com>0?'var(--sub)':'';
-  g('exfp-vat').textContent=isFinite(vat)&&vat!==0?('−'+Math.abs(vat).toFixed(2)):'0.00';
-  g('exfp-vat').style.color=vat>0?'var(--sub)':'';
+  // FEE_VER 2: typed sign is the effect on Net — + green, − red
+  const feeCol=v=>v>0?'var(--green)':(v<0?'var(--red)':'');
+  [['exfp-swap',swap],['exfp-com',com],['exfp-vat',vat]].forEach(([id,v])=>{
+    const n=isFinite(v)?v:0;
+    g(id).textContent=fmtSigned(n);
+    g(id).style.color=feeCol(n);
+  });
   g('exfp-net').textContent=fmtSigned(net);
   g('exfp-net').style.color=net>0?'var(--green)':(net<0?'var(--red)':'');
 }
@@ -2371,12 +2379,13 @@ function buildRecord(pos){
     const ex=pos.exit[slot];
     if(!ex||!ex.price)return;
     const xPrice=parseFloat(ex.price)||0;const xLot=parseFloat(ex.lot)||0;
-    const xSwap=parseNum(ex.swap)||0;const xCom=parseNum(ex.com)||0;const xVat=parseNum(ex.vat)||0;
+    const fs=feeSgn(pos);
+    const xSwap=fs*(parseNum(ex.swap)||0);const xCom=fs*(parseNum(ex.com)||0);const xVat=fs*(parseNum(ex.vat)||0);
     const gross=(xPrice-c.entry)*c.sign*c.unit*xLot;
-    const net=gross-xSwap-xCom-xVat;
+    const net=gross+xSwap+xCom+xVat;
     if(ex.score!==''&&ex.score!=null&&isFinite(+ex.score)){scoreSum+=+ex.score;scoreN++;}
     exits.push({slot,price:ex.price,date:ex.date||'',lot:ex.lot,method:ex.method||'',score:ex.score||'',
-      swap:ex.swap||'',com:ex.com||'',vat:ex.vat||'',
+      swap:xSwap?String(xSwap):'',com:xCom?String(xCom):'',vat:xVat?String(xVat):'',   // normalised to FEE_VER 2
       gross:+gross.toFixed(2),pl:+net.toFixed(2)});  // pl = net (Phase 7B); gross kept separately
   });
   // realizedPL = NET (Phase 7B) · grossPL kept alongside for transparency
@@ -2385,6 +2394,7 @@ function buildRecord(pos){
   const rMultipleNet=c.risk>0?netPL/c.risk:0;
   return {
     recVer:'r1',
+    feeVer:FEE_VER,
     id:pos.id,
     archivedAt:pos.meta.closedAt||nowStamp(),
     openedAt:pos.meta.importedAt||'',
@@ -3478,8 +3488,9 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.07.22.F';
+const APP_VER='2026.07.24.A';
 const VERSION_LOG=[
+  {v:'2026.07.24.A',note:'Swap/Com/VAT กรอกเครื่องหมายตรงๆ (+ ได้ / − เสีย) · สี +เขียว −แดง · migrate ข้อมูลเก่าอัตโนมัติ'},
   {v:'2026.07.22.F',note:'Tab2 Entry Score แก้ที่ช่อง status ได้เลย (dropdown) · เอา row ใต้ Entry SL ออก'},
   {v:'2026.07.22.E',note:'Tombstone: ลบทับ resurrect ได้ · queue ไม่ถูกล้างทิ้ง — แก้ลบไม่ติด/ลบผิดตัว'},
   {v:'2026.07.22.D',note:'Sync: ยุบ position id ซ้ำอัตโนมัติ (self-heal) แก้ปัญหา pos ซ้อนตอน pull'},
@@ -3492,7 +3503,40 @@ const VERSION_LOG=[
 // provenance reader: build version that wrote a record, or null (legacy / pre-version)
 function recBuildVer(r){return r&&r.ver?r.ver:null;}
 
-// ── Build mode ── PREVIEW seeds demo positions for testing; set false for production
+// ── One-time fee-sign migration (legacy cost convention → FEE_VER 2 signed) ──
+// Flips the stored sign of swap/com/vat and stamps feeVer. All P/L values are
+// UNCHANGED by design: old Net = gross − f, new Net = gross + (−f) — same number.
+// Idempotent: anything already at FEE_VER 2 is skipped, so re-running is harmless.
+function migrateFees(){
+  const flip=o=>{if(!o)return;['swap','com','vat'].forEach(k=>{
+    const n=parseNum(o[k]);
+    if(o[k]!==''&&o[k]!=null&&isFinite(n)&&n!==0)o[k]=String(-n);
+  });};
+  let posN=0,recN=0;
+  const sess=loadSession();
+  (sess.positions||[]).forEach(p=>{
+    if(p.feeVer>=FEE_VER)return;
+    Object.keys(p.exit||{}).forEach(k=>{if(k!=='trailSL'&&k!=='note')flip(p.exit[k]);});
+    p.feeVer=FEE_VER;posN++;
+  });
+  if(posN)saveSession(sess);
+  const rd=loadRecords();
+  (rd.records||[]).forEach(r=>{
+    if(r.feeVer>=FEE_VER)return;
+    (r.eval&&r.eval.exits||[]).forEach(flip);
+    if(r.source&&r.source.exit)Object.keys(r.source.exit).forEach(k=>{if(k!=='trailSL'&&k!=='note')flip(r.source.exit[k]);});
+    if(r.source)r.source.feeVer=FEE_VER;
+    if(r.eval){
+      ['totalSwap','totalCom','totalVat','totalFees'].forEach(k=>{
+        if(typeof r.eval[k]==='number'&&r.eval[k]!==0)r.eval[k]=-r.eval[k];
+      });
+    }
+    r.feeVer=FEE_VER;recN++;
+  });
+  if(recN)saveRecords(rd);
+  return {positions:posN,records:recN};
+}
+
 const PREVIEW_MODE=false;
 // Demo data for testing
 function loadDemoSession(){
@@ -3516,6 +3560,7 @@ function loadDemoSession(){
   ]};
   saveSession(demo);
 }
+try{const m=migrateFees();if(m.positions||m.records)console.log('migrateFees:',m);}catch(e){console.error('migrateFees failed:',e);}
 if(PREVIEW_MODE)loadDemoSession();
 </script>
 </body>
