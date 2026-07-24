@@ -442,15 +442,15 @@ if(typeof firebase==='undefined'){
   <div class="sh-row3">
     <div class="sh-fld">
       <label class="sh-fld-l">Swap</label>
-      <input class="sh-inp" id="exit-swap" type="text" inputmode="decimal" placeholder="+ ได้ / − เสีย" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+      <input class="sh-inp" id="exit-swap" type="text" inputmode="decimal" placeholder="—" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
     </div>
     <div class="sh-fld">
       <label class="sh-fld-l">Com</label>
-      <input class="sh-inp" id="exit-com" type="text" inputmode="decimal" placeholder="+ ได้ / − เสีย" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+      <input class="sh-inp" id="exit-com" type="text" inputmode="decimal" placeholder="—" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
     </div>
     <div class="sh-fld">
       <label class="sh-fld-l">VAT</label>
-      <input class="sh-inp" id="exit-vat" type="text" inputmode="decimal" placeholder="+ ได้ / − เสีย" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
+      <input class="sh-inp" id="exit-vat" type="text" inputmode="decimal" placeholder="—" oninput="updateExitPreview()" onblur="onPriceBlur(this);updateExitPreview()">
     </div>
   </div>
   <div class="sh-fee-box" id="exit-fee-preview" style="display:none">
@@ -1164,6 +1164,8 @@ function fmtSyncTime(d){
 function g(id){return document.getElementById(id)}
 function f(n,d=2){return isFinite(n)?n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—'}
 function fSign(n,d=2){if(!isFinite(n))return '—'; return (n>=0?'+':'')+f(n,d);}
+// FEE_VER 2 colouring: + adds to Net (green) · − deducts (red) · 0 neutral
+function feeColOf(n){return n>0?'var(--green)':(n<0?'var(--red)':'var(--hint)');}
 const BIN_SVG='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>';
 const PEN_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 
@@ -1886,7 +1888,7 @@ function renderSession(){
         <div class="exit-section-hd">Position Sum</div>
         <div class="bd-section">
           <div class="bd-row"><span class="bd-lbl">Realized P/L</span><span class="bd-val ${c.realizedPL>0?'cg':c.realizedPL<0?'cr':''}">${c.hasRealized?fSign(c.realizedPL):'—'}</span></div>
-          <div class="bd-row"><span class="bd-lbl">Fees${c.hasFees?` <span style="color:var(--hint);font-size:11px">(swap ${fSign(c.totalSwap)} · com ${fSign(c.totalCom)} · vat ${fSign(c.totalVat)})</span>`:''}</span><span class="bd-val ${c.totalFees>0?'cg':c.totalFees<0?'cr':''}">${c.hasFees?fSign(c.totalFees):'—'}</span></div>
+          <div class="bd-row"><span class="bd-lbl">Fees${c.hasFees?` <span style="font-size:11px">(swap <span style="color:${feeColOf(c.totalSwap)}">${fSign(c.totalSwap)}</span> · com <span style="color:${feeColOf(c.totalCom)}">${fSign(c.totalCom)}</span> · vat <span style="color:${feeColOf(c.totalVat)}">${fSign(c.totalVat)}</span>)</span>`:''}</span><span class="bd-val ${c.totalFees>0?'cg':c.totalFees<0?'cr':''}">${c.hasFees?fSign(c.totalFees):'—'}</span></div>
           <div class="bd-row"><span class="bd-lbl">Net P/L</span><span class="bd-val ${c.netPL>0?'cg':c.netPL<0?'cr':''}">${c.hasRealized?fSign(c.netPL):'—'}</span></div>
           <div class="bd-row"><span class="bd-lbl">R : R</span><span class="bd-val" style="color:var(--sub)">${c.hasRealized&&c.risk?f(c.rr,2)+'x':'—'}</span></div>
         </div>
@@ -2209,7 +2211,9 @@ function updateExitPreview(){
   const com=parseNum(g('exit-com').value);
   const vat=parseNum(g('exit-vat').value);
   // need entry context for gross calc
-  if(!currentExitPosId||!isFinite(price)||!isFinite(lot)){box.style.display='none';return;}
+  const hasFee=isFinite(swap)||isFinite(com)||isFinite(vat);
+  const hasTrade=isFinite(price)&&isFinite(lot);
+  if(!currentExitPosId||(!hasTrade&&!hasFee)){box.style.display='none';return;}
   const data=loadSession();
   const pos=data.positions.find(p=>p.id===currentExitPosId);
   if(!pos){box.style.display='none';return;}
@@ -2217,12 +2221,14 @@ function updateExitPreview(){
   const unit=sym?sym.unit:0;
   const entry=parseNum(pos.entry.price);
   const sign=pos.entry.dir==='long'?1:-1;
-  const gross=(price-entry)*sign*unit*lot;
+  const gross=hasTrade?(price-entry)*sign*unit*lot:0;
   const net=gross+(isFinite(swap)?swap:0)+(isFinite(com)?com:0)+(isFinite(vat)?vat:0);
   box.style.display='block';
+  // price+lot ครบ → สีตาม +/- · กรอกอย่างใดอย่างหนึ่ง → ฟ้า (ค่ายังไม่สมบูรณ์)
+  const PROV='var(--blue)';
+  const plCol=v=>!hasTrade?PROV:(v>0?'var(--green)':(v<0?'var(--red)':''));
   g('exfp-gross').textContent=fmtSigned(gross);
-  g('exfp-gross').style.color=gross>0?'var(--green)':(gross<0?'var(--red)':'');
-  // FEE_VER 2: typed sign is the effect on Net — + green, − red
+  g('exfp-gross').style.color=plCol(gross);
   const feeCol=v=>v>0?'var(--green)':(v<0?'var(--red)':'');
   [['exfp-swap',swap],['exfp-com',com],['exfp-vat',vat]].forEach(([id,v])=>{
     const n=isFinite(v)?v:0;
@@ -2230,7 +2236,7 @@ function updateExitPreview(){
     g(id).style.color=feeCol(n);
   });
   g('exfp-net').textContent=fmtSigned(net);
-  g('exfp-net').style.color=net>0?'var(--green)':(net<0?'var(--red)':'');
+  g('exfp-net').style.color=plCol(net);
 }
 function updateExitLotBar(){
   const wrap=g('exit-lot-status');const msgEl=g('exit-lot-status-msg');const link=g('exit-full-link');
@@ -2469,7 +2475,7 @@ function _num(v){const n=parseFloat(v);return (v===''||v==null||!isFinite(n))?''
 function _round2(v){return Math.round((+v||0)*100)/100;}
 function buildExportRows(){
   const data=loadRecords();
-  const tradeCols=['ID','Symbol','Strategy','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode','Edited','Edits'];
+  const tradeCols=['ID','Symbol','Strategy','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode','Edited','Edits','RpT','Vola%','SF','EntryNote','ExitNote','FeeVer'];
   const slotCols=['cl','t1','t2','t3'];
   const exitCols=[];
   slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Date`,`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
@@ -2478,7 +2484,8 @@ function buildExportRows(){
     const e=r.eval;const x=e.ext||{};
     const row=[r.id,e.symbol,e.strategy||'',e.direction,toISODate(r.source?.entry?.date||''),_num(e.entryPrice),_num(e.entrySL),_num(x.usedLot),_num(x.lev),_num(e.riskAmount),
       _num(e.grossPL!=null?e.grossPL:e.realizedPL),_num(e.totalFees!=null?e.totalFees:0),_num(e.realizedPL),
-      _num(e.rMultiple),e.outcome,e.entryScore,e.holdingStr,x.riskMode||'',toISODate(r.lastEditedAt||''),r.editCount||0];
+      _num(e.rMultiple),e.outcome,e.entryScore,e.holdingStr,x.riskMode||'',toISODate(r.lastEditedAt||''),r.editCount||0,
+      x.rpt||'',x.vola||'',x.sf||'',e.entryNote||'',e.exitNote||'',r.feeVer||1];
     const bySlot={};(e.exits||[]).forEach(ex=>bySlot[ex.slot]=ex);
     slotCols.forEach(s=>{
       const ex=bySlot[s];
@@ -2818,36 +2825,67 @@ function parseImportCSV(text){
   if(cur!==''||row.length){row.push(cur);rows.push(row);}
   return rows;
 }
-function importSlot(cells,base){
-  const price=(cells[base+1]||'').trim();if(!price)return null;
-  return {date:normStamp(cells[base]),price,lot:(cells[base+2]||'').trim(),method:(cells[base+3]||'').trim(),
-    score:(cells[base+4]||'').trim(),swap:(cells[base+5]||'').trim(),com:(cells[base+6]||'').trim(),vat:(cells[base+7]||'').trim()};
+// ── Header-name based import ───────────────────────────────────────────────
+// Columns are located by NAME, so export files (which carry extra report columns)
+// can be re-imported directly and new columns never shift the old ones.
+// `hdr` maps a normalised header → index. Falls back to the legacy fixed layout
+// when a name is absent, so the original positional template still works.
+function normHdr(s){return String(s||'').toLowerCase().replace(/[\s_$%().]/g,'');}
+function buildHdrMap(headerCells){
+  const m={};
+  headerCells.forEach((h,i)=>{const k=normHdr(h);if(k&&!(k in m))m[k]=i;});
+  return m;
 }
-function posFromImportRow(cells){
-  const get=i=>(cells[i]||'').trim();
-  const inst=get(1).toUpperCase();
+// name → legacy column index (the original template positions)
+const IMPORT_ALIASES={
+  id:['id',0],symbol:['symbol',1],strategy:['strategy',2],dir:['dir',3],
+  entrydate:['entrydate',4],entry:['entry',5],sl:['sl',6],lot:['lot',7],lev:['lev',8],
+  riskmode:['riskmode',9],rpt:['rpt',10],vola:['vola',11],sf:['sf',12],
+  entryscore:['entryscore',13],entrynote:['entrynote',14],exitnote:['exitnote',15]
+};
+function cellBy(cells,hdr,key){
+  const a=IMPORT_ALIASES[key];if(!a)return '';
+  const byName=hdr[a[0]];
+  const i=byName!=null?byName:a[1];
+  return (cells[i]||'').trim();
+}
+function importSlot(cells,base,hdr,slot){
+  const nm=f=>{const i=hdr[normHdr(slot+' '+f)];return i!=null?(cells[i]||'').trim():null;};
+  const pos=k=>(cells[base+k]||'').trim();
+  const pick=(f,k)=>{const v=nm(f);return v!=null?v:pos(k);};
+  const price=pick('price',1);if(!price)return null;
+  return {date:normStamp(pick('date',0)),price,lot:pick('lot',2),method:pick('method',3),
+    score:pick('sc',4),swap:pick('swap',5),com:pick('com',6),vat:pick('vat',7)};
+}
+function posFromImportRow(cells,hdr){
+  hdr=hdr||{};
+  const get=k=>cellBy(cells,hdr,k);
+  const inst=get('symbol').toUpperCase();
   if(!inst)return {err:'ไม่มี Symbol'};
   const sym=SYMBOLS[inst];
   if(!sym||sym.unit==null)return {err:`Symbol ไม่รู้จัก: ${inst}`};
-  if(!get(5))return {err:'ไม่มี Entry'};
-  if(!get(4))return {err:'ไม่มี Entry Date'};
-  const dir=get(3).toLowerCase()==='short'?'short':'long';
-  const exit={trailSL:'',note:get(15)};let hasExit=false,lastDate='';
+  if(!get('entry'))return {err:'ไม่มี Entry'};
+  if(!get('entrydate'))return {err:'ไม่มี Entry Date'};
+  const dir=get('dir').toLowerCase()==='short'?'short':'long';
+  const exit={trailSL:'',note:get('exitnote')};let hasExit=false,lastDate='';
   [['cl',16],['t1',24],['t2',32],['t3',40]].forEach(([k,b])=>{
-    const s=importSlot(cells,b);
+    const s=importSlot(cells,b,hdr,k);
     exit[k]=s||{price:'',date:'',method:'',lot:'',score:'',swap:'',com:'',vat:''};
     if(s&&s.lot){hasExit=true;if(stampMs(s.date)>stampMs(lastDate))lastDate=s.date;}
   });
   if(!hasExit)return {err:'ไม่มี exit (ยังไม่ปิด)'};
-  const entryN=parseNum(get(5))||0,slN=parseNum(get(6))||0,lot=parseFloat(get(7))||0,lev=parseFloat(get(8))||25;
-  const vsd=get(11),vsf=get(12);
+  const entryN=parseNum(get('entry'))||0,slN=parseNum(get('sl'))||0,lot=parseFloat(get('lot'))||0,lev=parseFloat(get('lev'))||25;
+  const vsd=get('vola'),vsf=get('sf');
   const sld=entryN>0&&vsd?entryN*(parseFloat(vsd)/100)*(parseFloat(vsf)||1):Math.abs(entryN-slN);
-  const eStamp=normStamp(get(4));
-  const id=get(0)||makeImportId(inst,dir,get(4));
-  return {pos:{version:'v1',ver:APP_VER,id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
-    entry:{date:eStamp,inst,dir,strategy:get(2),price:String(entryN),sl:String(slN),rmode:get(9),rpt:get(10),
+  const eStamp=normStamp(get('entrydate'));
+  const id=get('id')||makeImportId(inst,dir,get('entrydate'));
+  // FeeVer: an old export carries legacy-signed fees → normalise to FEE_VER 2 on the way in
+  const fvRaw=hdr.feever!=null?(cells[hdr.feever]||'').trim():'';
+  const feeVer=fvRaw?(parseInt(fvRaw,10)||1):FEE_VER;
+  return {pos:{version:'v1',ver:APP_VER,feeVer,id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
+    entry:{date:eStamp,inst,dir,strategy:get('strategy'),price:String(entryN),sl:String(slN),rmode:get('riskmode'),rpt:get('rpt'),
       vsd,vsf,sld:String(sld.toFixed(2)),usedLot:String(lot),usedCV:String((lot*sym.unit*entryN).toFixed(0)),
-      lev:String(lev),entryScore:get(13),entryNote:get(14)},
+      lev:String(lev),entryScore:get('entryscore'),entryNote:get('entrynote')},
     exit},eStamp,lastDate};
 }
 function runImport(){
@@ -2858,10 +2896,11 @@ function runImport(){
   const hi=rows.findIndex(r=>r.map(x=>(x||'').trim()).includes('Symbol'));
   if(hi<0){res.innerHTML='<span style="color:var(--red)">ไม่พบหัวตาราง (คอลัมน์ Symbol) — ใช้ template ถูกไหม?</span>';return;}
   const dataRows=rows.slice(hi+1).filter(r=>r.some(c=>(c||'').trim()!==''));
+  const hdr=buildHdrMap(rows[hi]);
   const data=loadRecords();const existing=new Set(data.records.map(r=>r.id));
   let added=0,skipped=0;const errs=[];
   dataRows.forEach((cells,idx)=>{
-    const out=posFromImportRow(cells);
+    const out=posFromImportRow(cells,hdr);
     if(out.err){errs.push(`แถว ${idx+1}: ${out.err}`);return;}
     let rec;try{rec=buildRecord(out.pos);}catch(e){errs.push(`แถว ${idx+1}: คำนวณไม่ได้`);return;}
     rec.eval.holdingStr=holdingBetween(out.eStamp,out.lastDate);
@@ -3021,7 +3060,7 @@ function renderRecords(){
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Profit Factor</div><div style="font-size:16px;font-weight:600;color:var(--text)">${pfStr}</div></div>
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Expectancy</div><div style="font-size:16px;font-weight:600;color:${expectancy>=0?'var(--green)':'var(--red)'}">${fSign(expectancy,2)}<span style="font-size:11px;color:var(--hint)">/ไม้</span></div></div>
     <div style="padding:12px 14px;border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg R</div><div style="font-size:16px;font-weight:600;color:${avgR>=0?'var(--green)':'var(--red)'}">${fSign(avgR,2)}R</div></div>
-    <div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Max Drawdown</div><div style="font-size:16px;font-weight:600;color:${maxDD>0?'var(--red)':'var(--text)'}">${maxDD>0?'−'+f(maxDD,2):'0.00'}</div></div>
+    <div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Max Drawdown</div><div style="font-size:16px;font-weight:600;color:${maxDD>0?'var(--red)':'var(--text)'}">${maxDD>0?'-'+f(maxDD,2):'0.00'}</div></div>
   </div>
   <div style="padding:9px 14px 11px;border-top:.5px solid var(--border);font-size:10px;line-height:1.6;color:var(--hint)">
     <b style="color:var(--sub)">PF (trading edge):</b> Gross Profit ÷ Gross Loss (&gt;1 = has edge) · <b style="color:var(--sub)">Expec (expected P/L per trade):</b> Total P/L ÷ Trades · <b style="color:var(--sub)">Avg R:</b> avg profit per 1R
@@ -3102,16 +3141,15 @@ function renderRecords(){
         // 2-col Fees + Summary
         const hasFee=e.totalFees!=null&&(e.totalFees!==0||e.grossPL!==e.realizedPL);
         const swap=e.totalSwap||0,com=e.totalCom||0,vat=e.totalVat||0;
-        const swapShown=-swap;
         const grossC=e.grossPL>0?'var(--green)':e.grossPL<0?'var(--red)':'';
         const netC=e.realizedPL>0?'var(--green)':e.realizedPL<0?'var(--red)':'';
         const outcomeC=e.outcome==='win'?'var(--green)':e.outcome==='loss'?'var(--red)':'var(--sub)';
         const feesBox=hasFee?`<div class="rec-box">
           <div class="rec-box-h">Fees</div>
           <div class="rec-brow"><span class="rec-bl">Gross</span><span class="rec-bv" style="color:${grossC}">${fSign(e.grossPL,2)}</span></div>
-          <div class="rec-brow"><span class="rec-bl">Swap</span><span class="rec-bv" style="color:${swap<0?'var(--green)':''}">${fSign(swapShown,2)}</span></div>
-          <div class="rec-brow"><span class="rec-bl">Com</span><span class="rec-bv">−${Math.abs(com).toFixed(2)}</span></div>
-          <div class="rec-brow"><span class="rec-bl">VAT</span><span class="rec-bv">−${Math.abs(vat).toFixed(2)}</span></div>
+          <div class="rec-brow"><span class="rec-bl">Swap</span><span class="rec-bv" style="color:${feeColOf(swap)}">${fSign(swap,2)}</span></div>
+          <div class="rec-brow"><span class="rec-bl">Com</span><span class="rec-bv" style="color:${feeColOf(com)}">${fSign(com,2)}</span></div>
+          <div class="rec-brow"><span class="rec-bl">VAT</span><span class="rec-bv" style="color:${feeColOf(vat)}">${fSign(vat,2)}</span></div>
           <div class="rec-box-net"><span class="rec-box-net-l">Net</span><span class="rec-box-net-v" style="color:${netC}">${fSign(e.realizedPL,2)}</span></div>
         </div>`:`<div class="rec-box">
           <div class="rec-box-h">P/L</div>
@@ -3488,9 +3526,12 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.07.24.A';
+const APP_VER='2026.07.24.D';
 const VERSION_LOG=[
-  {v:'2026.07.24.A',note:'Swap/Com/VAT กรอกเครื่องหมายตรงๆ (+ ได้ / − เสีย) · สี +เขียว −แดง · migrate ข้อมูลเก่าอัตโนมัติ'},
+  {v:'2026.07.24.D',note:'Export/Import round-trip: export เพิ่ม note/RpT/Vola/SF/FeeVer · import อ่านตามชื่อหัวคอลัมน์'},
+  {v:'2026.07.24.C',note:'Exit preview: Gross/Net เป็นฟ้าถ้ายังกรอก price/lot ไม่ครบ · placeholder fee = —'},
+  {v:'2026.07.24.B',note:'Fee: สี +/- ครบทุกจุด (Tab2/Tab3) · ใช้ "-" แบบเดียวกันทั้งแอป · preview โชว์ตั้งแต่กรอก fee'},
+  {v:'2026.07.24.A',note:'Swap/Com/VAT กรอกเครื่องหมายตรงๆ (+ บวกเข้า / - หักออก) · migrate ข้อมูลเก่าอัตโนมัติ'},
   {v:'2026.07.22.F',note:'Tab2 Entry Score แก้ที่ช่อง status ได้เลย (dropdown) · เอา row ใต้ Entry SL ออก'},
   {v:'2026.07.22.E',note:'Tombstone: ลบทับ resurrect ได้ · queue ไม่ถูกล้างทิ้ง — แก้ลบไม่ติด/ลบผิดตัว'},
   {v:'2026.07.22.D',note:'Sync: ยุบ position id ซ้ำอัตโนมัติ (self-heal) แก้ปัญหา pos ซ้อนตอน pull'},
