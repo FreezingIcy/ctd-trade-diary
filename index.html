@@ -299,6 +299,14 @@ option{color:#000}
 /* ── toast ── */
 .ctd-toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(20px);background:#34C759;color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:22px;opacity:0;transition:.25s;z-index:2000;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.2);max-width:88%;text-align:center}
 .ctd-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ── FX Grid Zone ── */
+.gz-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:13px;color:var(--sub);cursor:pointer}
+.gz-toggle .gz-chev{transition:.2s;font-size:11px;color:var(--hint)}
+.gz-toggle .gz-chev.on{transform:rotate(90deg)}
+.gz-opt{display:none}
+.gz-opt.on{display:block}
+.drow.gz-zm{background:var(--stratbg)}
+.drow.gz-zm .dl,.drow.gz-zm .dv{color:var(--acc);font-weight:700}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -317,6 +325,7 @@ if(typeof firebase==='undefined'){
 <div class="header">
   <div class="header-top">
     <h1>CTD</h1>
+    <button class="manual-btn" id="gridzone-btn" onclick="openGridZone()">🔲 Grid</button>
     <button class="manual-btn" id="manual-btn" onclick="openManual()">📖 Manual</button>
     <button class="save-btn" id="save-btn" onclick="manualSave()">
       <div class="save-dot" id="sdot"></div>
@@ -351,6 +360,17 @@ if(typeof firebase==='undefined'){
       <span class="manual-x" onclick="closeManual()">✕</span>
     </div>
     <div class="manual-body" id="manual-body"></div>
+  </div>
+</div>
+
+<!-- FX Grid Zone pop-up -->
+<div class="manual-overlay" id="gridzone-overlay" onclick="closeGridZone(event)">
+  <div class="manual-sheet" onclick="event.stopPropagation()">
+    <div class="manual-sheet-h">
+      <div style="flex:1"><div class="manual-grab"></div><span style="font-size:16px;font-weight:600">FX Grid Zone</span></div>
+      <span class="manual-x" onclick="closeGridZone()">✕</span>
+    </div>
+    <div class="manual-body" id="gridzone-body"></div>
   </div>
 </div>
 
@@ -663,6 +683,124 @@ service cloud.firestore {
 }
 function openManual(){const b=g('manual-body');if(b)b.innerHTML=manualHTML();const o=g('manual-overlay');if(o){o.classList.add('on');b.scrollTop=0;}}
 function closeManual(e){if(e&&e.currentTarget!==e.target)return;const o=g('manual-overlay');if(o)o.classList.remove('on');}
+
+// ===== FX Grid Zone (Layer A) =====
+// Formulas ported 1:1 from GRID_Structure.xlsx (Grid_MoM):
+//   Range      = High - Low
+//   %Range     = LN(High/Low)
+//   ZD         = 12M Range        / Active Zone
+//   ZD%        = 12M %Range       / Active Zone
+//   Zone ladder: Zm center, top label = 2*ActiveZone-1, steps of ZD each way
+// Stateless: nothing here is saved to session/records/cloud. Manual Zm entry.
+// Reserve Zone is captured for reference only — not wired into any formula
+// above (same as the source sheet), kept here for future position sizing.
+function gridZoneHTML(){
+  return `
+    <p class="stitle">Grid Input — Layer A</p>
+    <div class="card">
+      <div class="row"><div class="rl">Symbol</div>
+        <input type="text" id="gz-sym" placeholder="เช่น EURUSD" style="width:130px;text-transform:uppercase">
+      </div>
+      <div class="row"><div class="rl">Current Price (Zm)</div>
+        <input type="text" id="gz-zm" inputmode="decimal" placeholder="0.00000" oninput="calcGridZone()" onblur="onPriceBlur(this);calcGridZone()">
+      </div>
+      <div class="row"><div class="rl">12 Month High</div>
+        <input type="text" id="gz-h12" inputmode="decimal" placeholder="0.00000" oninput="calcGridZone()" onblur="onPriceBlur(this);calcGridZone()">
+      </div>
+      <div class="row"><div class="rl">12 Month Low</div>
+        <input type="text" id="gz-l12" inputmode="decimal" placeholder="0.00000" oninput="calcGridZone()" onblur="onPriceBlur(this);calcGridZone()">
+      </div>
+      <div class="row"><div class="rl">Active Zone</div>
+        <input type="text" id="gz-az" inputmode="numeric" value="6" oninput="calcGridZone()" onblur="calcGridZone()">
+      </div>
+      <div class="row"><div class="rl">Reserve Zone</div>
+        <input type="text" id="gz-rz" inputmode="numeric" value="0" oninput="calcGridZone()">
+      </div>
+    </div>
+    <div style="padding:2px 4px 8px;font-size:11px;color:var(--hint)">*Reserve Zone เก็บไว้อ้างอิง ยังไม่ผูกสูตรคำนวณ zone</div>
+
+    <div class="gz-toggle" onclick="g('gz-opt').classList.toggle('on');g('gz-chev').classList.toggle('on')">
+      <span>ข้อมูลอ้างอิงเพิ่มเติม (36M / 6M Range)</span>
+      <span class="gz-chev" id="gz-chev">▶</span>
+    </div>
+    <div class="gz-opt" id="gz-opt">
+      <div class="card">
+        <div class="row"><div class="rl">36 Month High</div><input type="text" id="gz-h36" inputmode="decimal" oninput="calcGridZone()" onblur="onPriceBlur(this);calcGridZone()"></div>
+        <div class="row"><div class="rl">36 Month Low</div><input type="text" id="gz-l36" inputmode="decimal" oninput="calcGridZone()" onblur="onPriceBlur(this);calcGridZone()"></div>
+        <div class="row"><div class="rl">6 Month High</div><input type="text" id="gz-h6" inputmode="decimal" oninput="calcGridZone()" onblur="onPriceBlur(this);calcGridZone()"></div>
+        <div class="row"><div class="rl">6 Month Low</div><input type="text" id="gz-l6" inputmode="decimal" oninput="calcGridZone()" onblur="onPriceBlur(this);calcGridZone()"></div>
+      </div>
+      <div class="card" style="margin-bottom:10px">
+        <div class="os-g2">
+          <div class="os-cell"><div class="os-lbl">36M Range</div><div class="os-val" id="gz-r36">—</div></div>
+          <div class="os-cell"><div class="os-lbl">36M %Range</div><div class="os-val" id="gz-rp36">—</div></div>
+          <div class="os-cell"><div class="os-lbl">6M Range</div><div class="os-val" id="gz-r6">—</div></div>
+          <div class="os-cell"><div class="os-lbl">6M %Range</div><div class="os-val" id="gz-rp6">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="stitle">ผลลัพธ์</p>
+    <div class="card" style="margin-bottom:10px">
+      <div class="os-g2">
+        <div class="os-cell"><div class="os-lbl">Zone Distance (ZD)</div><div class="os-val cb" id="gz-zd">—</div></div>
+        <div class="os-cell"><div class="os-lbl">Zone Distance (ZD%)</div><div class="os-val cb" id="gz-zdp">—</div></div>
+        <div class="os-cell"><div class="os-lbl">12M Range</div><div class="os-val" id="gz-r12">—</div></div>
+        <div class="os-cell"><div class="os-lbl">12M %Range</div><div class="os-val" id="gz-rp12">—</div></div>
+      </div>
+    </div>
+
+    <p class="stitle">Zone Price Ladder</p>
+    <div class="card" style="padding:0 14px;margin-bottom:6px" id="gz-ladder"></div>
+    <div style="padding:2px 4px 10px;font-size:11px;color:var(--hint)">น้ำเงิน = zone เหนือราคาปัจจุบัน · แดง = zone ใต้ราคาปัจจุบัน · Zm = ราคาปัจจุบัน (highlight)</div>
+  `;
+}
+function calcGridZone(){
+  const zm=parseNum(g('gz-zm').value);
+  const h12=parseNum(g('gz-h12').value);
+  const l12=parseNum(g('gz-l12').value);
+  const az=Math.max(1,parseInt(g('gz-az').value)||0);
+  const h36=parseNum(g('gz-h36').value);
+  const l36=parseNum(g('gz-l36').value);
+  const h6=parseNum(g('gz-h6').value);
+  const l6=parseNum(g('gz-l6').value);
+  const setTxt=(id,v)=>{const e=g(id);if(e)e.textContent=v;};
+
+  const r36=h36-l36, rp36=Math.log(h36/l36);
+  const r6=h6-l6, rp6=Math.log(h6/l6);
+  const r12=h12-l12, rp12=Math.log(h12/l12);
+  setTxt('gz-r36', isFinite(r36)?r36.toFixed(5):'—');
+  setTxt('gz-rp36', isFinite(rp36)?(rp36*100).toFixed(2)+'%':'—');
+  setTxt('gz-r6', isFinite(r6)?r6.toFixed(5):'—');
+  setTxt('gz-rp6', isFinite(rp6)?(rp6*100).toFixed(2)+'%':'—');
+  setTxt('gz-r12', isFinite(r12)?r12.toFixed(5):'—');
+  setTxt('gz-rp12', isFinite(rp12)?(rp12*100).toFixed(2)+'%':'—');
+
+  const zd=r12/az, zdp=rp12/az;
+  setTxt('gz-zd', isFinite(zd)?zd.toFixed(5):'—');
+  setTxt('gz-zdp', isFinite(zdp)?(zdp*100).toFixed(2)+'%':'—');
+
+  const ladderEl=g('gz-ladder');
+  if(!ladderEl)return;
+  if(!isFinite(zm)||!isFinite(zd)||zd===0){
+    ladderEl.innerHTML='<div class="drow"><span class="dl" style="color:var(--hint)">กรอก Zm / 12M High / 12M Low / Active Zone ให้ครบ</span></div>';
+    return;
+  }
+  let rows='';
+  const top=2*az-1;
+  for(let i=top;i>=az;i--){
+    const steps=i-(az-1);
+    rows+=`<div class="drow"><span class="dl">Z${i}</span><span class="dv cb">${(zm+steps*zd).toFixed(5)}</span></div>`;
+  }
+  rows+=`<div class="drow gz-zm"><span class="dl">Zm</span><span class="dv">${zm.toFixed(5)}</span></div>`;
+  for(let i=az-1;i>=0;i--){
+    const steps=az-i;
+    rows+=`<div class="drow"><span class="dl">Z${i}</span><span class="dv cr">${(zm-steps*zd).toFixed(5)}</span></div>`;
+  }
+  ladderEl.innerHTML=rows;
+}
+function openGridZone(){const b=g('gridzone-body');if(b){b.innerHTML=gridZoneHTML();calcGridZone();}const o=g('gridzone-overlay');if(o){o.classList.add('on');b.scrollTop=0;}}
+function closeGridZone(e){if(e&&e.currentTarget!==e.target)return;const o=g('gridzone-overlay');if(o)o.classList.remove('on');}
 // ===== Portfolio stat helpers =====
 // ── Canonical date parsing (single source of truth) ──
 // string → {y,mo,d,h,mi,sec} | null. Accepts yyyy/mm/dd (year-first) & dd/mm/yy(yy) (day-first); sep / - . ; time after space/T/comma.
@@ -934,7 +1072,7 @@ async function pushPositions(){
     }
     if(cnt>0)await batch.commit();
     setPosPushAt(Date.now());
-    return {up,del};
+    return {up,del,cloudIds:new Set(Object.keys(cloud))};
   }catch(e){console.error('pushPositions error:',e);return {up:0,del:0,err:e.message||String(e)};}
 }
 async function pullPositions(){
@@ -980,12 +1118,24 @@ async function cloudDeletePosition(id){
     await uref.collection('tombstones').doc(id).set({id,kind:'position',deletedAt:nowStamp()});
   }catch(e){}
 }
-async function pushTombstones(){
+// Tombstones are only sent once. Re-sending every tombstone on every Push made
+// quota cost grow forever (500 tombstones = 1,000 writes per Push). A tombstone is
+// re-sent only if its target doc reappeared on the cloud — detectable for free from
+// the snapshots pushToCloud/pushPositions already fetched, so a device that never
+// pulls can't leave a resurrected doc behind.
+async function pushTombstones(cloudRecIds,cloudPosIds){
   const uref=userDocRef();if(!uref)return 0;
   const tref=uref.collection('tombstones');
   const recRef=userRecordsRef(),posRef=uref.collection('positions');
   try{
-    const local=loadTombstones();
+    const all=loadTombstones();
+    if(!all.length)return 0;
+    const stillOnCloud=t=>{
+      const kind=t.kind||'record';
+      if(kind==='record')return !!(cloudRecIds&&cloudRecIds.has(t.id));
+      return !!(cloudPosIds&&cloudPosIds.has(t.id));
+    };
+    const local=all.filter(t=>!t.pushedAt||stillOnCloud(t));
     if(!local.length)return 0;
     let batch=fbDb.batch(),cnt=0,n=0;
     for(const t of local){
@@ -996,8 +1146,9 @@ async function pushTombstones(){
       if(cnt>=400){await batch.commit();batch=fbDb.batch();cnt=0;}
     }
     if(cnt>0)await batch.commit();
+    markTombstonesPushed(local.map(t=>t.id));  // only after the cloud accepted them
     return n;
-  }catch(e){return 0;}
+  }catch(e){console.error('pushTombstones error:',e);return 0;}
 }
 async function cloudDeleteTombstone(id){
   const uref=userDocRef();if(!uref)return;
@@ -1070,7 +1221,7 @@ async function pushToCloud(){
     if(batchCount>0) await batch.commit();
     await pushBalance();
     const posR=await pushPositions();
-    const tombN=await pushTombstones();
+    const tombN=await pushTombstones(cloudIds,posR.cloudIds);
     cloudLastSync=new Date();
     cloudStatus='synced';
     cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
@@ -1187,6 +1338,33 @@ function addTombstone(id,kind){kind=kind||'record';const l=loadTombstones();cons
   // cloud tombstone as "resurrected here" and delete it, so the deletion never propagates.
   const u=loadUntomb();if(u.includes(id))saveUntomb(u.filter(x=>x!==id));}
 function tombIds(kind){return new Set(loadTombstones().filter(t=>(t.kind||'record')===kind).map(t=>t.id));}
+// ── Tombstone housekeeping ────────────────────────────────────────────────
+// pushedAt = confirmed on the cloud, so it never needs re-sending (quota).
+function markTombstonesPushed(ids){
+  const s=new Set(ids);const l=loadTombstones();let ch=false;
+  l.forEach(t=>{if(s.has(t.id)&&!t.pushedAt){t.pushedAt=Date.now();ch=true;}});
+  if(ch)saveTombstones(l);
+}
+// Drop tombstones older than the TTL. A tombstone only exists to stop another
+// replica resurrecting deleted data; once every device has synced past it there is
+// nothing left to resurrect. Unpushed ones are NEVER pruned — the cloud hasn't
+// seen them yet, so they're still doing their job.
+const TOMB_TTL_DAYS=90;
+function pruneTombstones(){
+  const cut=Date.now()-TOMB_TTL_DAYS*86400000;
+  const l=loadTombstones();
+  const keep=l.filter(t=>!t.pushedAt||(stampMs(t.deletedAt)||Date.now())>cut);
+  const n=l.length-keep.length;
+  if(n>0)saveTombstones(keep);
+  return n;
+}
+// Escape hatch: forget every "already pushed" mark so the next Push re-uploads
+// the full set (use if the cloud tombstone collection was lost or cleared).
+function forceResyncTombstones(){
+  const l=loadTombstones();l.forEach(t=>{delete t.pushedAt;});saveTombstones(l);
+  ctdToast(`ส่ง tombstone ใหม่ทั้งหมด ${l.length} รายการตอน Push ครั้งหน้า`);
+  renderRecords();
+}
 function removeTombstone(id){untombstone(id);renderRecords();}
 function clearTombstones(){loadTombstones().forEach(t=>untombstone(t.id));renderRecords();}
 // resurrection: clear tombstone locally + queue cloud tombstone-doc delete (offline-safe)
@@ -1199,8 +1377,8 @@ function untombstone(id){
 }
 function tombstonePanelHTML(){
   const l=loadTombstones();if(!l.length)return '';
-  const rows=l.map(t=>`<div class="tomb-row"><div class="info"><div class="tid">${escHtml(t.id)}</div><div class="tdate">deleted ${escHtml(dateDisplay(t.deletedAt||''))}</div></div><button class="restore" onclick="removeTombstone('${escHtml(t.id)}')">Restore</button></div>`).join('');
-  return `<div class="tomb"><div class="tomb-h" onclick="this.parentNode.querySelector('.tomb-body').classList.toggle('on')"><span class="ic">🗑</span><span class="tt">Deleted (tombstoned)</span><span class="cnt">${l.length}</span><span style="color:var(--hint);font-size:13px">▾</span></div><div class="tomb-body">${rows}<button class="tomb-clear" onclick="clearTombstones()">Clear all tombstones</button></div></div>`;
+  const rows=l.map(t=>`<div class="tomb-row"><div class="info"><div class="tid">${escHtml(t.id)}</div><div class="tdate">deleted ${escHtml(dateDisplay(t.deletedAt||''))}${t.pushedAt?' · synced':' · รอ push'}</div></div><button class="restore" onclick="removeTombstone('${escHtml(t.id)}')">Restore</button></div>`).join('');
+  return `<div class="tomb"><div class="tomb-h" onclick="this.parentNode.querySelector('.tomb-body').classList.toggle('on')"><span class="ic">🗑</span><span class="tt">Deleted (tombstoned)</span><span class="cnt">${l.length}</span><span style="color:var(--hint);font-size:13px">▾</span></div><div class="tomb-body">${rows}<button class="tomb-clear" onclick="forceResyncTombstones()" style="background:var(--stratbg);color:var(--strat)">Force resync to cloud</button><button class="tomb-clear" onclick="clearTombstones()">Clear all tombstones</button></div></div>`;
 }
 
 // ── targeted cloud writes (edit=overwrite doc · delete=remove doc) ──
@@ -3526,8 +3704,11 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.07.24.D';
+const APP_VER='2026.08.04.A';
 const VERSION_LOG=[
+  {v:'2026.08.04.A',note:'เพิ่ม FX Grid Zone (Layer A) — ปุ่มซ้าย Manual · คำนวณ Zone Distance + Zone Price Ladder จากสูตร GRID_Structure.xlsx · manual Zm · stateless ไม่ save'},
+  {v:'2026.08.01.A',note:'เพิ่ม e2e core money math (lot/margin/risk/P&L) 49 เคส แทน expected values ชุดเก่า'},
+  {v:'2026.07.28.A',note:'Tombstone housekeeping: ส่งขึ้น cloud ครั้งเดียว (ประหยัด quota) · prune อัตโนมัติที่ 90 วัน · ปุ่ม force resync'},
   {v:'2026.07.24.D',note:'Export/Import round-trip: export เพิ่ม note/RpT/Vola/SF/FeeVer · import อ่านตามชื่อหัวคอลัมน์'},
   {v:'2026.07.24.C',note:'Exit preview: Gross/Net เป็นฟ้าถ้ายังกรอก price/lot ไม่ครบ · placeholder fee = —'},
   {v:'2026.07.24.B',note:'Fee: สี +/- ครบทุกจุด (Tab2/Tab3) · ใช้ "-" แบบเดียวกันทั้งแอป · preview โชว์ตั้งแต่กรอก fee'},
@@ -3602,6 +3783,7 @@ function loadDemoSession(){
   saveSession(demo);
 }
 try{const m=migrateFees();if(m.positions||m.records)console.log('migrateFees:',m);}catch(e){console.error('migrateFees failed:',e);}
+try{const n=pruneTombstones();if(n)console.log('pruneTombstones: removed',n,'expired (>'+TOMB_TTL_DAYS+'d)');}catch(e){console.error('pruneTombstones failed:',e);}
 if(PREVIEW_MODE)loadDemoSession();
 </script>
 </body>
