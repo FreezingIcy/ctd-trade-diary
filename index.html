@@ -918,6 +918,129 @@ function equityCurveSVG(recsFull){
   return `<div class="card">${head}${sel}${chart}<div style="text-align:center;padding:2px 15px 12px;font-size:11px;color:var(--hint)">account value (balance + cumulative P/L)</div></div>`;
 }
 const N_POS=1;
+
+// ── %Move (price-only, entry→exit — NOT profit, NOT win-rate) ──
+// pctMoveExit: single exit slot.  pctMoveTrade: whole trade, lot-weighted
+// average exit price across every exit slot (so it's consistent with how the
+// app already sums money P/L by lot, and folds cleanly into a future
+// lot-weighted "avg %win / avg %loss" portfolio stat).
+function pctMoveExit(entryPrice,exitPrice,dir){
+  if(!entryPrice||!isFinite(exitPrice))return null;
+  const sign=dir==='long'?1:-1;
+  return (exitPrice-entryPrice)/entryPrice*sign*100;
+}
+function pctMoveTrade(e){
+  const exits=(e.exits||[]).filter(x=>parseFloat(x.price)&&parseFloat(x.lot));
+  if(!exits.length||!e.entryPrice)return null;
+  let sumPxLot=0,sumLot=0;
+  exits.forEach(x=>{const px=parseFloat(x.price)||0,lot=parseFloat(x.lot)||0;sumPxLot+=px*lot;sumLot+=lot;});
+  if(!sumLot)return null;
+  return pctMoveExit(e.entryPrice,sumPxLot/sumLot,e.direction);
+}
+
+// ── Weekend-adjusted ("market-time") duration, per Pepperstone hours ──
+// Forex on Pepperstone: Mon 00:01 → Fri 23:55 server time, closed the rest of
+// the weekend. Server time = GMT+2 (US non-DST) / GMT+3 (US DST).
+// Simplification: DST approximated by calendar month (Apr–Oct = DST) rather
+// than the exact 2nd-Sun-Mar/1st-Sun-Nov US rule — worst case ~1h off, against
+// a ~48h weekend window, only in the transition weeks. Good enough for a
+// quick-glance chart; flag if audit-grade precision is ever needed.
+function pepOffsetH(ms){ const m=new Date(ms).getMonth()+1; return (m>=4&&m<=10)?4:5; } // Bangkok(+7) − server(+3 or +2)
+function pepWeekendWindow(ms){
+  const d=new Date(ms);
+  const day=d.getDay();
+  const mon=new Date(d.getFullYear(),d.getMonth(),d.getDate()-((day+6)%7),0,0,0,0);
+  const fri2355=mon.getTime()+4*86400000+(23*60+55)*60000;
+  const off=pepOffsetH(fri2355)*3600000;
+  const nextMon0001=mon.getTime()+7*86400000+1*60000;
+  return {closeMs:fri2355+off, openMs:nextMon0001+off};
+}
+function marketMinutesBetween(startMs,endMs){
+  if(!(endMs>startMs))return 0;
+  let total=(endMs-startMs)/60000;
+  let {closeMs,openMs}=pepWeekendWindow(startMs);
+  while(closeMs<endMs){
+    const ovStart=Math.max(closeMs,startMs), ovEnd=Math.min(openMs,endMs);
+    if(ovEnd>ovStart)total-=(ovEnd-ovStart)/60000;
+    closeMs+=7*86400000; openMs+=7*86400000;
+  }
+  return Math.max(0,total);
+}
+function fmtMarketDur(minutes){
+  if(minutes==null||!isFinite(minutes))return '—';
+  minutes=Math.round(minutes);
+  const d=Math.floor(minutes/1440),rem=minutes%1440,h=Math.floor(rem/60),m=rem%60;
+  const hh=String(h).padStart(2,'0'),mm=String(m).padStart(2,'0');
+  return d>0?`${d};${hh}:${mm}`:`${hh}:${mm}`;
+}
+
+// ── Exit Scatter: one point per exit slot (T1/T2/T3/CL) across closed records ──
+function scatterPoints(recsFull){
+  const pts=[];
+  recsFull.forEach(r=>{
+    const e=r.eval; if(!e||!e.entryPrice)return;
+    const entryMs=stampMs(r.source&&r.source.entry&&r.source.entry.date||r.openedAt||'');
+    if(!entryMs)return;
+    (e.exits||[]).forEach(x=>{
+      const price=parseFloat(x.price),lot=parseFloat(x.lot);
+      if(!price||!lot||!x.date)return;
+      const exitMs=stampMs(x.date);
+      if(!exitMs||exitMs<=entryMs)return;
+      const pct=pctMoveExit(e.entryPrice,price,e.direction);
+      const minutes=marketMinutesBetween(entryMs,exitMs);
+      if(pct==null||!isFinite(minutes))return;
+      pts.push({pct,minutes});
+    });
+  });
+  return pts;
+}
+var scatterScale='lin';
+function setScatterScale(s){scatterScale=s;renderRecords();}
+function exitScatterSVG(recsFull){
+  const pts=scatterPoints(recsFull);
+  const head=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:13px 15px 2px"><span style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Exit Scatter</span><span style="font-size:12px;color:var(--hint)">${pts.length} exits</span></div>`;
+  const legend=`<div style="display:flex;gap:14px;padding:0 15px 8px;font-size:11px;color:var(--sub)"><span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:var(--green)"></span>exit ดีกว่า entry</span><span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:var(--red)"></span>exit แย่กว่า entry</span></div>`;
+  const toggle=`<div style="display:flex;background:rgba(120,120,128,.12);border-radius:9px;padding:2px;margin:2px 15px 8px">
+    <div onclick="setScatterScale('lin')" style="flex:1;text-align:center;font-size:12px;padding:5px 0;border-radius:7px;cursor:pointer;font-weight:${scatterScale==='lin'?'600':'400'};color:${scatterScale==='lin'?'var(--text)':'var(--sub)'};background:${scatterScale==='lin'?'var(--card)':'transparent'};${scatterScale==='lin'?'box-shadow:0 1px 3px rgba(0,0,0,.12)':''}">Duration: Linear</div>
+    <div onclick="setScatterScale('log')" style="flex:1;text-align:center;font-size:12px;padding:5px 0;border-radius:7px;cursor:pointer;font-weight:${scatterScale==='log'?'600':'400'};color:${scatterScale==='log'?'var(--text)':'var(--sub)'};background:${scatterScale==='log'?'var(--card)':'transparent'};${scatterScale==='log'?'box-shadow:0 1px 3px rgba(0,0,0,.12)':''}">Duration: Log</div>
+  </div>`;
+  let chart;
+  if(pts.length<2){
+    chart=`<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--hint)">ต้องมีอย่างน้อย 2 exit ในช่วงนี้</div>`;
+  }else{
+    const X0=40,X1=352,Y0=10,Y1=180;
+    const maxAbsPct=Math.max(...pts.map(p=>Math.abs(p.pct)))||1;
+    const px=v=>X0+((v+maxAbsPct)/(2*maxAbsPct))*(X1-X0);
+    let py,ylv;
+    if(scatterScale==='lin'){
+      const maxMin=Math.max(...pts.map(p=>p.minutes))||1;
+      py=v=>Y1-(v/maxMin)*(Y1-Y0);
+      ylv=niceLevels(0,maxMin,4);
+    }else{
+      const minMin=Math.max(5,Math.min(...pts.map(p=>p.minutes)));
+      const maxMin=Math.max(...pts.map(p=>p.minutes),minMin*10);
+      const lLo=Math.log10(minMin),lHi=Math.log10(maxMin);
+      py=v=>Y1-((Math.log10(Math.max(v,1))-lLo)/(lHi-lLo||1))*(Y1-Y0);
+      ylv=[15,60,240,720,1440,4320,10080].filter(v=>v>=minMin*0.9&&v<=maxMin*1.1);
+    }
+    const grid=ylv.map(v=>{const y=py(v);return `<line x1="${X0}" y1="${y.toFixed(1)}" x2="${X1}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" opacity=".4"/>`;}).join('');
+    const ylabels=ylv.map(v=>{const y=py(v);return `<div style="position:absolute;top:${y.toFixed(1)}px;left:0;width:34px;text-align:right;transform:translateY(-50%);font-size:9px;color:var(--hint)">${fmtMarketDur(v)}</div>`;}).join('');
+    const zeroX=px(0);
+    const zeroLine=`<line x1="${zeroX.toFixed(1)}" y1="${Y0}" x2="${zeroX.toFixed(1)}" y2="${Y1}" stroke="var(--hint)" stroke-width="1" stroke-dasharray="2 3" opacity=".8"/>`;
+    const dots=pts.map(p=>{
+      const cx=px(p.pct).toFixed(1),cy=py(p.minutes).toFixed(1);
+      const color=p.pct>0.0001?'var(--green)':p.pct<-0.0001?'var(--red)':'var(--hint)';
+      return `<circle cx="${cx}" cy="${cy}" r="2.6" fill="${color}" fill-opacity="0.65"/>`;
+    }).join('');
+    const xTicks=[-maxAbsPct,-maxAbsPct/2,0,maxAbsPct/2,maxAbsPct];
+    const xlabels=xTicks.map(v=>`<div style="position:absolute;top:188px;left:${px(v).toFixed(1)}px;transform:translateX(-50%);font-size:9px;color:var(--hint)">${v>0?'+':''}${v.toFixed(2)}%</div>`).join('');
+    chart=`<div style="position:relative;width:100%;height:210px">
+      <svg style="display:block;width:100%;height:210px;overflow:visible" viewBox="0 0 392 210" preserveAspectRatio="none">
+        ${grid}${zeroLine}${dots}
+      </svg>${ylabels}${xlabels}</div>`;
+  }
+  return `<div class="card">${head}${legend}${toggle}${chart}<div style="text-align:center;padding:8px 15px 12px;font-size:11px;color:var(--hint)">แต่ละจุด = 1 exit slot (T1/T2/T3/CL) · duration หัก weekend ตามเวลาตลาด Pepperstone</div></div>`;
+}
 const SK1='cfd_dash_v2';
 const SK2='ctd_session_v1';
 const SK3='ctd_record_v1';
@@ -3230,6 +3353,7 @@ function renderRecords(){
   html+=balanceCardHTML();
   // equity curve (Step 2)
   html+=equityCurveSVG(recs);
+  html+=exitScatterSVG(recs);
   html+=`<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Total P/L</div><div style="font-size:16px;font-weight:600;color:${plColor}">${fSign(totalPL,2)}</div></div>
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Win rate</div><div style="font-size:16px;font-weight:600;color:var(--text)">${winRate.toFixed(0)}% <span style="font-size:12px;color:var(--hint)">(${wins}/${n})</span></div></div>
@@ -3322,6 +3446,8 @@ function renderRecords(){
         const grossC=e.grossPL>0?'var(--green)':e.grossPL<0?'var(--red)':'';
         const netC=e.realizedPL>0?'var(--green)':e.realizedPL<0?'var(--red)':'';
         const outcomeC=e.outcome==='win'?'var(--green)':e.outcome==='loss'?'var(--red)':'var(--sub)';
+        const pctMove=pctMoveTrade(e);
+        const moveC=pctMove>0?'var(--green)':pctMove<0?'var(--red)':'var(--sub)';
         const feesBox=hasFee?`<div class="rec-box">
           <div class="rec-box-h">Fees</div>
           <div class="rec-brow"><span class="rec-bl">Gross</span><span class="rec-bv" style="color:${grossC}">${fSign(e.grossPL,2)}</span></div>
@@ -3337,6 +3463,7 @@ function renderRecords(){
           <div class="rec-box-h">Summary</div>
           ${e.strategy?`<div class="rec-brow"><span class="rec-bl">Strategy</span><span class="rec-bv" style="color:var(--strat);font-weight:600">${escHtml(e.strategy)}</span></div>`:''}
           <div class="rec-brow"><span class="rec-bl">R-mult</span><span class="rec-bv">${fSign(e.rMultiple,2)}R</span></div>
+          <div class="rec-brow"><span class="rec-bl">%Move</span><span class="rec-bv" style="color:${moveC}">${pctMove!=null?fSign(pctMove,2)+'%':'—'}</span></div>
           <div class="rec-brow"><span class="rec-bl">Outcome</span><span class="rec-bv" style="color:${outcomeC}">${e.outcome}</span></div>
           <div class="rec-brow"><span class="rec-bl">Holding</span><span class="rec-bv">${escHtml(e.holdingStr||'—')}</span></div>
           ${r.lastEditedAt?`<div class="rec-brow"><span class="rec-bl">แก้ไข</span><span class="rec-bv" style="color:var(--orange)">${escHtml(dateDisplay(r.lastEditedAt))} · ${r.editCount||1}×</span></div>`:''}
@@ -3704,8 +3831,9 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.04.A';
+const APP_VER='2026.08.05.A';
 const VERSION_LOG=[
+  {v:'2026.08.05.A',note:'Tab3: เพิ่ม %Move (entry/exit price ล้วน ไม่ใช่ profit/win-rate) ในสรุปแต่ละ trade · เพิ่ม Exit Scatter chart (%Move × holding duration ทุก exit) หัก weekend ตามเวลาตลาด Pepperstone'},
   {v:'2026.08.04.A',note:'เพิ่ม FX Grid Zone (Layer A) — ปุ่มซ้าย Manual · คำนวณ Zone Distance + Zone Price Ladder จากสูตร GRID_Structure.xlsx · manual Zm · stateless ไม่ save'},
   {v:'2026.08.01.A',note:'เพิ่ม e2e core money math (lot/margin/risk/P&L) 49 เคส แทน expected values ชุดเก่า'},
   {v:'2026.07.28.A',note:'Tombstone housekeeping: ส่งขึ้น cloud ครั้งเดียว (ประหยัด quota) · prune อัตโนมัติที่ 90 วัน · ปุ่ม force resync'},
