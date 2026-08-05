@@ -996,19 +996,32 @@ function scatterPoints(recsFull){
 }
 var scatterScale='lin';
 function setScatterScale(s){scatterScale=s;renderRecords();}
+var scatterAssetFilter='all';
+function setScatterAsset(sym){scatterAssetFilter=sym;renderRecords();}
 function exitScatterSVG(recsFull){
-  const pts=scatterPoints(recsFull);
-  const head=`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:13px 15px 2px"><span style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Exit Scatter</span><span style="font-size:12px;color:var(--hint)">${pts.length} exits</span></div>`;
-  const legend=`<div style="display:flex;gap:14px;padding:0 15px 8px;font-size:11px;color:var(--sub)"><span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:var(--green)"></span>exit ดีกว่า entry</span><span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:var(--red)"></span>exit แย่กว่า entry</span></div>`;
-  const toggle=`<div style="display:flex;background:rgba(120,120,128,.12);border-radius:9px;padding:2px;margin:2px 15px 8px">
-    <div onclick="setScatterScale('lin')" style="flex:1;text-align:center;font-size:12px;padding:5px 0;border-radius:7px;cursor:pointer;font-weight:${scatterScale==='lin'?'600':'400'};color:${scatterScale==='lin'?'var(--text)':'var(--sub)'};background:${scatterScale==='lin'?'var(--card)':'transparent'};${scatterScale==='lin'?'box-shadow:0 1px 3px rgba(0,0,0,.12)':''}">Duration: Linear</div>
-    <div onclick="setScatterScale('log')" style="flex:1;text-align:center;font-size:12px;padding:5px 0;border-radius:7px;cursor:pointer;font-weight:${scatterScale==='log'?'600':'400'};color:${scatterScale==='log'?'var(--text)':'var(--sub)'};background:${scatterScale==='log'?'var(--card)':'transparent'};${scatterScale==='log'?'box-shadow:0 1px 3px rgba(0,0,0,.12)':''}">Duration: Log</div>
+  // independent of Tab3's top symbol/strategy filter — this card filters itself
+  const symbols=[...new Set(recsFull.map(r=>r.eval.symbol))];
+  if(scatterAssetFilter!=='all'&&!symbols.includes(scatterAssetFilter))scatterAssetFilter='all';
+  const filtered=scatterAssetFilter==='all'?recsFull:recsFull.filter(r=>r.eval.symbol===scatterAssetFilter);
+  const pts=scatterPoints(filtered);
+  const head=`<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 15px 8px">
+    <span style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Exit Scatter</span>
+    <div style="display:flex;background:rgba(120,120,128,.12);border-radius:8px;padding:2px;gap:2px">
+      <div onclick="setScatterScale('lin')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:${scatterScale==='lin'?'600':'400'};color:${scatterScale==='lin'?'var(--text)':'var(--sub)'};background:${scatterScale==='lin'?'var(--card)':'transparent'};${scatterScale==='lin'?'box-shadow:0 1px 3px rgba(0,0,0,.12)':''}">Lin</div>
+      <div onclick="setScatterScale('log')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:${scatterScale==='log'?'600':'400'};color:${scatterScale==='log'?'var(--text)':'var(--sub)'};background:${scatterScale==='log'?'var(--card)':'transparent'};${scatterScale==='log'?'box-shadow:0 1px 3px rgba(0,0,0,.12)':''}">Log</div>
+    </div>
   </div>`;
+  const chipList=['all',...symbols];
+  const chips=symbols.length>1?`<div style="display:flex;gap:6px;overflow-x:auto;padding:0 15px 8px;-webkit-overflow-scrolling:touch">${chipList.map(s=>{
+    const active=scatterAssetFilter===s;
+    return `<span onclick="setScatterAsset('${escAttr(s)}')" style="flex-shrink:0;padding:5px 12px;border-radius:14px;font-size:12px;font-weight:${active?'600':'400'};cursor:pointer;white-space:nowrap;background:${active?'var(--acc)':'rgba(120,120,128,.12)'};color:${active?'#fff':'var(--sub)'}">${s==='all'?'All':escHtml(s)}</span>`;
+  }).join('')}</div>`:'';
   let chart;
   if(pts.length<2){
     chart=`<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--hint)">ต้องมีอย่างน้อย 2 exit ในช่วงนี้</div>`;
   }else{
-    const X0=40,X1=352,Y0=10,Y1=180;
+    const X0=40,X1=352,Y0=10,Y1=180,VBW=392;
+    const pctX=x=>(x/VBW*100).toFixed(2);
     const maxAbsPct=Math.max(...pts.map(p=>Math.abs(p.pct)))||1;
     const px=v=>X0+((v+maxAbsPct)/(2*maxAbsPct))*(X1-X0);
     let py,ylv;
@@ -1033,13 +1046,18 @@ function exitScatterSVG(recsFull){
       return `<circle cx="${cx}" cy="${cy}" r="2.6" fill="${color}" fill-opacity="0.65"/>`;
     }).join('');
     const xTicks=[-maxAbsPct,-maxAbsPct/2,0,maxAbsPct/2,maxAbsPct];
-    const xlabels=xTicks.map(v=>`<div style="position:absolute;top:188px;left:${px(v).toFixed(1)}px;transform:translateX(-50%);font-size:9px;color:var(--hint)">${v>0?'+':''}${v.toFixed(2)}%</div>`).join('');
+    // x-labels positioned by % (not raw px) so they track the SVG's actual
+    // rendered width — the SVG stretches width:100% via preserveAspectRatio=
+    // "none", so a fixed-px label position drifts out of sync with the dots
+    // on any window width other than the 392 viewBox reference.
+    const xlabels=xTicks.map(v=>`<div style="position:absolute;top:188px;left:${pctX(px(v))}%;transform:translateX(-50%);font-size:9px;color:var(--hint);white-space:nowrap">${v>0?'+':''}${v.toFixed(2)}%</div>`).join('');
     chart=`<div style="position:relative;width:100%;height:210px">
       <svg style="display:block;width:100%;height:210px;overflow:visible" viewBox="0 0 392 210" preserveAspectRatio="none">
         ${grid}${zeroLine}${dots}
       </svg>${ylabels}${xlabels}</div>`;
   }
-  return `<div class="card">${head}${legend}${toggle}${chart}<div style="text-align:center;padding:8px 15px 12px;font-size:11px;color:var(--hint)">แต่ละจุด = 1 exit slot (T1/T2/T3/CL) · duration หัก weekend ตามเวลาตลาด Pepperstone</div></div>`;
+  const caption=`<div style="text-align:center;padding:8px 15px 12px;font-size:11px;color:var(--hint)">${pts.length} exits${scatterAssetFilter!=='all'?' · '+escHtml(scatterAssetFilter):''} · แต่ละจุด = 1 exit slot (T1/T2/T3/CL) · duration หัก weekend ตามเวลาตลาด Pepperstone</div>`;
+  return `<div class="card">${head}${chips}${chart}${caption}</div>`;
 }
 const SK1='cfd_dash_v2';
 const SK2='ctd_session_v1';
@@ -3353,7 +3371,6 @@ function renderRecords(){
   html+=balanceCardHTML();
   // equity curve (Step 2)
   html+=equityCurveSVG(recs);
-  html+=exitScatterSVG(recs);
   html+=`<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Total P/L</div><div style="font-size:16px;font-weight:600;color:${plColor}">${fSign(totalPL,2)}</div></div>
     <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Win rate</div><div style="font-size:16px;font-weight:600;color:var(--text)">${winRate.toFixed(0)}% <span style="font-size:12px;color:var(--hint)">(${wins}/${n})</span></div></div>
@@ -3367,6 +3384,8 @@ function renderRecords(){
   <div style="padding:9px 14px 11px;border-top:.5px solid var(--border);font-size:10px;line-height:1.6;color:var(--hint)">
     <b style="color:var(--sub)">PF (trading edge):</b> Gross Profit ÷ Gross Loss (&gt;1 = has edge) · <b style="color:var(--sub)">Expec (expected P/L per trade):</b> Total P/L ÷ Trades · <b style="color:var(--sub)">Avg R:</b> avg profit per 1R
   </div></div>`;
+  // exit scatter — sits right above Cloud Sync · own asset filter, independent of the top Tab3 filter (uses `all`, not `recs`)
+  html+=exitScatterSVG(all);
   // cloud sync section
   html+=buildCloudSyncUI();
   // divider + offline backup + guide boxes
