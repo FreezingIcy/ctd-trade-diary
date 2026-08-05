@@ -1040,10 +1040,14 @@ function exitScatterSVG(recsFull){
     const ylabels=ylv.map(v=>{const y=py(v);return `<div style="position:absolute;top:${y.toFixed(1)}px;left:0;width:34px;text-align:right;transform:translateY(-50%);font-size:9px;color:var(--hint)">${fmtMarketDur(v)}</div>`;}).join('');
     const zeroX=px(0);
     const zeroLine=`<line x1="${zeroX.toFixed(1)}" y1="${Y0}" x2="${zeroX.toFixed(1)}" y2="${Y1}" stroke="var(--hint)" stroke-width="1" stroke-dasharray="2 3" opacity=".8"/>`;
+    // Dots are HTML overlays (not SVG <circle>), fixed-px sized — the SVG itself
+    // stretches non-uniformly (preserveAspectRatio="none", width:100% but fixed
+    // height), which would otherwise squash/stretch true SVG circles into
+    // ellipses on any window width other than the 392 viewBox reference.
     const dots=pts.map(p=>{
-      const cx=px(p.pct).toFixed(1),cy=py(p.minutes).toFixed(1);
+      const leftPct=pctX(px(p.pct)),top=py(p.minutes).toFixed(1);
       const color=p.pct>0.0001?'var(--green)':p.pct<-0.0001?'var(--red)':'var(--hint)';
-      return `<circle cx="${cx}" cy="${cy}" r="2.6" fill="${color}" fill-opacity="0.65"/>`;
+      return `<div style="position:absolute;left:${leftPct}%;top:${top}px;width:5.2px;height:5.2px;border-radius:50%;background:${color};opacity:.65;transform:translate(-50%,-50%);pointer-events:none"></div>`;
     }).join('');
     const xTicks=[-maxAbsPct,-maxAbsPct/2,0,maxAbsPct/2,maxAbsPct];
     // x-labels positioned by % (not raw px) so they track the SVG's actual
@@ -1053,8 +1057,8 @@ function exitScatterSVG(recsFull){
     const xlabels=xTicks.map(v=>`<div style="position:absolute;top:188px;left:${pctX(px(v))}%;transform:translateX(-50%);font-size:9px;color:var(--hint);white-space:nowrap">${v>0?'+':''}${v.toFixed(2)}%</div>`).join('');
     chart=`<div style="position:relative;width:100%;height:210px">
       <svg style="display:block;width:100%;height:210px;overflow:visible" viewBox="0 0 392 210" preserveAspectRatio="none">
-        ${grid}${zeroLine}${dots}
-      </svg>${ylabels}${xlabels}</div>`;
+        ${grid}${zeroLine}
+      </svg>${ylabels}${xlabels}${dots}</div>`;
   }
   const caption=`<div style="text-align:center;padding:8px 15px 12px;font-size:11px;color:var(--hint)">${pts.length} exits${scatterAssetFilter!=='all'?' · '+escHtml(scatterAssetFilter):''} · แต่ละจุด = 1 exit slot (T1/T2/T3/CL) · duration หัก weekend ตามเวลาตลาด Pepperstone</div>`;
   return `<div class="card">${head}${chips}${chart}${caption}</div>`;
