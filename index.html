@@ -1064,6 +1064,107 @@ function exitScatterSVG(recsFull){
   return `<div class="card">${head}${chips}${chart}${caption}</div>`;
 }
 const SK1='cfd_dash_v2';
+var summaryAssetFilter='all';
+function setSummaryAsset(sym){summaryAssetFilter=sym;renderRecords();}
+var summaryDefsOpen=false;
+function toggleSummaryDefs(){summaryDefsOpen=!summaryDefsOpen;renderRecords();}
+// Portfolio Summary — own asset filter, independent of Tab3's top filter (like Exit Scatter)
+function portfolioSummaryHTML(recsFull){
+  const symbols=[...new Set(recsFull.map(r=>r.eval.symbol))];
+  if(summaryAssetFilter!=='all'&&!symbols.includes(summaryAssetFilter))summaryAssetFilter='all';
+  const list=summaryAssetFilter==='all'?recsFull:recsFull.filter(r=>r.eval.symbol===summaryAssetFilter);
+  const n=list.length;
+  const wins=list.filter(r=>r.eval.outcome==='win');
+  const losses=list.filter(r=>r.eval.outcome==='loss');
+  const totalPL=list.reduce((s,r)=>s+(r.eval.realizedPL||0),0);
+  const winRate=n?wins.length/n*100:0;
+  const grossProfit=wins.reduce((s,r)=>s+(r.eval.realizedPL||0),0);
+  const grossLoss=Math.abs(losses.reduce((s,r)=>s+(r.eval.realizedPL||0),0));
+  const profitFactor=grossLoss>0?grossProfit/grossLoss:(grossProfit>0?Infinity:0);
+  const expectancy=n?totalPL/n:0;
+  const avgWin=wins.length?grossProfit/wins.length:0;
+  const avgLoss=losses.length?-grossLoss/losses.length:0;
+  const pctWins=wins.map(r=>pctMoveTrade(r.eval)).filter(v=>v!=null);
+  const pctLosses=losses.map(r=>pctMoveTrade(r.eval)).filter(v=>v!=null);
+  const avgPctWin=pctWins.length?pctWins.reduce((a,b)=>a+b,0)/pctWins.length:0;
+  const avgPctLoss=pctLosses.length?pctLosses.reduce((a,b)=>a+b,0)/pctLosses.length:0;
+  const rVals=list.map(r=>r.eval.rMultiple).filter(v=>isFinite(v));
+  const avgR=rVals.length?rVals.reduce((a,b)=>a+b,0)/rVals.length:0;
+
+  // chronological walk (peak/trough) for $ + % drawdown and trade-count-in-DD
+  const startBal=parseFloat(getBalance())||0;
+  const sorted=list.slice().sort((a,b)=>recDateMs(a)-recDateMs(b));
+  let cum=0,curPeak=0,curPeakIdx=-1,maxDD=0,maxDDPct=0,ddStartIdx=-1,ddEndIdx=-1;
+  sorted.forEach((r,i)=>{
+    cum+=(r.eval.realizedPL||0);
+    if(cum>curPeak){curPeak=cum;curPeakIdx=i;}
+    const dd=curPeak-cum;
+    if(dd>maxDD){maxDD=dd;maxDDPct=(startBal+curPeak)>0?dd/(startBal+curPeak)*100:0;ddStartIdx=curPeakIdx;ddEndIdx=i;}
+  });
+  const tradesInMaxDD=ddStartIdx>=0?(ddEndIdx-ddStartIdx):0;
+  let curStreak=0,maxStreak=0;
+  sorted.forEach(r=>{ if(r.eval.outcome==='loss'){curStreak++;if(curStreak>maxStreak)maxStreak=curStreak;} else curStreak=0; });
+
+  const pfStr=profitFactor===Infinity?'∞':profitFactor.toFixed(2);
+  const chips=symbols.length>1?`<div style="display:flex;gap:6px;overflow-x:auto;padding:0 15px 10px">${['all',...symbols].map(s=>{
+    const active=summaryAssetFilter===s;
+    return `<span onclick="setSummaryAsset('${escAttr(s)}')" style="flex-shrink:0;padding:5px 12px;border-radius:14px;font-size:12px;font-weight:${active?'600':'400'};cursor:pointer;white-space:nowrap;background:${active?'var(--acc)':'rgba(120,120,128,.12)'};color:${active?'#fff':'var(--sub)'}">${s==='all'?'All':escHtml(s)}</span>`;
+  }).join('')}</div>`:'';
+
+  const sCell=(label,val,color,sub)=>`<div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">${label}</div><div style="font-size:16px;font-weight:600;color:${color||'var(--text)'}">${val}${sub?`<span style="font-size:12px;color:var(--hint)"> ${sub}</span>`:''}</div></div>`;
+  const sCellC=(label,val,color)=>`<div style="padding:10px 8px"><div style="font-size:9.5px;color:var(--sub);text-transform:uppercase;white-space:nowrap">${label}</div><div style="font-size:13px;font-weight:600;color:${color||'var(--text)'};white-space:nowrap">${val}</div></div>`;
+  const sGrid=(cells,cols)=>{
+    const rows=Math.ceil(cells.length/cols);
+    const html=cells.map((inner,i)=>{
+      const col=i%cols,row=Math.floor(i/cols);
+      const b=`${row<rows-1?'border-bottom:.5px solid var(--border);':''}${col<cols-1?'border-right:.5px solid var(--border);':''}`;
+      return `<div style="${b}">${inner}</div>`;
+    }).join('');
+    return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr)">${html}</div>`;
+  };
+
+  const blockA=sGrid([
+    sCell('Total P/L',fSign(totalPL,2),totalPL>0?'var(--green)':totalPL<0?'var(--red)':'var(--text)'),
+    sCell('Win rate',winRate.toFixed(0)+'%','var(--text)',`(${wins.length}/${n})`),
+  ],2);
+  const blockB=sGrid([
+    sCellC('Avg Win',wins.length?fSign(avgWin,2):'—','var(--green)'),
+    sCellC('Avg %',wins.length?fSign(avgPctWin,2)+'%':'—','var(--green)'),
+    sCellC('Avg Loss',losses.length?fSign(avgLoss,2):'—','var(--red)'),
+    sCellC('Avg %',losses.length?fSign(avgPctLoss,2)+'%':'—','var(--red)'),
+  ],4);
+  const blockC=sGrid([
+    sCell('Profit Factor',pfStr),
+    sCell('Max Drawdown',maxDD>0?'-'+f(maxDD,2):'0.00',maxDD>0?'var(--red)':'var(--text)',maxDD>0?'(-'+maxDDPct.toFixed(1)+'%)':''),
+    sCell('Expectancy',fSign(expectancy,2),expectancy>=0?'var(--green)':'var(--red)','/ไม้'),
+    sCell('Trades in Max DD',tradesInMaxDD),
+    sCell('Avg R',fSign(avgR,2)+'R',avgR>=0?'var(--green)':'var(--red)'),
+    sCell('Consec. Loss',maxStreak,maxStreak>=3?'var(--red)':'var(--text)'),
+  ],2);
+
+  const defRows=[
+    ['Avg %Win / %Loss','เฉลี่ย %Move (entry price→exit price)'],
+    ['PF (Profit Factor)','Gross Profit ÷ Gross Loss (&gt;1 = มี edge)'],
+    ['Expectancy','กำไรเฉลี่ยต่อไม้ = Total P/L ÷ จำนวนไม้'],
+    ['Avg R','กำไรเฉลี่ยต่อ 1R (risk ที่ตั้งไว้)'],
+    ['%DD','drawdown ÷ peak equity (starting balance + peak cumulative P/L ณ จุดนั้น)'],
+    ['Trades in Max DD','จำนวนไม้นับจาก peak ถึงจุดต่ำสุดของ drawdown ที่ลึกที่สุด'],
+    ['Consec. Loss','จำนวนไม้ขาดทุนติดกันยาวที่สุด (เรียงตามวันที่จริง)'],
+  ];
+  const defList=defRows.map(([t,d],i)=>`<div style="padding:6px 0;${i<defRows.length-1?'border-bottom:.5px solid var(--border)':''}"><b style="color:var(--sub);font-size:11px">${t}</b><div style="font-size:11px;color:var(--hint);line-height:1.5;margin-top:1px">${d}</div></div>`).join('');
+  const defBlock=`<div onclick="toggleSummaryDefs()" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:.5px solid var(--border);cursor:pointer">
+      <span style="font-size:11px;color:var(--sub)">📖 Definitions &amp; Formulas</span>
+      <span style="font-size:10px;color:var(--hint);transition:.2s;display:inline-block;transform:rotate(${summaryDefsOpen?'90deg':'0deg'})">▶</span>
+    </div>
+    <div style="display:${summaryDefsOpen?'block':'none'};padding:0 14px 10px">${defList}</div>`;
+
+  return `<div class="card">
+    <div style="padding:13px 15px 2px"><span style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Portfolio Summary</span></div>
+    ${chips}
+    ${blockA}<div style="border-top:.5px solid var(--border)">${blockB}</div><div style="border-top:.5px solid var(--border)">${blockC}</div>
+    ${defBlock}
+  </div>`;
+}
 const SK2='ctd_session_v1';
 const SK3='ctd_record_v1';
 var riskMode=[,'fixed'];
@@ -3354,17 +3455,6 @@ function renderRecords(){
   const rVals=recs.map(r=>r.eval.rMultiple).filter(v=>isFinite(v));
   const avgR=rVals.length?rVals.reduce((a,b)=>a+b,0)/rVals.length:0;
   const plColor=totalPL>0?'var(--green)':totalPL<0?'var(--red)':'var(--text)';
-  // expanded portfolio stats (on filtered set)
-  const winRecs=recs.filter(r=>r.eval.outcome==='win');
-  const lossRecs=recs.filter(r=>r.eval.outcome==='loss');
-  const grossProfit=winRecs.reduce((s,r)=>s+(r.eval.realizedPL||0),0);
-  const grossLoss=Math.abs(lossRecs.reduce((s,r)=>s+(r.eval.realizedPL||0),0));
-  const profitFactor=grossLoss>0?grossProfit/grossLoss:(grossProfit>0?Infinity:0);
-  const expectancy=n?totalPL/n:0;
-  const avgWin=winRecs.length?grossProfit/winRecs.length:0;
-  const avgLoss=lossRecs.length?-grossLoss/lossRecs.length:0;
-  const maxDD=maxDrawdown(cumulativeEquity(recs));
-  const pfStr=profitFactor===Infinity?'∞':profitFactor.toFixed(2);
   let html='';
   // summary box
   html+=`<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:16px">
@@ -3375,19 +3465,8 @@ function renderRecords(){
   html+=balanceCardHTML();
   // equity curve (Step 2)
   html+=equityCurveSVG(recs);
-  html+=`<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Total P/L</div><div style="font-size:16px;font-weight:600;color:${plColor}">${fSign(totalPL,2)}</div></div>
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Win rate</div><div style="font-size:16px;font-weight:600;color:var(--text)">${winRate.toFixed(0)}% <span style="font-size:12px;color:var(--hint)">(${wins}/${n})</span></div></div>
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg Win</div><div style="font-size:16px;font-weight:600;color:var(--green)">${winRecs.length?fSign(avgWin,2):'—'}</div></div>
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg Loss</div><div style="font-size:16px;font-weight:600;color:var(--red)">${lossRecs.length?fSign(avgLoss,2):'—'}</div></div>
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Profit Factor</div><div style="font-size:16px;font-weight:600;color:var(--text)">${pfStr}</div></div>
-    <div style="padding:12px 14px;border-bottom:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Expectancy</div><div style="font-size:16px;font-weight:600;color:${expectancy>=0?'var(--green)':'var(--red)'}">${fSign(expectancy,2)}<span style="font-size:11px;color:var(--hint)">/ไม้</span></div></div>
-    <div style="padding:12px 14px;border-right:.5px solid var(--border)"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Avg R</div><div style="font-size:16px;font-weight:600;color:${avgR>=0?'var(--green)':'var(--red)'}">${fSign(avgR,2)}R</div></div>
-    <div style="padding:12px 14px"><div style="font-size:11px;color:var(--sub);text-transform:uppercase">Max Drawdown</div><div style="font-size:16px;font-weight:600;color:${maxDD>0?'var(--red)':'var(--text)'}">${maxDD>0?'-'+f(maxDD,2):'0.00'}</div></div>
-  </div>
-  <div style="padding:9px 14px 11px;border-top:.5px solid var(--border);font-size:10px;line-height:1.6;color:var(--hint)">
-    <b style="color:var(--sub)">PF (trading edge):</b> Gross Profit ÷ Gross Loss (&gt;1 = has edge) · <b style="color:var(--sub)">Expec (expected P/L per trade):</b> Total P/L ÷ Trades · <b style="color:var(--sub)">Avg R:</b> avg profit per 1R
-  </div></div>`;
+  // portfolio summary stats — own asset filter, independent of the top Tab3 filter (uses `all`, not `recs`)
+  html+=portfolioSummaryHTML(all);
   // exit scatter — sits right above Cloud Sync · own asset filter, independent of the top Tab3 filter (uses `all`, not `recs`)
   html+=exitScatterSVG(all);
   // cloud sync section
@@ -3854,8 +3933,9 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.05.A';
+const APP_VER='2026.08.07.A';
 const VERSION_LOG=[
+  {v:'2026.08.07.A',note:'Tab3: ขยาย Portfolio Summary — asset filter chip เฉพาะ card (แยกจาก filter บนสุด), เพิ่ม Avg %Win/%Loss (คู่กับ Avg Win/Loss เดิม), %DD ต่อท้าย Max Drawdown, Trades in Max DD, Consecutive Loss · เพิ่ม dropdown Definitions & Formulas'},
   {v:'2026.08.05.A',note:'Tab3: เพิ่ม %Move (entry/exit price ล้วน ไม่ใช่ profit/win-rate) ในสรุปแต่ละ trade · เพิ่ม Exit Scatter chart (%Move × holding duration ทุก exit) หัก weekend ตามเวลาตลาด Pepperstone'},
   {v:'2026.08.04.A',note:'เพิ่ม FX Grid Zone (Layer A) — ปุ่มซ้าย Manual · คำนวณ Zone Distance + Zone Price Ladder จากสูตร GRID_Structure.xlsx · manual Zm · stateless ไม่ save'},
   {v:'2026.08.01.A',note:'เพิ่ม e2e core money math (lot/margin/risk/P&L) 49 เคส แทน expected values ชุดเก่า'},
