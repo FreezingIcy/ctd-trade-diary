@@ -699,7 +699,7 @@ function gridZoneHTML(){
     <p class="stitle">Grid Input — Layer A</p>
     <div class="card">
       <div class="row"><div class="rl">Symbol</div>
-        <input type="text" id="gz-sym" placeholder="เช่น EURUSD" style="width:130px;text-transform:uppercase">
+        <input type="text" id="gz-sym" placeholder="เช่น EURUSD" style="width:130px;text-transform:uppercase" oninput="saveGridZone()">
       </div>
       <div class="row"><div class="rl">Current Price (Zm)</div>
         <input type="text" id="gz-zm" inputmode="decimal" placeholder="0.00000" oninput="calcGridZone()" onblur="onPriceBlur(this);calcGridZone()">
@@ -718,6 +718,10 @@ function gridZoneHTML(){
       </div>
     </div>
     <div style="padding:2px 4px 8px;font-size:11px;color:var(--hint)">*Reserve Zone เก็บไว้อ้างอิง ยังไม่ผูกสูตรคำนวณ zone</div>
+    <div style="padding:0 4px 10px;font-size:11px;color:var(--hint);display:flex;justify-content:space-between;align-items:center">
+      <span>💾 บันทึกในเครื่องนี้อัตโนมัติ — ไม่ sync ขึ้น cloud</span>
+      <span style="color:var(--red);cursor:pointer;flex-shrink:0;margin-left:8px" onclick="clearGridZone()">ล้างค่า</span>
+    </div>
 
     <div class="gz-toggle" onclick="g('gz-opt').classList.toggle('on');g('gz-chev').classList.toggle('on')">
       <span>ข้อมูลอ้างอิงเพิ่มเติม (36M / 6M Range)</span>
@@ -779,6 +783,7 @@ function calcGridZone(){
   const zd=r12/az, zdp=rp12/az;
   setTxt('gz-zd', isFinite(zd)?zd.toFixed(5):'—');
   setTxt('gz-zdp', isFinite(zdp)?(zdp*100).toFixed(2)+'%':'—');
+  saveGridZone();
 
   const ladderEl=g('gz-ladder');
   if(!ladderEl)return;
@@ -799,7 +804,36 @@ function calcGridZone(){
   }
   ladderEl.innerHTML=rows;
 }
-function openGridZone(){const b=g('gridzone-body');if(b){b.innerHTML=gridZoneHTML();calcGridZone();}const o=g('gridzone-overlay');if(o){o.classList.add('on');b.scrollTop=0;}}
+// Grid Zone local save — SK_GZ is device-local only, deliberately NOT in the
+// cloud sync model (no positions/records/tombstones touch it), same pattern
+// as SK1 (cfd_dash_v2, Tab1 calc state).
+const SK_GZ='ctd_gridzone_v1';
+const GZ_FIELDS=['sym','zm','h12','l12','az','rz','h36','l36','h6','l6'];
+function saveGridZone(){
+  try{
+    const d={};
+    GZ_FIELDS.forEach(k=>{const el=g('gz-'+k);d[k]=el?el.value:'';});
+    localStorage.setItem(SK_GZ,JSON.stringify(d));
+  }catch(e){}
+}
+function loadGridZone(){
+  try{const raw=localStorage.getItem(SK_GZ);return raw?JSON.parse(raw):null;}catch(e){return null;}
+}
+function clearGridZone(){
+  GZ_FIELDS.forEach(k=>{const el=g('gz-'+k);if(el)el.value=(k==='az'?'6':k==='rz'?'0':'');});
+  calcGridZone(); // recomputes the UI, but also auto-saves via its own saveGridZone() call
+  try{localStorage.removeItem(SK_GZ);}catch(e){} // so remove again to leave a clean, key-less state
+}
+function openGridZone(){
+  const b=g('gridzone-body');
+  if(b){
+    b.innerHTML=gridZoneHTML();
+    const d=loadGridZone();
+    if(d)GZ_FIELDS.forEach(k=>{const el=g('gz-'+k);if(el&&d[k])el.value=d[k];});
+    calcGridZone();
+  }
+  const o=g('gridzone-overlay');if(o){o.classList.add('on');b.scrollTop=0;}
+}
 function closeGridZone(e){if(e&&e.currentTarget!==e.target)return;const o=g('gridzone-overlay');if(o)o.classList.remove('on');}
 // ===== Portfolio stat helpers =====
 // ── Canonical date parsing (single source of truth) ──
@@ -3933,8 +3967,9 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.07.A';
+const APP_VER='2026.08.07.B';
 const VERSION_LOG=[
+  {v:'2026.08.07.B',note:'Grid Zone: เพิ่ม local save (auto-save ทุก input, restore ตอนเปิดใหม่, ปุ่มล้างค่า) — เก็บใน localStorage เครื่องเดียว ไม่ sync ขึ้น cloud'},
   {v:'2026.08.07.A',note:'Tab3: ขยาย Portfolio Summary — asset filter chip เฉพาะ card (แยกจาก filter บนสุด), เพิ่ม Avg %Win/%Loss (คู่กับ Avg Win/Loss เดิม), %DD ต่อท้าย Max Drawdown, Trades in Max DD, Consecutive Loss · เพิ่ม dropdown Definitions & Formulas'},
   {v:'2026.08.05.A',note:'Tab3: เพิ่ม %Move (entry/exit price ล้วน ไม่ใช่ profit/win-rate) ในสรุปแต่ละ trade · เพิ่ม Exit Scatter chart (%Move × holding duration ทุก exit) หัก weekend ตามเวลาตลาด Pepperstone'},
   {v:'2026.08.04.A',note:'เพิ่ม FX Grid Zone (Layer A) — ปุ่มซ้าย Manual · คำนวณ Zone Distance + Zone Price Ladder จากสูตร GRID_Structure.xlsx · manual Zm · stateless ไม่ save'},
