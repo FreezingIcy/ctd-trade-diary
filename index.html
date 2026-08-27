@@ -513,7 +513,9 @@ function getSymbol(key){return SYMBOLS[key]||null;}
 // Strategy list — extend here when new systems are added
 const STRATEGIES=['Vector'];
 // Account balance (global, persisted) — synced via Tab3/cloud (last-write-wins)
-function getBalance(){return localStorage.getItem('ctd_balance')||'10000';}
+// No fabricated starting balance — returns '' until the user sets one in Tab3.
+// Callers that need a number for margin-level maths fall back on their own.
+function getBalance(){return localStorage.getItem('ctd_balance')||'';}
 function getBalanceAt(){return parseInt(localStorage.getItem('ctd_balance_at')||'0',10)||0;}
 function setBalanceRaw(v,at){try{localStorage.setItem('ctd_balance',String(v));localStorage.setItem('ctd_balance_at',String(at));}catch(e){}}
 function setBalance(v){setBalanceRaw(v,Date.now());}
@@ -1689,7 +1691,19 @@ function openEditRecord(id){
   },exits};
   const lbl=document.getElementById('ed-idlabel');if(lbl)lbl.textContent=id;
   renderEditForm();
+  // Baseline of everything EXCEPT the notes, captured from the DOM-normalized
+  // state — the form reformats values on render (dates especially), so a
+  // snapshot of the raw record would never match on save and every notes edit
+  // would look like a data edit. Lets editSave tell a notes-only edit apart:
+  // notes-only must not stamp lastEditedAt (no ✏️ in the list).
+  syncEditFromDOM();
+  editState._baseline=editNonNoteSnapshot(editState);
   document.getElementById('edit-overlay').classList.add('on');
+}
+function editNonNoteSnapshot(st){
+  const e=Object.assign({},st.entry);
+  delete e.entryNote; delete e.exitNote;
+  return JSON.stringify({entry:e,exits:st.exits});
 }
 function closeEditRecord(e){
   if(e&&e.currentTarget!==e.target)return;
@@ -1733,10 +1747,12 @@ function renderEditForm(){
   if(editState.exits.length<4)h+=`<button class="ed-addx" onclick="editAddExit()">+ Add exit</button>`;
   // NOTES
   h+=`<div class="ed-sec"><div class="ed-sech">Notes</div>
-    <div class="ed-f"><span class="k">Entry Note</span><input id="ed-enote" value="${escAttr(en.entryNote)}" placeholder="—"></div>
-    <div class="ed-f"><span class="k">Exit Note</span><input id="ed-xnote" value="${escAttr(en.exitNote)}" placeholder="—"></div>
+    <div class="ed-f" style="align-items:flex-start;padding-top:10px;padding-bottom:10px;gap:10px"><span class="k" style="padding-top:6px">Entry Note</span><textarea id="ed-enote" class="note-input" placeholder="—" oninput="autoExpand(this)">${escHtml(en.entryNote)}</textarea></div>
+    <div class="ed-f" style="align-items:flex-start;padding-top:10px;padding-bottom:10px;gap:10px"><span class="k" style="padding-top:6px">Exit Note</span><textarea id="ed-xnote" class="note-input" placeholder="—" oninput="autoExpand(this)">${escHtml(en.exitNote)}</textarea></div>
   </div>`;
   document.getElementById('edit-body').innerHTML=h;
+  autoExpand(document.getElementById('ed-enote'));
+  autoExpand(document.getElementById('ed-xnote'));
   editRecalc();
 }
 function escAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
@@ -1841,8 +1857,16 @@ function editSave(){
   const data=loadRecords();
   const i=data.records.findIndex(r=>r.id===rec.id);
   const prev=i>=0?data.records[i]:null;
-  rec.editCount=((prev&&prev.editCount)||0)+1;
-  rec.lastEditedAt=nowStamp();
+  // A notes-only edit is not a data edit: don't stamp lastEditedAt/editCount
+  // (that's what draws ✏️ in the list). Any prior stamp is carried forward.
+  const notesOnly=editState._baseline!=null&&editNonNoteSnapshot(editState)===editState._baseline;
+  if(notesOnly){
+    rec.editCount=(prev&&prev.editCount)||0;
+    if(prev&&prev.lastEditedAt)rec.lastEditedAt=prev.lastEditedAt;
+  }else{
+    rec.editCount=((prev&&prev.editCount)||0)+1;
+    rec.lastEditedAt=nowStamp();
+  }
   if(isTombstoned(rec.id))untombstone(rec.id);
   if(i>=0)data.records[i]=rec;else data.records.push(rec);
   saveRecords(data);
@@ -2160,8 +2184,8 @@ function computePos(pos){
   const sl=parseFloat(pos.entry.sl)||0;
   const cv=usedLot*unit*entry;
   const margin=lev>0&&entry>0?cv/lev:0;
-  const bal=parseNum(getBalance())||10000;
-  const mlevel=margin>0?((bal)/margin)*100:0;
+  const bal=parseNum(getBalance())||0;
+  const mlevel=margin>0&&bal>0?((bal)/margin)*100:0;
   const slDist=Math.abs(entry-sl);
   const risk=slDist*unit*usedLot;
   const fs=feeSgn(pos);
@@ -2233,8 +2257,8 @@ function renderSession(){
     const closedCount=states.filter(s=>s==='CLOSED').length;
     let totalMargin=0,totalRisk=0;
     comps.forEach(c=>{if(c.state!=='CLOSED'){totalMargin+=c.margin||0;totalRisk+=c.risk||0;}});
-    const aggBal=parseNum(getBalance())||10000;
-    const aggMlevel=totalMargin>0?(aggBal/totalMargin)*100:0;
+    const aggBal=parseNum(getBalance())||0;
+    const aggMlevel=totalMargin>0&&aggBal>0?(aggBal/totalMargin)*100:0;
     const aggMlCol=aggMlevel<100?'var(--red)':aggMlevel<200?'var(--orange)':aggMlevel<500?'var(--text)':'var(--green)';
     const noBoxBg=activeCount>0?'#FFB800':'var(--acc)';
     const noBoxFg=activeCount>0?'#5E4200':'#fff';
@@ -3967,8 +3991,10 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.07.B';
+const APP_VER='2026.08.07.D';
 const VERSION_LOG=[
+  {v:'2026.08.07.D',note:'ไฟล์ production ไม่ฝังข้อมูลจำลองอีกต่อไป — ตัด demo positions/entry dates ออก (ย้ายไป inject เฉพาะตอน build preview) และเลิก default balance 10,000 (ว่างจนกว่าผู้ใช้จะตั้งเอง; Margin Lv. โชว์ — แทน)'},
+  {v:'2026.08.07.C',note:'Edit trade: Entry/Exit Note เปลี่ยนเป็น textarea ขยายอัตโนมัติ (เหมือน Note ใน Tab Calculator) · แก้เฉพาะ note ไม่ขึ้นเครื่องหมาย ✏️ และไม่นับ edit count'},
   {v:'2026.08.07.B',note:'Grid Zone: เพิ่ม local save (auto-save ทุก input, restore ตอนเปิดใหม่, ปุ่มล้างค่า) — เก็บใน localStorage เครื่องเดียว ไม่ sync ขึ้น cloud'},
   {v:'2026.08.07.A',note:'Tab3: ขยาย Portfolio Summary — asset filter chip เฉพาะ card (แยกจาก filter บนสุด), เพิ่ม Avg %Win/%Loss (คู่กับ Avg Win/Loss เดิม), %DD ต่อท้าย Max Drawdown, Trades in Max DD, Consecutive Loss · เพิ่ม dropdown Definitions & Formulas'},
   {v:'2026.08.05.A',note:'Tab3: เพิ่ม %Move (entry/exit price ล้วน ไม่ใช่ profit/win-rate) ในสรุปแต่ละ trade · เพิ่ม Exit Scatter chart (%Move × holding duration ทุก exit) หัก weekend ตามเวลาตลาด Pepperstone'},
@@ -4026,31 +4052,13 @@ function migrateFees(){
 }
 
 const PREVIEW_MODE=false;
-// Demo data for testing
-function loadDemoSession(){
-  const DEMO_VER='d2';
-  try{
-    const existing=localStorage.getItem(SK2);
-    if(existing){
-      const d=JSON.parse(existing);
-      if(d.positions&&d.positions.length>0&&d.demoVer===DEMO_VER) return;
-    }
-  }catch(e){}
-  const demo={version:'v1',demoVer:DEMO_VER,positions:[
-    {id:'XAUUSD.O.S.260523.0830',
-     meta:{state:'PARTIAL',importedAt:'23/05/26 09:15:00',closedAt:null},
-     entry:{date:'23/05/26 08:30:00',inst:'XAUUSD',strategy:'Vector',dir:'short',price:'3320.50',sl:'3334.12',rmode:'vola',rpt:'200',vsd:'0.565',vsf:'2',sld:'15.38',usedLot:'0.04',usedCV:'13282',lev:'25',entryScore:'4',entryNote:'Trend break + volume confirm. Watch 3310 support.'},
-     exit:{trailSL:'3315.00',note:'',cl:{price:'',date:'',method:'',lot:'',score:''},t1:{price:'3305.00',date:'24/05/26 14:30:00',method:'PC Float',lot:'0.02',score:'4'},t2:{price:'',date:'',method:'',lot:'',score:''},t3:{price:'',date:'',method:'',lot:'',score:''}}},
-    {id:'EURUSD.O.L.260524.1005',
-     meta:{state:'ACTIVE',importedAt:'24/05/26 10:05:00',closedAt:null},
-     entry:{date:'24/05/26 09:45:00',inst:'EURUSD',strategy:'Vector',dir:'long',price:'1.16027',sl:'1.15681',rmode:'vola',rpt:'200',vsd:'0.346',vsf:'2',sld:'0.008026',usedLot:'0.04',usedCV:'4641.08',lev:'25',entryScore:'3',entryNote:''},
-     exit:{trailSL:'',note:'',cl:{price:'',date:'',method:'',lot:'',score:''},t1:{price:'',date:'',method:'',lot:'',score:''},t2:{price:'',date:'',method:'',lot:'',score:''},t3:{price:'',date:'',method:'',lot:'',score:''}}}
-  ]};
-  saveSession(demo);
-}
+// Demo data lives ONLY in the preview build — it is injected by make_preview.sh
+// at the DEMO_INJECT marker below. The production file carries no demo
+// positions, records, entry dates or balance.
 try{const m=migrateFees();if(m.positions||m.records)console.log('migrateFees:',m);}catch(e){console.error('migrateFees failed:',e);}
 try{const n=pruneTombstones();if(n)console.log('pruneTombstones: removed',n,'expired (>'+TOMB_TTL_DAYS+'d)');}catch(e){console.error('pruneTombstones failed:',e);}
-if(PREVIEW_MODE)loadDemoSession();
+/*DEMO_INJECT*/
+if(PREVIEW_MODE&&typeof loadDemoSession==='function')loadDemoSession();
 </script>
 </body>
 </html>
