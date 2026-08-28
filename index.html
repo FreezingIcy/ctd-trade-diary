@@ -449,7 +449,7 @@ if(typeof firebase==='undefined'){
       <select class="sh-inp" id="exit-method">
         <option value="">—</option>
         <option>Cutloss</option><option>MA Float</option><option>PC Float</option>
-        <option>Trail Float</option><option>Vola Fix</option><option>EoWk</option><option>Trail Cut</option>
+        <option>Trail Float</option><option>Vola Fix</option><option>EoWk</option><option>Trail Cut</option><option>Satisfy</option>
       </select>
     </div>
     <div class="sh-fld">
@@ -554,6 +554,7 @@ function manualHTML(){
       ${em('Vola Fix','Fixed',T,'Fixed exit by volatility @ entry price')}
       ${em('EoWk','Fixed',T,'Exit ก่อนปิดสัปดาห์ ไม่ถือข้ามสัปดาห์')}
       ${em('Trail Cut','Float',O,'Cut ก่อนถึง SL เช่น ราคาไม่ไปหลังผ่านเวลา / ราคาหลุดฐานแต่สูงกว่า SL')}
+      ${em('Satisfy','Float',O,'ปิดเพราะพอใจกำไรที่ได้ ตัดสินใจหน้างาน ไม่ได้ตั้งไว้ล่วงหน้า')}
     </div>
     <p class="m-sec">Record · Portfolio</p>
     <div class="m-card">
@@ -1767,7 +1768,7 @@ function editDelExit(i,btn){
 }
 function resetDelX(btn){if(!btn)return;btn.dataset.step='0';btn.textContent='Delete exit';btn.style.fontWeight='600';}
 function editOnMethod(){syncEditFromDOM();renderEditForm();}
-const EXIT_METHODS=['Cutloss','MA Float','PC Float','Trail Float','Vola Fix','EoWk','Trail Cut'];
+const EXIT_METHODS=['Cutloss','MA Float','PC Float','Trail Float','Vola Fix','EoWk','Trail Cut','Satisfy'];
 function edSelect(attrs,options,cur){
   cur=cur==null?'':String(cur);
   const opts=['',...options];
@@ -3991,8 +3992,9 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.07.D';
+const APP_VER='2026.08.07.E';
 const VERSION_LOG=[
+  {v:'2026.08.07.E',note:'เพิ่ม exit method "Satisfy" (Float) — ปิดเพราะพอใจกำไร ตัดสินใจหน้างาน'},
   {v:'2026.08.07.D',note:'ไฟล์ production ไม่ฝังข้อมูลจำลองอีกต่อไป — ตัด demo positions/entry dates ออก (ย้ายไป inject เฉพาะตอน build preview) และเลิก default balance 10,000 (ว่างจนกว่าผู้ใช้จะตั้งเอง; Margin Lv. โชว์ — แทน)'},
   {v:'2026.08.07.C',note:'Edit trade: Entry/Exit Note เปลี่ยนเป็น textarea ขยายอัตโนมัติ (เหมือน Note ใน Tab Calculator) · แก้เฉพาะ note ไม่ขึ้นเครื่องหมาย ✏️ และไม่นับ edit count'},
   {v:'2026.08.07.B',note:'Grid Zone: เพิ่ม local save (auto-save ทุก input, restore ตอนเปิดใหม่, ปุ่มล้างค่า) — เก็บใน localStorage เครื่องเดียว ไม่ sync ขึ้น cloud'},
