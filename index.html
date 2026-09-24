@@ -299,6 +299,11 @@ option{color:#000}
 /* ── toast ── */
 .ctd-toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(20px);background:#34C759;color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:22px;opacity:0;transition:.25s;z-index:2000;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.2);max-width:88%;text-align:center}
 .ctd-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ── Timezone ── */
+.tz-row{display:flex;justify-content:flex-end;margin-bottom:8px}
+.tz-sel{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='white' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 9px center;border:none;border-radius:14px;color:#fff;font-size:12px;font-weight:600;padding:5px 26px 5px 11px;font-family:inherit;cursor:pointer}
+.tz-sel option{color:#000}
+.tz-in{appearance:none;-webkit-appearance:none;font-size:11px;font-weight:600;padding:4px 8px;border:none;border-radius:10px;background:rgba(0,122,255,.12);color:var(--blue);cursor:pointer;flex-shrink:0;font-family:inherit}
 /* ── FX Grid Zone ── */
 .gz-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:13px;color:var(--sub);cursor:pointer}
 .gz-toggle .gz-chev{transition:.2s;font-size:11px;color:var(--hint)}
@@ -323,6 +328,7 @@ if(typeof firebase==='undefined'){
 <body>
 
 <div class="header">
+  <div class="tz-row"><select class="tz-sel" id="tz-disp" onchange="setDispTz(this.value)" title="แสดงเวลาเป็นโซน"></select></div>
   <div class="header-top">
     <h1>CTD</h1>
     <button class="manual-btn" id="gridzone-btn" onclick="openGridZone()">🔲 Grid</button>
@@ -440,8 +446,9 @@ if(typeof firebase==='undefined'){
   </div>
   <div class="sh-fld">
     <label class="sh-fld-l">Date</label>
-    <input class="sh-inp" id="exit-date" type="text" placeholder="dd/mm/yy or paste full" onblur="onExitDateBlur(this)">
-    <div class="sh-hint">รับหลาย format → เก็บ 2026/06/17 21:28:29</div>
+    <div style="display:flex;gap:8px;align-items:center"><input class="sh-inp" id="exit-date" type="text" placeholder="dd/mm/yy or paste full" onblur="onExitDateBlur(this)" style="flex:1;min-width:0">
+    <select class="tz-in" id="exit-date-tz" onchange="onDateTzChange('exit-date',this)"></select></div>
+    <div class="sh-hint">รับหลาย format · เลือกโซนของเวลาที่พิมพ์ → เก็บเป็นเวลาไทย (+07:00)</div>
   </div>
   <div class="sh-row2">
     <div class="sh-fld">
@@ -505,6 +512,63 @@ if(typeof firebase==='undefined'){
 // PREVIEW_MODE is declared FIRST: initFirebase() runs before the boot block at
 // the end of the file, so reading a const declared down there would throw.
 const PREVIEW_MODE=false;
+// ─── Display / input timezone ───
+// Storage is ALWAYS canonical +07:00 — ids are derived from it, so a trade keeps
+// the same id whatever zone its time was typed in or is shown in. The zones below
+// only change what the screen shows and how a typed wall-clock time is read.
+// The chosen display zone is device-local (ctd_display_tz, never synced).
+const CANON_OFF_MIN=420;
+const DISP_TZ_KEY='ctd_display_tz';
+const TZ_DEFS={
+  TH: {label:'TH', off:()=>420},                        // Bangkok, no DST
+  NY: {label:'NY', off:ms=>isUSDst(ms)?-240:-300},      // New York, US DST
+  JP: {label:'JP', off:()=>540},                        // Tokyo, no DST
+  UTC:{label:'00', off:()=>0},
+};
+const TZ_ORDER=['TH','NY','JP','UTC'];
+function getDispTz(){try{const v=localStorage.getItem(DISP_TZ_KEY);return TZ_DEFS[v]?v:'TH';}catch(e){return 'TH';}}
+function tzOff(tz,ms){return (TZ_DEFS[tz]||TZ_DEFS.TH).off(ms);}
+function tzOptionsHTML(sel){return TZ_ORDER.map(t=>{const o=tzOff(t,Date.now())/60;
+  return `<option value="${t}"${t===sel?' selected':''}>${TZ_DEFS[t].label} (${o>=0?'+':''}${o})</option>`;}).join('');}
+function isoAt(ms,offMin){const d=new Date(ms+offMin*60000),z=v=>String(v).padStart(2,'0'),a=Math.abs(offMin);
+  return `${d.getUTCFullYear()}-${z(d.getUTCMonth()+1)}-${z(d.getUTCDate())}T${z(d.getUTCHours())}:${z(d.getUTCMinutes())}:${z(d.getUTCSeconds())}${offMin<0?'-':'+'}${z(Math.floor(a/60))}:${z(a%60)}`;}
+// any stored/imported date → canonical +07:00 ISO (same instant); junk passes through
+function toCanon(s){const str=String(s||'').trim();if(!str)return '';const ms=stampMs(str);return ms?isoAt(ms,CANON_OFF_MIN):str;}
+function hasTzMark(s){s=String(s||'');return /\d:\d{2}(?::\d{2})?(?:\.\d+)?\s*[+-]\d{2}:?\d{2}\s*$/.test(s)||/\dZ\s*$/i.test(s)||/\b(UTC|GMT)\b/i.test(s);}
+function wallToMs(p,tz){const w=Date.UTC(p.y,p.mo-1,p.d,p.h,p.mi,p.sec||0);return w-tzOff(tz,w-tzOff(tz,w)*60000)*60000;}
+// a typed date, read as a wall-clock time in zone tz → canonical ISO. A zone written in the text wins.
+function parseInputDate(raw,tz){const s=String(raw||'').trim();if(!s)return '';
+  if(hasTzMark(s)){const f=parseDateFlexible(s);return f&&/^\d{4}-/.test(f)?toCanon(f):null;}
+  const p=parseDateParts(s);return p?isoAt(wallToMs(p,tz),CANON_OFF_MIN):null;}
+function showIn(stored,tz,withSec){const ms=stampMs(stored);if(!ms)return String(stored||'');
+  const d=new Date(ms+tzOff(tz,ms)*60000),z=v=>String(v).padStart(2,'0');
+  return `${z(d.getUTCDate())}/${z(d.getUTCMonth()+1)}/${String(d.getUTCFullYear()).slice(2)} ${z(d.getUTCHours())}:${z(d.getUTCMinutes())}${withSec?':'+z(d.getUTCSeconds()):''}`;}
+function dispDate(stored){return stored?showIn(stored,getDispTz(),false):'';}
+// date input + its zone <select>: keep the exact stored value if the text wasn't changed
+function fieldTz(selId){const s=document.getElementById(selId);return s&&TZ_DEFS[s.value]?s.value:getDispTz();}
+function readDateField(el,tz){if(!el)return '';const txt=el.value.trim();if(!txt)return '';
+  if(el.dataset.full&&txt===showIn(el.dataset.full,tz,false))return el.dataset.full;
+  return parseInputDate(txt,tz)||txt;}
+function onDateTzChange(fieldId,sel){      // user says "the time I typed is in THIS zone" → re-read it
+  sel.dataset.touched='1';
+  const el=document.getElementById(fieldId);if(!el||!el.value.trim())return;
+  el.dataset.full='';
+  if(fieldId==='exit-date')onExitDateBlur(el);else onEdateBlur(el);
+}
+function renderTzControls(){
+  const tz=getDispTz(),h=document.getElementById('tz-disp');if(h)h.innerHTML=tzOptionsHTML(tz);
+  // untouched input zones follow the display zone; re-show their value (same instant) in it
+  [['p1-edate-tz','p1-edate'],['exit-date-tz','exit-date']].forEach(([sid,fid])=>{
+    const sel=document.getElementById(sid);if(!sel||sel.dataset.touched)return;
+    sel.innerHTML=tzOptionsHTML(tz);
+    const el=document.getElementById(fid);if(el&&el.dataset.full)el.value=showIn(el.dataset.full,tz,false);
+  });
+}
+function setDispTz(v){
+  if(!TZ_DEFS[v])return;try{localStorage.setItem(DISP_TZ_KEY,v);}catch(e){}
+  renderTzControls();
+  try{renderSession();}catch(e){}try{renderRecords();}catch(e){}
+}
 // ─── Constants ───────────────────────────────────────
 const SYMBOLS={
   EURUSD:{unit:100000,pipM:10000,pipSize:0.0001,note:'Forex'},
@@ -855,11 +919,18 @@ function parseDateParts(s){
   }
   return null;
 }
-function stampMs(s){const p=parseDateParts(s);return p?new Date(p.y,p.mo-1,p.d,p.h,p.mi,p.sec).getTime():0;}
+// stampMs → true instant (ms). Honours an explicit offset / Z in the text.
+// Text with no offset is read as canonical +07:00 (was: the device's local
+// time — identical on a Bangkok device, but wrong anywhere else).
+function stampMs(s){const p=parseDateParts(s);if(!p)return 0;
+  const str=String(s||'').trim();let off=420;
+  const om=str.match(/\d:\d{2}(?::\d{2})?(?:\.\d+)?\s*([+-])(\d{2}):?(\d{2})\s*$/);
+  if(om)off=(om[1]==='-'?-1:1)*(+om[2]*60+ +om[3]);
+  else if(/\dZ\s*$/i.test(str))off=0;
+  return Date.UTC(p.y,p.mo-1,p.d,p.h,p.mi,p.sec)-off*60000;}
 // ── ISO 8601 helpers (Phase D1) ── device TZ auto-captured; no user input.
-function deviceOffset(){return -new Date().getTimezoneOffset()/60;} // hours from UTC (Bangkok → 7)
 function offsetStr(h){const sign=h<0?'-':'+';h=Math.abs(h);const hh=Math.floor(h),mm=Math.round((h-hh)*60);const z=v=>String(v).padStart(2,'0');return `${sign}${z(hh)}:${z(mm)}`;} // 7 → +07:00 · 5.5 → +05:30
-// toISO(anything) → yyyy-mm-ddThh:mm:ss±hh:mm. Preserves an existing offset/Z; else stamps device offset. Unparseable → returns input unchanged.
+// toISO(anything) → yyyy-mm-ddThh:mm:ss±hh:mm. Preserves an existing offset/Z; else stamps canonical +07:00. Unparseable → returns input unchanged.
 function toISO(s){
   s=String(s||'').trim();if(!s)return '';
   const p=parseDateParts(s);if(!p)return s;
@@ -867,7 +938,7 @@ function toISO(s){
   let off;const om=s.match(/([+-])(\d{2}):?(\d{2})\s*$/);
   if(om)off=`${om[1]}${om[2]}:${om[3]}`;
   else if(/\dZ\s*$/i.test(s))off='+00:00';
-  else off=offsetStr(deviceOffset());
+  else off='+07:00';                 // canonical storage zone (was: device offset)
   return `${p.y}-${z(p.mo)}-${z(p.d)}T${z(p.h)}:${z(p.mi)}:${z(p.sec)}${off}`;
 }
 function recDateMs(r){
@@ -941,7 +1012,7 @@ function equityCurveSVG(recsFull){
     else{const bounds=[startT,...xb,endT];for(let i=0;i<bounds.length-1;i++){const mid=(bounds[i]+bounds[i+1])/2;const mon=new Date(bounds[i]).getMonth();xlabels+=`<div style="position:absolute;top:130px;left:${pctX(tx(mid))}%;transform:translateX(-50%);font-size:9px;line-height:1;color:var(--hint);white-space:nowrap">${TH_MON[mon]}</div>`;}}
     const line=pts.map((p,i)=>(i?'L':'M')+tx(p.t).toFixed(1)+','+vy(BAL+p.cum).toFixed(1)).join(' ');
     const peakLine=pts.map((p,i)=>(i?'L':'M')+tx(p.t).toFixed(1)+','+vy(peaks[i]).toFixed(1)).join(' ');
-    const ddBand=peakLine+' '+pts.slice().reverse().map((p,j)=>{const i=pts.length-1-j;return 'L'+tx(p.t).toFixed(1)+','+vy(BAL+p.cum).toFixed(1);}).join(' ')+' Z';
+    const ddBand=peakLine+' '+pts.slice().reverse().map((p,j)=>{return 'L'+tx(p.t).toFixed(1)+','+vy(BAL+p.cum).toFixed(1);}).join(' ')+' Z';
     const yBal=vy(BAL);
     const balLine=`<line x1="${X0}" y1="${yBal.toFixed(1)}" x2="${X1}" y2="${yBal.toFixed(1)}" stroke="var(--hint)" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>`;
     const area=line+` L${tx(endT).toFixed(1)},${Y1} L${tx(startT).toFixed(1)},${Y1} Z`;
@@ -979,34 +1050,97 @@ function pctMoveTrade(e){
   return pctMoveExit(e.entryPrice,sumPxLot/sumLot,e.direction);
 }
 
-// ── Weekend-adjusted ("market-time") duration, per Pepperstone hours ──
-// Forex on Pepperstone: Mon 00:01 → Fri 23:55 server time, closed the rest of
-// the weekend. Server time = GMT+2 (US non-DST) / GMT+3 (US DST).
-// Simplification: DST approximated by calendar month (Apr–Oct = DST) rather
-// than the exact 2nd-Sun-Mar/1st-Sun-Nov US rule — worst case ~1h off, against
-// a ~48h weekend window, only in the transition weeks. Good enough for a
-// quick-glance chart; flag if audit-grade precision is ever needed.
-function pepOffsetH(ms){ const m=new Date(ms).getMonth()+1; return (m>=4&&m<=10)?4:5; } // Bangkok(+7) − server(+3 or +2)
-function pepWeekendWindow(ms){
-  const d=new Date(ms);
-  const day=d.getDay();
-  const mon=new Date(d.getFullYear(),d.getMonth(),d.getDate()-((day+6)%7),0,0,0,0);
-  const fri2355=mon.getTime()+4*86400000+(23*60+55)*60000;
-  const off=pepOffsetH(fri2355)*3600000;
-  const nextMon0001=mon.getTime()+7*86400000+1*60000;
-  return {closeMs:fri2355+off, openMs:nextMon0001+off};
+// ── Market-time duration (Pepperstone sessions, in SERVER time) ──
+// Counts only minutes the market was actually open for that symbol:
+//   · weekends, and the daily session break (FX 23:59→00:01, metals 23:59→01:01)
+//   · US-holiday closures and early closes, computed by rule (no yearly table)
+// Server time = GMT+3 during US DST, GMT+2 otherwise; the switch always falls
+// on a Sunday while the market is shut, so it never splits a session.
+// Everything is UTC arithmetic — independent of the device's own timezone.
+const PEP_SESSIONS={               // minutes after server midnight
+  fx:   {open:1,  close:23*60+59, friClose:23*60+55},   // 00:01–23:59 · Fri 23:55
+  metal:{open:61, close:23*60+59, friClose:23*60+55},   // 01:01–23:59 · Fri 23:55
+};
+function sessionClassOf(sym){return /^(XAU|XAG|XPT|XPD)/.test(String(sym||'').toUpperCase())?'metal':'fx';}
+// US-holiday effects by rule. 'closed' = no session that day · 'HH:MM' = early
+// close (server time). Only Labor Day is confirmed against Pepperstone's live
+// holiday table (Sep 2026: XAUUSD EC 21:30); the rest follow the usual US/CME
+// pattern — edit this list if Pepperstone announces something different.
+const PEP_HOLIDAYS=[
+  {name:'New Year',         rule:{fixed:[0,1]},               fx:'closed', metal:'closed'},
+  {name:'MLK Day',          rule:{nth:[0,1,3]},               metal:'21:30'},
+  {name:"Presidents' Day",  rule:{nth:[1,1,3]},               metal:'21:30'},
+  {name:'Good Friday',      rule:{easter:-2},                 metal:'closed'},
+  {name:'Memorial Day',     rule:{last:[4,1]},                metal:'21:30'},
+  {name:'Juneteenth',       rule:{fixed:[5,19],observe:true}, metal:'21:30'},
+  {name:'Independence Day', rule:{fixed:[6,4],observe:true},  metal:'21:30'},
+  {name:'Labor Day',        rule:{nth:[8,1,1]},               metal:'21:30'},
+  {name:'Thanksgiving',     rule:{nth:[10,4,4]},              metal:'21:30'},
+  {name:'Christmas Eve',    rule:{fixed:[11,24]},             metal:'20:30'},
+  {name:'Christmas',        rule:{fixed:[11,25]},             fx:'closed', metal:'closed'},
+  {name:"New Year's Eve",   rule:{fixed:[11,31]},             metal:'20:30'},
+];
+function nthWeekdayOfMonth(y,m,wd,n){const first=new Date(Date.UTC(y,m,1)).getUTCDay();return 1+((wd-first+7)%7)+(n-1)*7;}
+function lastWeekdayOfMonth(y,m,wd){const last=new Date(Date.UTC(y,m+1,0));return last.getUTCDate()-((last.getUTCDay()-wd+7)%7);}
+function easterOf(y){ // Gregorian (anonymous algorithm) → {m (0-based), d}
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+        h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+        n=h+l-7*m+114;
+  return {m:Math.floor(n/31)-1,d:(n%31)+1};
 }
-function marketMinutesBetween(startMs,endMs){
+function isUSDst(utcMs){   // 2nd Sun Mar 02:00 EST (07:00 UTC) → 1st Sun Nov 02:00 EDT (06:00 UTC)
+  const y=new Date(utcMs).getUTCFullYear();
+  return utcMs>=Date.UTC(y,2,nthWeekdayOfMonth(y,2,0,2),7) && utcMs<Date.UTC(y,10,nthWeekdayOfMonth(y,10,0,1),6);
+}
+function pepServerOffsetMin(utcMs){return isUSDst(utcMs)?180:120;}
+const _pepHolCache={};
+function pepHolidaysOfYear(y){   // 'y-m-d' → {fx, metal}, keyed by the (observed) server date
+  if(_pepHolCache[y])return _pepHolCache[y];
+  const out={};
+  const put=(dt,h)=>{const k=dt.getUTCFullYear()+'-'+dt.getUTCMonth()+'-'+dt.getUTCDate();
+    const o=out[k]||(out[k]={});if(h.fx)o.fx=h.fx;if(h.metal)o.metal=h.metal;};
+  PEP_HOLIDAYS.forEach(h=>{
+    const r=h.rule;let dt;
+    if(r.fixed){dt=new Date(Date.UTC(y,r.fixed[0],r.fixed[1]));
+      if(r.observe){const wd=dt.getUTCDay();if(wd===6)dt=new Date(dt.getTime()-86400000);else if(wd===0)dt=new Date(dt.getTime()+86400000);}}
+    else if(r.nth)dt=new Date(Date.UTC(y,r.nth[0],nthWeekdayOfMonth(y,r.nth[0],r.nth[1],r.nth[2])));
+    else if(r.last)dt=new Date(Date.UTC(y,r.last[0],lastWeekdayOfMonth(y,r.last[0],r.last[1])));
+    else if(r.easter!=null){const e=easterOf(y);dt=new Date(Date.UTC(y,e.m,e.d)+r.easter*86400000);}
+    if(dt)put(dt,h);
+  });
+  return (_pepHolCache[y]=out);
+}
+function pepHolidayOn(dt){ // dt = a server-calendar day; also consult y+1 (Jan-1 observed on Dec 31)
+  const y=dt.getUTCFullYear(),k=y+'-'+dt.getUTCMonth()+'-'+dt.getUTCDate();
+  return Object.assign({},pepHolidaysOfYear(y+1)[k]||{},pepHolidaysOfYear(y)[k]||{});
+}
+function marketMinutesBetween(startMs,endMs,sym){
   if(!(endMs>startMs))return 0;
-  let total=(endMs-startMs)/60000;
-  let {closeMs,openMs}=pepWeekendWindow(startMs);
-  while(closeMs<endMs){
-    const ovStart=Math.max(closeMs,startMs), ovEnd=Math.min(openMs,endMs);
-    if(ovEnd>ovStart)total-=(ovEnd-ovStart)/60000;
-    closeMs+=7*86400000; openMs+=7*86400000;
+  const cls=sessionClassOf(sym),S=PEP_SESSIONS[cls];
+  const sS=startMs+pepServerOffsetMin(startMs)*60000,eS=endMs+pepServerOffsetMin(endMs)*60000;
+  let day=Math.floor(sS/86400000)*86400000,total=0,guard=0;
+  while(day<eS&&guard++<5000){
+    const dt=new Date(day),wd=dt.getUTCDay();
+    if(wd>=1&&wd<=5){
+      let open=S.open,close=wd===5?S.friClose:S.close;
+      const h=pepHolidayOn(dt)[cls];
+      if(h==='closed')close=open;
+      else if(h){const [hh,mm]=h.split(':').map(Number);close=Math.min(close,hh*60+mm);}
+      if(close>open){const a=Math.max(sS,day+open*60000),b=Math.min(eS,day+close*60000);if(b>a)total+=(b-a)/60000;}
+    }
+    day+=86400000;
   }
-  return Math.max(0,total);
+  return total;
 }
+// Holding shown in Trade History: market-open time, entry → last exit (computed
+// live; the stored calendar holdingStr in the record is left untouched).
+function recHoldingMin(r){
+  const e=r.eval||{};const s=stampMs((r.source&&r.source.entry&&r.source.entry.date)||r.openedAt||'');
+  const ends=(e.exits||[]).map(x=>stampMs(x.date)).filter(Boolean);
+  const end=ends.length?Math.max(...ends):stampMs(r.closedAt||r.archivedAt||'');
+  return (s&&end&&end>s)?marketMinutesBetween(s,end,e.symbol):null;
+}
+function recHoldingDisp(r){const m=recHoldingMin(r);return m==null?((r.eval&&r.eval.holdingStr)||'—'):fmtMarketDur(m);}
 function fmtMarketDur(minutes){
   if(minutes==null||!isFinite(minutes))return '—';
   minutes=Math.round(minutes);
@@ -1051,7 +1185,7 @@ function scatterPoints(recsFull){
       const exitMs=stampMs(x.date);
       if(!exitMs||exitMs<=entryMs)return;
       const pct=pctMoveExit(e.entryPrice,price,e.direction);
-      const minutes=marketMinutesBetween(entryMs,exitMs);
+      const minutes=marketMinutesBetween(entryMs,exitMs,e.symbol);
       if(pct==null||!isFinite(minutes))return;
       pts.push({pct,rr:exitR(e,x,risk),minutes});
     });
@@ -1135,7 +1269,7 @@ function exitScatterSVG(recsFull){
         ${grid}${zeroLine}${rrGuides}
       </svg>${ylabels}${xlabels}${dots}</div>`;
   }
-  const caption=`<div style="text-align:center;padding:8px 15px 12px;font-size:11px;color:var(--hint)">${pts.length} exits${scatterAssetFilter!=='all'?' · '+escHtml(scatterAssetFilter):''} · ${isRR?'RR = P/L ของ exit ÷ risk ทั้งไม้ · เส้นประ −1R / +1R / +2R':'แต่ละจุด = 1 exit slot (T1/T2/T3/CL)'} · duration หัก weekend ตามเวลาตลาด Pepperstone</div>`;
+  const caption=`<div style="text-align:center;padding:8px 15px 12px;font-size:11px;color:var(--hint)">${pts.length} exits${scatterAssetFilter!=='all'?' · '+escHtml(scatterAssetFilter):''} · ${isRR?'RR = P/L ของ exit ÷ risk ทั้งไม้ · เส้นประ −1R / +1R / +2R':'แต่ละจุด = 1 exit slot (T1/T2/T3/CL)'} · duration นับเฉพาะเวลาตลาดเปิด (Pepperstone: หัก weekend, วันหยุด US และช่วงพักรายวัน)</div>`;
   return `<div class="card">${head}${chips}${chart}${caption}</div>`;
 }
 const SK1='cfd_dash_v2';
@@ -1270,6 +1404,7 @@ var cloudStatus='offline'; // 'offline'|'synced'|'pending'|'error'
 var cloudMsg='ยังไม่ได้เชื่อมต่อ';
 var cloudLastSync=null;
 var isSyncing=false;
+var balSyncErr='';   // last balance push/pull error, shown in the status line
 
 function firebaseReady(){ return !!(FIREBASE_CONFIG.apiKey && fbApp && fbDb); }
 
@@ -1362,7 +1497,7 @@ async function pushBalance(){
     if(getBalanceAt()>cloudAt){
       await uref.set({balance:parseFloat(getBalance())||0,balanceAt:getBalanceAt()},{merge:true});
     }
-  }catch(e){}
+  }catch(e){console.error('pushBalance error:',e);balSyncErr=e.message||String(e);}
 }
 async function pullBalance(){
   const uref=userDocRef();if(!uref)return false;
@@ -1375,7 +1510,7 @@ async function pullBalance(){
         return true;
       }
     }
-  }catch(e){}
+  }catch(e){console.error('pullBalance error:',e);balSyncErr=e.message||String(e);}
   return false;
 }
 // ── Open-position sync (subcollection users/{uid}/positions) ──
@@ -1446,7 +1581,7 @@ async function cloudDeletePosition(id){
   try{
     await uref.collection('positions').doc(id).delete();
     await uref.collection('tombstones').doc(id).set({id,kind:'position',deletedAt:nowStamp()});
-  }catch(e){}
+  }catch(e){console.error('cloudDeletePosition error:',e);try{ctdToast('ลบบน cloud ไม่สำเร็จ · จะลบให้ตอนกด Push',true);}catch(_){}}
 }
 // Tombstones are only sent once. Re-sending every tombstone on every Push made
 // quota cost grow forever (500 tombstones = 1,000 writes per Push). A tombstone is
@@ -1485,7 +1620,7 @@ async function cloudDeleteTombstone(id){
   try{
     await uref.collection('tombstones').doc(id).delete();
     saveUntomb(loadUntomb().filter(x=>x!==id));
-  }catch(e){}
+  }catch(e){console.error('cloudDeleteTombstone error:',e);}   // stays queued; retried on the next Pull
 }
 async function pullTombstones(){
   const uref=userDocRef();if(!uref)return {added:0,recRemoved:0,posRemoved:0};
@@ -1549,12 +1684,13 @@ async function pushToCloud(){
       }
     }
     if(batchCount>0) await batch.commit();
+    balSyncErr='';
     await pushBalance();
     const posR=await pushPositions();
     const tombN=await pushTombstones(cloudIds,posR.cloudIds);
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${balSyncErr?' · ⚠️ balance: '+balSyncErr:''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
     setTimeout(()=>{
       if(cloudStatus==='synced'){
         cloudMsg=`Synced · ${local.records.length} records · ${fmtSyncTime(cloudLastSync)}`;
@@ -1602,6 +1738,7 @@ async function pullFromCloud(){
       renderRecords();
       return;
     }
+    balSyncErr='';
     const balPulled=await pullBalance();
     const posR=await pullPositions();
     // a device may only now be receiving leaked demo copies from the cloud
@@ -1609,7 +1746,7 @@ async function pullFromCloud(){
     if(demoPurged&&typeof renderSession==='function')renderSession();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${posR.purged?' · '+posR.purged+' pos ปิดแล้ว':''}${demoPurged?' · ลบตัวอย่างค้าง '+demoPurged+' (กด Push)':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${posR.purged?' · '+posR.purged+' pos ปิดแล้ว':''}${demoPurged?' · ลบตัวอย่างค้าง '+demoPurged+' (กด Push)':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${balSyncErr?' · ⚠️ balance: '+balSyncErr:''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
     setTimeout(()=>{
       if(cloudStatus==='synced'){
         cloudMsg=`Synced · ${local.records.length} records · ${fmtSyncTime(cloudLastSync)}`;
@@ -1710,7 +1847,7 @@ function untombstone(id){
 }
 function tombstonePanelHTML(){
   const l=loadTombstones();if(!l.length)return '';
-  const rows=l.map(t=>`<div class="tomb-row"><div class="info"><div class="tid">${escHtml(t.id)}</div><div class="tdate">deleted ${escHtml(dateDisplay(t.deletedAt||''))}${t.pushedAt?' · synced':' · รอ push'}</div></div><button class="restore" onclick="removeTombstone('${escHtml(t.id)}')">Restore</button></div>`).join('');
+  const rows=l.map(t=>`<div class="tomb-row"><div class="info"><div class="tid">${escHtml(t.id)}</div><div class="tdate">deleted ${escHtml(dispDate(t.deletedAt||''))}${t.pushedAt?' · synced':' · รอ push'}</div></div><button class="restore" onclick="removeTombstone('${escHtml(t.id)}')">Restore</button></div>`).join('');
   return `<div class="tomb"><div class="tomb-h" onclick="this.parentNode.querySelector('.tomb-body').classList.toggle('on')"><span class="ic">🗑</span><span class="tt">Deleted (tombstoned)</span><span class="cnt">${l.length}</span><span style="color:var(--hint);font-size:13px">▾</span></div><div class="tomb-body">${rows}<button class="tomb-clear" onclick="forceResyncTombstones()" style="background:var(--stratbg);color:var(--strat)">Force resync to cloud</button><button class="tomb-clear" onclick="clearTombstones()">Clear all tombstones</button></div></div>`;
 }
 
@@ -1741,6 +1878,7 @@ function openEditRecord(id){
     entryScore:e.entryScore||'',entryNote:e.entryNote||'',exitNote:(src.exit&&src.exit.note)||''
   },exits};
   const lbl=document.getElementById('ed-idlabel');if(lbl)lbl.textContent=id;
+  editState.tz=getDispTz();
   renderEditForm();
   // Baseline of everything EXCEPT the notes, captured from the DOM-normalized
   // state — the form reformats values on render (dates especially), so a
@@ -1767,13 +1905,14 @@ function renderEditForm(){
   const symOpts=Object.keys(SYMBOLS).filter(k=>SYMBOLS[k].unit!=null)
     .map(k=>`<option ${k===en.inst?'selected':''}>${k}</option>`).join('');
   let h=`<div class="ed-warn">⚠️ การแก้ไขจะ <b>เขียนทับ record เดิม</b> (คง id เดิม) · Net/R/Outcome/Holding คำนวณใหม่ทั้งหมด · ${fbUser?'บันทึกแล้ว sync cloud อัตโนมัติ':'ยังไม่ sign-in — บันทึกเฉพาะเครื่อง'}</div>`;
+  h+=`<div class="ed-sec"><div class="ed-f"><span class="k">Timezone</span><select id="ed-tz" class="tz-in" onchange="editOnTz(this.value)">${tzOptionsHTML(editState.tz||getDispTz())}</select></div></div>`;
   // ENTRY
   h+=`<div class="ed-sec"><div class="ed-sech">Entry / Position</div>
     <div class="ed-f"><span class="k req">Symbol</span><select id="ed-inst" onchange="editRecalc()">${symOpts}</select></div>
     <div class="ed-f"><span class="k req">Direction</span><div class="ed-seg">
       <button class="${en.dir==='long'?'on':''}" onclick="editSetDir('long')">Long</button>
       <button class="${en.dir==='short'?'on':''}" onclick="editSetDir('short')">Short</button></div></div>
-    <div class="ed-f"><span class="k req">Entry Date</span><input id="ed-date" value="${escAttr(editDateShow(en.date))}" placeholder="dd/mm/yy hh:mm"></div>
+    <div class="ed-f"><span class="k req">Entry Date</span><input id="ed-date" value="${escAttr(showIn(en.date,editState.tz||getDispTz(),true))}" placeholder="dd/mm/yy hh:mm"></div>
     <div class="ed-f"><span class="k req">Entry</span><input id="ed-price" value="${escAttr(en.price)}" inputmode="decimal" oninput="editRecalc()"></div>
     <div class="ed-f"><span class="k">SL (Border)</span><input id="ed-sl" value="${escAttr(en.sl)}" inputmode="decimal" oninput="editRecalc()"></div>
     <div class="ed-f"><span class="k req">Lot (entry)</span><input id="ed-lot" value="${escAttr(en.usedLot)}" inputmode="decimal" oninput="editRecalc()"></div>
@@ -1787,7 +1926,7 @@ function renderEditForm(){
   editState.exits.forEach((ex,i)=>{
     const isCut=String(ex.method||'').trim().toLowerCase()==='cutloss';
     h+=`<div class="ed-sec"><div class="ed-exh"><span class="tag ${isCut?'cl':''}">EXIT · ${isCut?'CL':'#'+(i+1)}</span><button class="ed-delx" data-step="0" onclick="editDelExit(${i},this)">Delete exit</button></div>
-      <div class="ed-f"><span class="k">Date</span><input data-ex="${i}" data-f="date" value="${escAttr(editDateShow(ex.date))}" placeholder="dd/mm/yy hh:mm"></div>
+      <div class="ed-f"><span class="k">Date</span><input data-ex="${i}" data-f="date" value="${escAttr(ex.date?showIn(ex.date,editState.tz||getDispTz(),true):'')}" placeholder="dd/mm/yy hh:mm"></div>
       <div class="ed-f"><span class="k req">Price</span><input data-ex="${i}" data-f="price" value="${escAttr(ex.price)}" inputmode="decimal" oninput="editRecalc()"></div>
       <div class="ed-f"><span class="k req">Lot</span><input data-ex="${i}" data-f="lot" value="${escAttr(ex.lot)}" inputmode="decimal" oninput="editRecalc()"></div>
       <div class="ed-f"><span class="k">Method</span>${edSelect(`data-ex="${i}" data-f="method" onchange="editOnMethod()"`,EXIT_METHODS,ex.method)}</div>
@@ -1818,6 +1957,7 @@ function editDelExit(i,btn){
 }
 function resetDelX(btn){if(!btn)return;btn.dataset.step='0';btn.textContent='Delete exit';btn.style.fontWeight='600';}
 function editOnMethod(){syncEditFromDOM();renderEditForm();}
+function editOnTz(t){syncEditFromDOM();editState.tz=t;renderEditForm();}   // same instants, re-shown in zone t
 const EXIT_METHODS=['Cutloss','MA Float','PC Float','Trail Float','Vola Fix','EoWk','Trail Cut','Satisfy'];
 function edSelect(attrs,options,cur){
   cur=cur==null?'':String(cur);
@@ -1841,13 +1981,14 @@ function syncEditFromDOM(){
   if(!editState)return;
   const v=id=>{const el=document.getElementById(id);return el?el.value:'';};
   const en=editState.entry;
-  en.inst=(v('ed-inst')||en.inst).toUpperCase();en.date=v('ed-date');en.price=v('ed-price');en.sl=v('ed-sl');
+  const tz=editState.tz||getDispTz(),asStored=t=>t.trim()?(parseInputDate(t,tz)||t):'';
+  en.inst=(v('ed-inst')||en.inst).toUpperCase();en.date=asStored(v('ed-date'));en.price=v('ed-price');en.sl=v('ed-sl');
   en.usedLot=v('ed-lot');en.lev=v('ed-lev');en.strategy=v('ed-strategy');en.vsd=v('ed-vsd');en.vsf=v('ed-vsf');
   en.entryScore=v('ed-escore');en.entryNote=v('ed-enote');en.exitNote=v('ed-xnote');
   editState.exits.forEach((ex,i)=>{
     ['date','price','lot','method','swap','com'].forEach(f=>{
       const el=document.querySelector(`#edit-body [data-ex="${i}"][data-f="${f}"]`);
-      if(el)ex[f]=el.value;
+      if(el)ex[f]=f==='date'?asStored(el.value):el.value;
     });
   });
 }
@@ -1927,7 +2068,7 @@ function editSave(){
   renderRecords();
   ctdToast('✓ อัปเดตแล้ว'+(fbUser?' · synced':' · กด Push เพื่อ sync'));
 }
-function nowStamp(){const d=new Date();const p=v=>String(v).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}${offsetStr(deviceOffset())}`;}
+function nowStamp(){const d=new Date(Date.now()+420*60000);const p=v=>String(v).padStart(2,'0');return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}+07:00`;} // always canonical +07:00
 // strip commas/spaces from numeric input → float
 function parseNum(v){
   if(v==null)return NaN;
@@ -2030,7 +2171,7 @@ function loadData(){
         const isDate=dateIds.some(dk=>id.endsWith(dk));
         if(isDate&&val){
           el.dataset.full=val;
-          el.value=dateDisplay(val); // legacy + ISO both → dd/mm/yy hh:mm; junk passthrough
+          el.value=showIn(val,fieldTz(id+'-tz'),false); // shown in the field's zone; dataset.full keeps the stored value
           el.style.color='var(--blue)';
         }else{el.value=val;}
       };
@@ -2228,7 +2369,10 @@ function saveSession(data){
       else p.updatedAt=old.updatedAt;
     });
     localStorage.setItem(SK2,JSON.stringify(data));
-  }catch(e){try{localStorage.setItem(SK2,JSON.stringify(data));}catch(_){}}
+  }catch(e){
+    try{localStorage.setItem(SK2,JSON.stringify(data));}
+    catch(e2){console.error('saveSession failed:',e2);try{ctdToast('บันทึก position ไม่สำเร็จ (พื้นที่เก็บข้อมูลอาจเต็ม)',true);}catch(_){}}
+  }
 }
 // last successful positions-push time (positions with updatedAt<=this are "synced")
 function getPosPushAt(){return parseInt(localStorage.getItem('ctd_pos_push_at')||'0',10)||0;}
@@ -2375,7 +2519,7 @@ function renderSession(){
           const xPL=(xPrice-c.entry)*c.sign*c.unit*parseFloat(data.lot);
           const priceClass=xPL>=0?'profit':'loss';
           // date display: new yyyy/mm/dd → dd/mm/yy hh:mm; legacy passthrough
-          const dateShown=data.date?dateDisplay(data.date):'';
+          const dateShown=data.date?dispDate(data.date):'';
           return `<div class="exit-rec-row" id="${rowId}" style="${rowBorder}" onclick="openExitSheet('${pos.id}','${key}')">
             <span class="exit-tag">${label}</span>
             <span class="exit-date-val">${escHtml(dateShown)||'—'}</span>
@@ -2394,8 +2538,8 @@ function renderSession(){
       const trailRow=c.trailSL?
         `<div class="pos-row"><span class="pos-rl">Trail SL</span><span class="pos-rv" style="color:var(--blue);cursor:pointer" onclick="openTrailSheet('${pos.id}')">${f(c.trailSL,c.trailSL>100?2:5)}</span></div>
          <div class="pos-row"><span class="pos-rl">SLD (trail)</span><span class="pos-rv orange">${f(c.trailSLDPips,1)} pips · $${f(c.trailSLD*c.unit*(c.remainingLot||c.usedLot))}</span></div>
-         ${`<div class="pos-row" style="align-items:flex-start"><span class="pos-rl" style="padding-top:8px">Note</span><div class="note-box${pos.entry.entryNote?'':' empty'}" onclick="startNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.entry.entryNote||'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div></div>`}`:
-        `${`<div class="pos-row" style="align-items:flex-start"><span class="pos-rl" style="padding-top:8px">Note</span><div class="note-box${pos.entry.entryNote?'':' empty'}" onclick="startNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.entry.entryNote||'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div></div>`}`;
+         ${`<div class="pos-row" style="align-items:flex-start"><span class="pos-rl" style="padding-top:8px">Note</span><div class="note-box${pos.entry.entryNote?'':' empty'}" onclick="startNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.entry.entryNote?escHtml(pos.entry.entryNote):'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div></div>`}`:
+        `${`<div class="pos-row" style="align-items:flex-start"><span class="pos-rl" style="padding-top:8px">Note</span><div class="note-box${pos.entry.entryNote?'':' empty'}" onclick="startNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.entry.entryNote?escHtml(pos.entry.entryNote):'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div></div>`}`;
       html+=`
       <div class="pos-card" id="poscard-${pos.id}">
         <div class="pos-hd ${dirClass}">
@@ -2416,7 +2560,7 @@ function renderSession(){
           <div class="pos-stat"><div class="pos-slbl">Holding Period</div><div class="pos-sval">${c.holdingStr}</div></div>
         </div>
         <div class="exit-section-hd">Entry Setting</div>
-        <div class="pos-row"><span class="pos-rl">Entry Date</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryDateEdit('${pos.id}',this)">${pos.entry.date?escHtml(entryDateShow(pos.entry.date)):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
+        <div class="pos-row"><span class="pos-rl">Entry Date</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryDateEdit('${pos.id}',this)">${pos.entry.date?escHtml(dispDate(pos.entry.date)):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','price',this)">${f(c.entry,c.entry>100?2:5)} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','sl',this)">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         ${trailRow}
@@ -2433,7 +2577,7 @@ function renderSession(){
         </div>
         <div class="pos-row" style="align-items:flex-start;border-top:.5px solid var(--border)">
           <span class="pos-rl" style="padding-top:8px">Exit note</span>
-          <div class="note-box${pos.exit.note?'':' empty'}" onclick="startExitNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.exit.note||'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div>
+          <div class="note-box${pos.exit.note?'':' empty'}" onclick="startExitNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.exit.note?escHtml(pos.exit.note):'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div>
         </div>
         <div class="exit-section-hd">Position Sum</div>
         <div class="bd-section">
@@ -2533,16 +2677,13 @@ function startNoteEdit(posId,el){
 }
 
 // ── Entry Date inline edit (Tab2) — regenerates position id from the new date ──
-function entryDateShow(s){const p=parseDateParts(s);if(!p)return String(s||'');const z=v=>String(v).padStart(2,'0');return `${z(p.d)}/${z(p.mo)}/${String(p.y).slice(2)} ${z(p.h)}:${z(p.mi)}`;}
-// D3: edit-form display — keeps SECONDS so unedited save round-trips without precision loss (input → normStamp → ISO)
-function editDateShow(s){const p=parseDateParts(s);if(!p)return String(s||'');const z=v=>String(v).padStart(2,'0');return `${z(p.d)}/${z(p.mo)}/${String(p.y).slice(2)} ${z(p.h)}:${z(p.mi)}:${z(p.sec)}`;}
 function startEntryDateEdit(posId,el){
   if(el.querySelector('input'))return;
   const pos=loadSession().positions.find(p=>p.id===posId);
   if(!pos)return;
   el.innerHTML='';
   const inp=document.createElement('input');
-  inp.type='text';inp.value=pos.entry.date?entryDateShow(pos.entry.date):'';inp.placeholder='dd/mm/yy hh:mm';
+  inp.type='text';inp.value=pos.entry.date?showIn(pos.entry.date,getDispTz(),false):'';inp.placeholder='dd/mm/yy hh:mm ('+TZ_DEFS[getDispTz()].label+')';
   inp.style.cssText='background:var(--bg);border:1px solid var(--acc);border-radius:7px;outline:none;font-size:13px;color:var(--text);font-family:inherit;padding:5px 9px;width:160px;text-align:right';
   inp.onblur=()=>commitEntryDateEdit(posId,inp.value);
   inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}};
@@ -2553,9 +2694,10 @@ function commitEntryDateEdit(posId,raw){
   const pos=d.positions.find(p=>p.id===posId);
   if(!pos){renderSession();return;}
   const val=String(raw||'').trim();
-  const p=val?parseDateParts(val):null;
+  if(pos.entry.date&&val===showIn(pos.entry.date,getDispTz(),false)){renderSession();return;}  // untouched → no-op
+  const newDate=val?parseInputDate(val,getDispTz()):null;   // typed in the display zone → canonical
+  const p=newDate?parseDateParts(newDate):null;
   if(!val||!p){if(val)ctdToast('รูปแบบวันที่ไม่ถูกต้อง',true);renderSession();return;}
-  const newDate=normStamp(val);
   const z=v=>String(v).padStart(2,'0');
   const dir=pos.entry.dir==='long'?'L':'S';
   const inst=(pos.entry.inst||'').toUpperCase();
@@ -2681,6 +2823,7 @@ function openExitSheet(posId, slotKey){
   g('exit-sheet-title').textContent=isEdit?'Edit Exit':'Add Exit';
   const slotInput=g('exit-slot');
   const dateEl=g('exit-date');
+  {const zs=g('exit-date-tz');if(zs){zs.dataset.touched='';zs.innerHTML=tzOptionsHTML(getDispTz());}} // fresh sheet → follow display zone
   if(isEdit){
     const ex=pos.exit[slotKey]||{};
     slotInput.value=slotKey.toUpperCase();
@@ -2690,7 +2833,7 @@ function openExitSheet(posId, slotKey){
     // date: if stored in new yyyy/mm/dd format show short, else show as-is
     const storedDate=ex.date||'';
     const isFull=/^\d{4}[-\/]/.test(storedDate||''); // yyyy/mm/dd legacy OR ISO
-    dateEl.value=isFull?dateDisplay(storedDate):(storedDate||'');
+    dateEl.value=isFull?showIn(storedDate,getDispTz(),false):(storedDate||'');
     dateEl.dataset.full=isFull?storedDate:'';
     dateEl.style.color='';
     g('exit-lot').value=ex.lot||'';
@@ -2721,7 +2864,7 @@ function confirmExit(){
   if(!currentExitPosId)return;
   const rawSlot=g('exit-slot').value.trim().toLowerCase().replace(/\s+/g,'');
   const price=g('exit-price').value;
-  const date=g('exit-date').dataset.full||g('exit-date').value;
+  const date=readDateField(g('exit-date'),fieldTz('exit-date-tz'));
   const lot=g('exit-lot').value;
   const method=g('exit-method').value;
   const score=g('exit-score').value;
@@ -2743,9 +2886,6 @@ function confirmExit(){
 
 // ── Exit fees: live preview & helpers ─────────────────
 // FEE_VER 2 — values are signed as typed: Net = Gross + Swap + Com + VAT
-function feeNet(gross, swap, com, vat){
-  return (gross||0) + (parseNum(swap)||0) + (parseNum(com)||0) + (parseNum(vat)||0);
-}
 function fmtSigned(n,d){
   d=d==null?2:d;
   if(!isFinite(n))return '—';
@@ -2833,11 +2973,12 @@ function setExitFullLot(){
   }
 }
 function onExitDateBlur(el){
-  const raw=el.value.trim();if(!raw)return;
-  const stored=parseDateFlexible(raw);
-  if(stored&&/^\d{4}[-\/]/.test(stored)){
+  const raw=el.value.trim();if(!raw){el.dataset.full='';return;}
+  const tz=fieldTz('exit-date-tz');
+  const stored=readDateField(el,tz);
+  if(stored&&/^\d{4}-/.test(stored)){
     el.dataset.full=stored;
-    el.value=dateDisplay(stored);
+    el.value=showIn(stored,tz,false);
     el.style.color='var(--blue)';
   }
 }
@@ -2903,7 +3044,11 @@ function archivePos(posId){
     // freeze close time, commit to permanent Record store, then remove from session
     pos.meta.closedAt=nowStamp();
     pos.meta.state='CLOSED';
-    addRecord(pos);
+    if(!addRecord(pos)){
+      // never lose a trade: the record did not save, so keep the open position untouched
+      ctdToast('บันทึก record ไม่สำเร็จ (พื้นที่เก็บข้อมูลอาจเต็ม) · position ยังอยู่ ไม่ได้ลบ — Export สำรองก่อน',true);
+      renderSession();return;
+    }
     data.positions=data.positions.filter(p=>p.id!==posId);
     saveSession(data);
     renderSession();
@@ -3005,13 +3150,10 @@ function addRecord(pos){
   }
   if(isTombstoned(rec.id))untombstone(rec.id); // re-archive = intentional resurrection
   data.records.push(rec);
-  saveRecords(data);
+  if(!saveRecords(data))return null;   // storage full / write failed → caller must NOT drop the position
   return rec;
 }
 // normalized interface for the (future, separate) performance block
-function getRecordsForEval(){
-  return loadRecords().records.map(r=>({id:r.id,recVer:r.recVer,archivedAt:r.archivedAt,...r.eval}));
-}
 function csvCell(v){
   v=v==null?'':String(v);
   return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
@@ -3404,7 +3546,7 @@ function importSlot(cells,base,hdr,slot){
   const pos=k=>(cells[base+k]||'').trim();
   const pick=(f,k)=>{const v=nm(f);return v!=null?v:pos(k);};
   const price=pick('price',1);if(!price)return null;
-  return {date:normStamp(pick('date',0)),price,lot:pick('lot',2),method:pick('method',3),
+  return {date:toCanon(pick('date',0)),price,lot:pick('lot',2),method:pick('method',3),
     score:pick('sc',4),swap:pick('swap',5),com:pick('com',6),vat:pick('vat',7)};
 }
 function posFromImportRow(cells,hdr){
@@ -3427,7 +3569,7 @@ function posFromImportRow(cells,hdr){
   const entryN=parseNum(get('entry'))||0,slN=parseNum(get('sl'))||0,lot=parseFloat(get('lot'))||0,lev=parseFloat(get('lev'))||25;
   const vsd=get('vola'),vsf=get('sf');
   const sld=entryN>0&&vsd?entryN*(parseFloat(vsd)/100)*(parseFloat(vsf)||1):Math.abs(entryN-slN);
-  const eStamp=normStamp(get('entrydate'));
+  const eStamp=toCanon(get('entrydate'));
   const id=get('id')||makeImportId(inst,dir,get('entrydate'));
   // FeeVer: an old export carries legacy-signed fees → normalise to FEE_VER 2 on the way in
   const fvRaw=hdr.feever!=null?(cells[hdr.feever]||'').trim():'';
@@ -3575,12 +3717,6 @@ function renderRecords(){
   else if(recSort==='wl')recs.sort((a,b)=>rank(a.eval.outcome)-rank(b.eval.outcome)||b.eval.realizedPL-a.eval.realizedPL);
   // summary (on filtered set)
   const n=recs.length;
-  const totalPL=recs.reduce((s,r)=>s+(r.eval.realizedPL||0),0);
-  const wins=recs.filter(r=>r.eval.outcome==='win').length;
-  const winRate=n?(wins/n*100):0;
-  const rVals=recs.map(r=>r.eval.rMultiple).filter(v=>isFinite(v));
-  const avgR=rVals.length?rVals.reduce((a,b)=>a+b,0)/rVals.length:0;
-  const plColor=totalPL>0?'var(--green)':totalPL<0?'var(--red)':'var(--text)';
   let html='';
   // summary box
   html+=`<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:16px">
@@ -3611,11 +3747,11 @@ function renderRecords(){
     <div style="flex:1;display:flex;background:rgba(120,120,128,.12);border-radius:9px;padding:2px">${seg('latest','Latest')}${seg('pl','P/L')}${seg('wl','Win-Loss')}</div>
   </div>`;
   // symbol chips
-  const chip=(val,label)=>`<span onclick="setRecFilter('${val}')" style="font-size:13px;font-weight:${recFilter===val?'500':'400'};padding:5px 13px;border-radius:20px;cursor:pointer;${recFilter===val?'background:var(--acc);color:#fff':'background:var(--card);color:var(--sub);border:.5px solid var(--border)'}">${label}</span>`;
+  const chip=(val,label)=>`<span onclick="setRecFilter('${val}')" style="font-size:13px;font-weight:${recFilter===val?'500':'400'};padding:5px 13px;border-radius:20px;cursor:pointer;${recFilter===val?'background:var(--acc);color:#fff':'background:var(--card);color:var(--sub);border:.5px solid var(--border)'}">${escHtml(label)}</span>`;
   html+=`<div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap">${chip('all','All')}${symbols.map(s=>chip(s,s)).join('')}</div>`;
   // strategy chips (only if any record has a strategy)
   if(strategies.length){
-    const schip=(val,label)=>`<span onclick="setStratFilter('${val}')" style="font-size:13px;font-weight:${stratFilter===val?'500':'400'};padding:5px 13px;border-radius:20px;cursor:pointer;${stratFilter===val?'background:var(--strat);color:#fff':'background:var(--card);color:var(--sub);border:.5px solid var(--border)'}">${label}</span>`;
+    const schip=(val,label)=>`<span onclick="setStratFilter(${escAttr(JSON.stringify(val))})" style="font-size:13px;font-weight:${stratFilter===val?'500':'400'};padding:5px 13px;border-radius:20px;cursor:pointer;${stratFilter===val?'background:var(--strat);color:#fff':'background:var(--card);color:var(--sub);border:.5px solid var(--border)'}">${escHtml(label)}</span>`;
     html+=`<div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center"><span style="font-size:11px;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-right:1px">Strategy</span>${schip('all','All')}${strategies.map(s=>schip(s,s)).join('')}</div>`;
   }
   // list
@@ -3641,7 +3777,7 @@ function renderRecords(){
       let panel='';
       if(expanded){
         const src=r.source||{};const en=src.entry||{};
-        const entryDate=en.date?dateDisplay(en.date):'';
+        const entryDate=en.date?dispDate(en.date):'';
         const erow=(l,v)=>`<div class="rec-erow"><span class="rec-el">${l}</span><span class="rec-ev">${v}</span></div>`;
         let p=`<div style="padding:14px;background:var(--bg);border-top:.5px solid var(--border)">`;
         // timeline: entry → exits
@@ -3655,7 +3791,7 @@ function renderRecords(){
         </div>`;
         if(e.exits&&e.exits.length){
           e.exits.forEach(ex=>{
-            const xd=ex.date?dateDisplay(ex.date):'';
+            const xd=ex.date?dispDate(ex.date):'';
             const xPlC=ex.pl>0?'var(--green)':ex.pl<0?'var(--red)':'';
             const dotCls=ex.pl>0?'win':ex.pl<0?'loss':'';
             p+=`<div class="rec-evt">
@@ -3693,8 +3829,9 @@ function renderRecords(){
           <div class="rec-brow"><span class="rec-bl">R-mult</span><span class="rec-bv">${fSign(e.rMultiple,2)}R</span></div>
           <div class="rec-brow"><span class="rec-bl">%Move</span><span class="rec-bv" style="color:${moveC}">${pctMove!=null?fSign(pctMove,2)+'%':'—'}</span></div>
           <div class="rec-brow"><span class="rec-bl">Outcome</span><span class="rec-bv" style="color:${outcomeC}">${e.outcome}</span></div>
-          <div class="rec-brow"><span class="rec-bl">Holding</span><span class="rec-bv">${escHtml(e.holdingStr||'—')}</span></div>
-          ${r.lastEditedAt?`<div class="rec-brow"><span class="rec-bl">แก้ไข</span><span class="rec-bv" style="color:var(--orange)">${escHtml(dateDisplay(r.lastEditedAt))} · ${r.editCount||1}×</span></div>`:''}
+          <div class="rec-brow"><span class="rec-bl">Holding (ตลาดเปิด)</span><span class="rec-bv">${escHtml(recHoldingDisp(r))}</span></div>
+          <div class="rec-brow"><span class="rec-bl">Holding (ปฏิทิน)</span><span class="rec-bv">${escHtml(e.holdingStr||'—')}</span></div>
+          ${r.lastEditedAt?`<div class="rec-brow"><span class="rec-bl">แก้ไข</span><span class="rec-bv" style="color:var(--orange)">${escHtml(dispDate(r.lastEditedAt))} · ${r.editCount||1}×</span></div>`:''}
         </div>`;
         p+=`<div class="rec-2col">${sumBox}${feesBox}</div>`;
         // notes
@@ -3712,7 +3849,7 @@ function renderRecords(){
         ${minus}
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:600;color:var(--text);display:flex;flex-wrap:wrap;align-items:center;gap:3px 6px">${e.badSymbol?'<span title="unknown symbol — P/L may be invalid">⚠️</span>':''}<span>${e.symbol}</span><span style="color:${dirColor};font-size:12px;font-weight:500">${e.direction==='long'?'Long':'Short'}</span>${e.strategy?`<span class="strat-chip">${escHtml(e.strategy)}</span>`:''}</div>
-          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${dateDisplay(r.source?.entry?.date||r.archivedAt||'')} · ${e.holdingStr}${noteHint}${r.lastEditedAt?' · ✏️':''}</div>
+          <div style="font-size:11px;color:var(--hint);overflow:hidden;text-overflow:ellipsis">${dispDate(r.source?.entry?.date||r.archivedAt||'')} · ${recHoldingDisp(r)}${noteHint}${r.lastEditedAt?' · ✏️':''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:14px;font-weight:600;color:${plC}">${fSign(e.realizedPL,2)}</div>
@@ -3738,9 +3875,9 @@ function buildPos(){
   const n=1;
   const pg=g('page-calc');
   pg.innerHTML=`
-    <p class="stitle">Balance</p>
+    <p class="stitle">Port balance</p>
     <div class="card">
-      <div class="row"><div class="rl">Balance ($)</div>
+      <div class="row"><div class="rl">Port balance ($)</div>
         <div style="font-size:15px;font-weight:600;color:var(--text)">${(parseFloat(getBalance())||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
       </div>
     </div>
@@ -3775,7 +3912,8 @@ function buildPos(){
     </div>
     <div class="card">
       <div class="row"><div class="rl">Entry Date</div>
-        <input type="text" id="p1-edate" value="" placeholder="dd/mm/yy" style="width:140px;font-size:14px" oninput="saveData()" onblur="onEdateBlur(this)">
+        <input type="text" id="p1-edate" value="" placeholder="dd/mm/yy" style="width:130px;font-size:14px" oninput="saveData()" onblur="onEdateBlur(this)">
+        <select class="tz-in" id="p1-edate-tz" onchange="onDateTzChange('p1-edate',this)">${tzOptionsHTML(getDispTz())}</select>
       </div>
       <div class="row"><div class="rl">Direction</div>
         <div class="ed-seg" id="p1-dir-seg" style="width:160px">
@@ -3898,7 +4036,7 @@ calcPos(1);
 function buildEntryId(n){
   const inst=(g(`p${n}-inst`)?.value||'').toUpperCase();
   const dir=g(`p${n}-dir`)?.value==='long'?'L':'S';
-  const raw=g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value||'';
+  const raw=readDateField(g(`p${n}-edate`),fieldTz(`p${n}-edate-tz`));   // canonical +07:00 → id
   const p=parseDateParts(raw);const z=v=>String(v).padStart(2,'0');
   const ddmmyy=p?z(p.d)+z(p.mo)+String(p.y).slice(2):'000000';
   const hhmm=p?z(p.h)+z(p.mi):'0000';
@@ -3922,7 +4060,7 @@ function buildPacket(n){
     id:buildEntryId(n),
     meta:{state:'ACTIVE',importedAt,closedAt:null},
     entry:{
-      date:g(`p${n}-edate`)?.dataset?.full||g(`p${n}-edate`)?.value||'',
+      date:readDateField(g(`p${n}-edate`),fieldTz(`p${n}-edate-tz`)),
       inst,dir:g(`p${n}-dir`)?.value||'long',
       strategy:g(`p${n}-strategy`)?.value||'',
       price:String(entry),sl:String(sl),
@@ -3997,7 +4135,7 @@ function importToSession(n){
 function parseDateFlexible(raw){
   if(!raw||!raw.trim())return '';
   raw=raw.trim();
-  const tgt=deviceOffset(); // D2: target TZ auto from device (was hardcoded +7)
+  const tgt=7; // canonical storage zone +07:00 — independent of the device
   // extract timezone offset if present: (UTC+7:00) (UTC-5) GMT+7 GMT-05:00 +07:00 Z
   let srcOffset=null; // hours from UTC
   const tzM=raw.match(/(?:UTC|GMT)\s*([+-])(\d{1,2})(?::?(\d{2}))?/i)
@@ -4030,21 +4168,13 @@ function parseDateFlexible(raw){
   return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth()+1)}-${p(dt.getUTCDate())}T${p(dt.getUTCHours())}:${p(dt.getUTCMinutes())}:${p(dt.getUTCSeconds())}${offsetStr(tgt)}`;
 }
 // display: yyyy/mm/dd hh:mm:ss OR ISO yyyy-mm-ddThh:mm[±offset] → dd/mm/yy hh:mm
-function dateDisplay(stored){
-  if(!stored)return '';
-  let m=stored.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
-  if(m)return `${m[3]}/${m[2]}/${m[1].slice(2)} ${m[4]}:${m[5]}`;
-  m=stored.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/); // ISO
-  if(m)return `${m[3]}/${m[2]}/${m[1].slice(2)} ${m[4]}:${m[5]}`;
-  return stored;
-}
-const fromISODisplay=dateDisplay; // ISO → dd/mm/yy hh:mm (same reader)
 function onEdateBlur(el){
-  const raw=el.value.trim();if(!raw){saveData();return;}
-  const stored=parseDateFlexible(raw);  // ISO yyyy-mm-ddThh:mm:ss±hh:mm
-  if(stored&&/^\d{4}[-\/]/.test(stored)){
+  const raw=el.value.trim();if(!raw){el.dataset.full='';saveData();return;}
+  const tz=fieldTz(el.id+'-tz');
+  const stored=readDateField(el,tz);    // canonical ISO +07:00
+  if(stored&&/^\d{4}-/.test(stored)){
     el.dataset.full=stored;
-    el.value=dateDisplay(stored);       // dd/mm/yy hh:mm
+    el.value=showIn(stored,tz,false);   // dd/mm/yy hh:mm, in the field's zone
     el.style.color='var(--blue)';
   }
   saveData();
@@ -4060,8 +4190,11 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.08.C';
+const APP_VER='2026.08.08.F';
 const VERSION_LOG=[
+  {v:'2026.08.08.F',note:'Audit fixes: Archive ไม่ลบ position ถ้าบันทึก record ไม่สำเร็จ · escape ข้อความใน note / strategy chip · sync balance และ cloud delete ที่ล้มเหลวแสดง error แทนเงียบ · ลบ dead code · รวม smoke test เป็น e2e ถาวร'},
+  {v:'2026.08.08.E',note:'Timezone: dropdown มุมขวาบนเลือกโซนแสดงผล (TH / NY / JP / 00, จำแยกแต่ละเครื่อง) · ช่องกรอกเวลามี dropdown โซนของเวลาที่พิมพ์ · บันทึกเป็น +07:00 เสมอ id จึงไม่เปลี่ยน · แก้ stampMs ให้อ่าน offset จริง (เดิมตีความตามเครื่อง) · Trade History: Holding บนการ์ดเป็นเวลาตลาดเปิด ขยายดูได้ทั้งตลาดเปิดและปฏิทิน'},
+  {v:'2026.08.08.D',note:'Exit Scatter: duration นับเฉพาะเวลาตลาดเปิดจริงตาม Pepperstone — หักวันหยุด US (คำนวณจากกฎ ไม่ต้องอัปเดตรายปี) และช่วงพักรายวันของทอง (23:59→01:01) · แยกเวลาตลาดตาม symbol (forex / โลหะ) · DST ใช้วันเปลี่ยนจริงแทนการประมาณจากเดือน · ไม่ขึ้นกับ timezone ของเครื่อง'},
   {v:'2026.08.08.C',note:'ลบ position ตัวอย่างที่ค้าง (ผ่าน tombstone → Push ครั้งเดียวลบจาก cloud, เครื่องอื่น Pull แล้วหายตาม) · อุดรูรั่ว: preview ปิด cloud sync และแยก localStorage ออกจากไฟล์จริง · preview เพิ่ม record ตัวอย่าง 14 ไม้ใน Tab3'},
   {v:'2026.08.08.B',note:'Exit Scatter: เพิ่มมุมมอง RR × Duration สลับกับ % ได้ (ปุ่ม % / RR) · RR ต่อ exit = P/L สุทธิของ exit นั้น ÷ risk ทั้งไม้ (บวกกันได้เท่ากับ R-mult ของไม้) · เส้นอ้างอิง −1R / +1R / +2R'},
   {v:'2026.08.08.A',note:'Tab1: เพิ่มแถว Risk ($) ใน Position Status — margin mode คำนวณ risk = lot × unit × SL dist (เดิมไม่มี) · fixed/vola แสดง RpT · ทุกโหมดโชว์ %ของ balance ควบคู่'},
@@ -4088,7 +4221,6 @@ const VERSION_LOG=[
   {v:'2026.07.16.A',note:'ระบบ version + provenance stamp'}
 ];
 // provenance reader: build version that wrote a record, or null (legacy / pre-version)
-function recBuildVer(r){return r&&r.ver?r.ver:null;}
 
 // ── One-time fee-sign migration (legacy cost convention → FEE_VER 2 signed) ──
 // Flips the stored sign of swap/com/vat and stamps feeVer. All P/L values are
@@ -4169,6 +4301,7 @@ function purgeLeakedDemo(){
 // positions, records, entry dates or balance.
 try{const m=migrateFees();if(m.positions||m.records)console.log('migrateFees:',m);}catch(e){console.error('migrateFees failed:',e);}
 try{const n=pruneTombstones();if(n)console.log('pruneTombstones: removed',n,'expired (>'+TOMB_TTL_DAYS+'d)');}catch(e){console.error('pruneTombstones failed:',e);}
+try{renderTzControls();}catch(e){console.error('renderTzControls failed:',e);}
 try{const n=purgeLeakedDemo();if(n){console.log('purgeLeakedDemo: removed',n);setTimeout(()=>{try{ctdToast('ลบข้อมูลตัวอย่างที่ค้าง '+n+' รายการ · กด Push 1 ครั้งเพื่อลบออกจาก cloud');}catch(e){}},800);}}catch(e){console.error('purgeLeakedDemo failed:',e);}
 /*DEMO_INJECT*/
 if(PREVIEW_MODE&&typeof loadDemoSession==='function')loadDemoSession();
