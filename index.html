@@ -77,7 +77,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .rl{flex:1;font-size:15px}
 .row input,.row select{background:transparent;border:none;font-size:15px;font-weight:500;color:var(--blue);text-align:right;width:130px;outline:none;font-family:inherit;-webkit-appearance:none}
 .row select{color:var(--text)}
-option{color:#000}
+option{color:#000;background:#fff}
+@media(prefers-color-scheme:dark){option{color:#fff;background:#2C2C2E}}
 
 
 
@@ -142,6 +143,16 @@ option{color:#000}
 .note-box{flex:1;background:var(--bg);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--sub);line-height:1.5;word-break:break-word}
 
 .exit-section-hd{padding:7px 14px;background:rgba(13,115,119,.15);font-size:11px;font-weight:600;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;border-top:.5px solid rgba(13,115,119,.2);border-bottom:.5px solid rgba(13,115,119,.2)}
+/* position-card sections as dropdowns — card class c-<key> = that section collapsed */
+.sec-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.sec-toggle .sec-name{flex-shrink:0}
+.sec-toggle .sec-sum{flex:1;text-align:right;font-weight:500;text-transform:none;letter-spacing:0;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;visibility:hidden}
+.sec-toggle .sec-chev{font-size:10px;color:var(--hint);transition:transform .2s;flex-shrink:0;transform:rotate(90deg)}
+.c-entry .sec-body[data-k="entry"],.c-exit .sec-body[data-k="exit"],.c-sum .sec-body[data-k="sum"]{display:none}
+.c-entry .sec-toggle[data-k="entry"] .sec-chev,.c-exit .sec-toggle[data-k="exit"] .sec-chev,.c-sum .sec-toggle[data-k="sum"] .sec-chev{transform:none}
+.c-entry .sec-toggle[data-k="entry"] .sec-sum,.c-exit .sec-toggle[data-k="exit"] .sec-sum,.c-sum .sec-toggle[data-k="sum"] .sec-sum{visibility:visible}
+.collapse-all{display:flex;justify-content:flex-end;margin:0 2px 8px}
+.collapse-all button{border:none;background:rgba(120,120,128,.12);color:var(--sub);font-size:11px;font-weight:600;padding:4px 11px;border-radius:12px;cursor:pointer;font-family:inherit}
 .exit-rec-row{display:flex;align-items:center;min-height:44px;padding:0 14px;border-bottom:.5px solid var(--border);font-size:13px;gap:6px;cursor:pointer}
 .exit-rec-row:last-child{border-bottom:none}
 .exit-rec-row:active{background:var(--bg)}
@@ -302,8 +313,15 @@ option{color:#000}
 /* ── Timezone ── */
 .tz-row{display:flex;justify-content:flex-end;margin-bottom:8px}
 .tz-sel{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='white' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 9px center;border:none;border-radius:14px;color:#fff;font-size:12px;font-weight:600;padding:5px 26px 5px 11px;font-family:inherit;cursor:pointer}
-.tz-sel option{color:#000}
 .tz-in{appearance:none;-webkit-appearance:none;font-size:11px;font-weight:600;padding:4px 8px;border:none;border-radius:10px;background:rgba(0,122,255,.12);color:var(--blue);cursor:pointer;flex-shrink:0;font-family:inherit}
+/* ── dropdown arrows: mouse devices only — selects use appearance:none, so on a PC they
+   would otherwise look like plain text. .tz-sel (header) already draws its own. ── */
+@media(hover:hover){
+  .row select,.ed-f select{padding-right:15px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238E8E93' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1px center;background-size:10px 6px}
+  select.sh-inp{padding-right:32px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238E8E93' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;background-size:10px 6px}
+  .tz-in{padding-right:20px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23007AFF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;background-size:8px 5px}
+  select{cursor:pointer}
+}
 /* ── FX Grid Zone ── */
 .gz-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:13px;color:var(--sub);cursor:pointer}
 .gz-toggle .gz-chev{transition:.2s;font-size:11px;color:var(--hint)}
@@ -1514,7 +1532,7 @@ async function pullBalance(){
   return false;
 }
 // ── Open-position sync (subcollection users/{uid}/positions) ──
-async function pushPositions(){
+async function pushPositions(holdIds,un){
   const uref=userDocRef();if(!uref)return {up:0,del:0};
   const pref=uref.collection('positions');
   try{
@@ -1523,8 +1541,9 @@ async function pushPositions(){
     const recIds=new Set(loadRecords().records.map(r=>r.id));
     const snap=await pref.get();
     const cloud={};snap.forEach(d=>cloud[d.id]=d.data());
-    let batch=fbDb.batch(),cnt=0,up=0,del=0;
+    let batch=fbDb.batch(),cnt=0,up=0,del=0,held=0;
     for(const p of open){
+      if(holdIds&&holdIds.has(p.id)&&!(un&&un.has(p.id))){held++;continue;}   // deleted elsewhere → wait for Pull
       const c=cloud[p.id];
       if(!c||(p.updatedAt||0)>(c.updatedAt||0)){
         batch.set(pref.doc(p.id),JSON.parse(JSON.stringify(p)));up++;cnt++;
@@ -1537,7 +1556,7 @@ async function pushPositions(){
     }
     if(cnt>0)await batch.commit();
     setPosPushAt(Date.now());
-    return {up,del,cloudIds:new Set(Object.keys(cloud))};
+    return {up,del,held,cloudIds:new Set(Object.keys(cloud))};
   }catch(e){console.error('pushPositions error:',e);return {up:0,del:0,err:e.message||String(e)};}
 }
 async function pullPositions(){
@@ -1577,6 +1596,7 @@ async function pullPositions(){
 }
 // ── Unified tombstone sync (records + positions) ──
 async function cloudDeletePosition(id){
+  if(fbUser&&fbDb&&!(await cloudFmtOk()))return;   // format guard (tombstone is pushed later)
   const uref=userDocRef();if(!uref)return;
   try{
     await uref.collection('positions').doc(id).delete();
@@ -1649,32 +1669,66 @@ async function pullTombstones(){
     if(recTomb.size){const rd=loadRecords();const b=rd.records.length;rd.records=rd.records.filter(r=>!recTomb.has(r.id));recRemoved=b-rd.records.length;if(recRemoved)saveRecords(rd);}
     if(posTomb.size){const sd=loadSession();const b=sd.positions.length;sd.positions=sd.positions.filter(p=>!posTomb.has(p.id));posRemoved=b-sd.positions.length;if(posRemoved){try{localStorage.setItem(SK2,JSON.stringify(sd));}catch(e){}}}
     return {added,recRemoved,posRemoved};
-  }catch(e){return {added:0,recRemoved:0,posRemoved:0};}
+  }catch(e){console.error('pullTombstones error:',e);return {added:0,recRemoved:0,posRemoved:0,err:e.message||String(e)};}
 }
 
+// ─── Sync format guard (from SJ) ───
+// users/{uid}.syncFmt = the newest sync format that has written to this account.
+// A build that knows an OLDER format must not write — it would not understand
+// the data. Every cloud write path checks it: Push, Pull, and the instant
+// edit/delete writes. (Builds before v125 predate the guard and ignore it.)
+const SYNC_FMT=1;   // 1 = records merge by newest edit (syncAt) · Push honours cloud tombstones
+async function cloudSyncFmt(){const u=userDocRef();if(!u)return 0;const d=await u.get();return (d.exists&&(d.data()||{}).syncFmt)||0;}
+async function cloudFmtOk(){try{return (await cloudSyncFmt())<=SYNC_FMT;}catch(e){console.error('syncFmt check failed:',e);return false;}}
+function fmtRefusedMsg(what){return what+' ถูกปฏิเสธ: ข้อมูลบน cloud ใช้ format ใหม่กว่าแอปนี้ · อัปเดตแอปก่อน';}
+// ─── Records: newest edit wins (from SJ) ───
+// syncAt is stamped on EVERY record save (archive, any edit — notes included,
+// import). It is separate from lastEditedAt, which only drives the ✏️ marker.
+// Older records fall back to lastEditedAt, then to their archive time. Equal
+// times → nothing is written, so re-running Push/Pull never churns.
+function recSyncMs(r){if(!r)return 0;return (+r.syncAt||0)||stampMs(r.lastEditedAt||'')||stampMs(r.archivedAt||r.closedAt||'')||0;}
+function stableStr(v){if(v===null||typeof v!=='object')return JSON.stringify(v);
+  if(Array.isArray(v))return '['+v.map(stableStr).join(',')+']';
+  return '{'+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+stableStr(v[k])).join(',')+'}';}
+function sameRec(a,b){return stableStr(JSON.parse(JSON.stringify(a)))===stableStr(JSON.parse(JSON.stringify(b)));}
+function newerRec(a,b){return recSyncMs(a)>recSyncMs(b)&&!sameRec(a,b);}   // should a replace b?
+// Cloud tombstones, read BEFORE Push uploads anything, so a device that has not
+// pulled yet cannot push back a record or position another device deleted.
+async function cloudTombSets(){
+  const out={record:new Set(),position:new Set(),all:new Set()};
+  const u=userDocRef();if(!u)return out;
+  const snap=await u.collection('tombstones').get();
+  snap.forEach(d=>{const t=d.data()||{};const id=t.id||d.id;out.all.add(id);(t.kind==='position'?out.position:out.record).add(id);});
+  return out;
+}
 async function pushToCloud(){
   if(!fbUser||!fbDb||isSyncing)return;
   isSyncing=true; cloudStatus='pending'; cloudMsg='กำลัง Push...';
   renderRecords();
   try{
+    const cfmt=await cloudSyncFmt();
+    if(cfmt>SYNC_FMT){cloudStatus='error';cloudMsg=fmtRefusedMsg('Push');return;}
     const local=loadRecords();
     const ref=userRecordsRef();
-    // read existing cloud IDs
+    const ct=await cloudTombSets();
+    const un=new Set(loadUntomb());          // ids this device deliberately restored
     const snap=await ref.get();
-    const cloudIds=new Set();
-    snap.forEach(doc=>cloudIds.add(doc.id));
-    // push local records not on cloud
-    let added=0, skipped=0, invalid=0;
+    const cloudIds=new Set(),cloudMap={};
+    snap.forEach(doc=>{cloudIds.add(doc.id);cloudMap[doc.id]=doc.data();});
+    // push records that are new, or edited more recently than the cloud copy
+    let added=0, updated=0, skipped=0, invalid=0, held=0;
     const batch_size=500; // Firestore batch limit
     let batch=fbDb.batch();
     let batchCount=0;
     for(const rec of local.records){
       if(!isValidRecord(rec)){invalid++;continue;}
-      if(cloudIds.has(rec.id)){
+      if(ct.record.has(rec.id)&&!un.has(rec.id)){held++;continue;}   // deleted elsewhere → wait for Pull
+      const c=cloudMap[rec.id];
+      if(c&&!newerRec(rec,c)){
         skipped++;
       }else{
         batch.set(ref.doc(rec.id),JSON.parse(JSON.stringify(rec)));
-        added++;
+        if(c)updated++;else added++;
         batchCount++;
         if(batchCount>=batch_size){
           await batch.commit();
@@ -1683,14 +1737,21 @@ async function pushToCloud(){
         }
       }
     }
+    // ids restored on THIS device that another device had tombstoned: clear that cloud
+    // tombstone now, so other devices pulling do not purge the restored item
+    const resolvedUn=[];
+    for(const id of un){if(ct.all.has(id)){batch.delete(userDocRef().collection('tombstones').doc(id));resolvedUn.push(id);batchCount++;}}
     if(batchCount>0) await batch.commit();
+    if(resolvedUn.length)saveUntomb(loadUntomb().filter(id=>!resolvedUn.includes(id)));
     balSyncErr='';
     await pushBalance();
-    const posR=await pushPositions();
+    const posR=await pushPositions(ct.position,un);
+    if(cfmt<SYNC_FMT)await userDocRef().set({syncFmt:SYNC_FMT},{merge:true});
+    const heldAll=held+(posR.held||0);
     const tombN=await pushTombstones(cloudIds,posR.cloudIds);
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Push เสร็จ · +${added} added · ${skipped} skipped${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${balSyncErr?' · ⚠️ balance: '+balSyncErr:''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Push เสร็จ · +${added} added${updated?' · '+updated+' แก้ไข↑':''} · ${skipped} skipped${heldAll?' · '+heldAll+' รอ Pull (ถูกลบจากเครื่องอื่น)':''}${posR.up?' · '+posR.up+' pos↑':''}${posR.del?' · '+posR.del+' pos closed':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${balSyncErr?' · ⚠️ balance: '+balSyncErr:''}${tombN?' · '+tombN+' tomb':''}${invalid?' · '+invalid+' invalid':''}`;
     setTimeout(()=>{
       if(cloudStatus==='synced'){
         cloudMsg=`Synced · ${local.records.length} records · ${fmtSyncTime(cloudLastSync)}`;
@@ -1712,22 +1773,28 @@ async function pullFromCloud(){
   isSyncing=true; cloudStatus='pending'; cloudMsg='กำลัง Pull...';
   renderRecords();
   try{
+    const cfmt=await cloudSyncFmt();
+    if(cfmt>SYNC_FMT){cloudStatus='error';cloudMsg=fmtRefusedMsg('Pull');return;}
     const tombR=await pullTombstones();
+    // without the deletion list, merging could bring back items deleted elsewhere
+    if(tombR.err){cloudStatus='error';cloudMsg='Pull ล้มเหลว: อ่านรายการที่ลบไม่ได้ · '+tombR.err;return;}
     const ref=userRecordsRef();
     const snap=await ref.get();
     const cloudRecs=[];
     snap.forEach(doc=>cloudRecs.push(doc.data()));
     const local=loadRecords();
-    const localIds=new Set(local.records.map(r=>r.id));
-    let added=0, skipped=0, invalid=0, tomb=0;
+    const localIdx=new Map(local.records.map((r,i)=>[r.id,i]));
+    let added=0, updated=0, skipped=0, invalid=0, tomb=0;
     for(const rec of cloudRecs){
       if(!isValidRecord(rec)){invalid++;continue;}
       if(isTombstoned(rec.id)){tomb++;continue;}
-      if(localIds.has(rec.id)){
-        skipped++;
+      if(localIdx.has(rec.id)){
+        const i=localIdx.get(rec.id);
+        if(newerRec(rec,local.records[i])){local.records[i]=rec;updated++;}   // edited more recently elsewhere
+        else skipped++;
       }else{
         local.records.push(rec);
-        localIds.add(rec.id);
+        localIdx.set(rec.id,local.records.length-1);
         added++;
       }
     }
@@ -1746,7 +1813,7 @@ async function pullFromCloud(){
     if(demoPurged&&typeof renderSession==='function')renderSession();
     cloudLastSync=new Date();
     cloudStatus='synced';
-    cloudMsg=`Pull เสร็จ · +${added} added · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${posR.purged?' · '+posR.purged+' pos ปิดแล้ว':''}${demoPurged?' · ลบตัวอย่างค้าง '+demoPurged+' (กด Push)':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${balSyncErr?' · ⚠️ balance: '+balSyncErr:''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
+    cloudMsg=`Pull เสร็จ · +${added} added${updated?' · '+updated+' แก้ไข↓':''} · ${skipped} already had${tomb?' · '+tomb+' tombstoned':''}${balPulled?' · balance updated':''}${posR.added?' · '+posR.added+' pos↓':''}${posR.updated?' · '+posR.updated+' pos upd':''}${posR.purged?' · '+posR.purged+' pos ปิดแล้ว':''}${demoPurged?' · ลบตัวอย่างค้าง '+demoPurged+' (กด Push)':''}${posR.err?' · ⚠️ pos: '+posR.err:''}${balSyncErr?' · ⚠️ balance: '+balSyncErr:''}${(tombR.recRemoved||tombR.posRemoved)?' · '+(tombR.recRemoved+tombR.posRemoved)+' purged':''}${invalid?' · '+invalid+' invalid':''}`;
     setTimeout(()=>{
       if(cloudStatus==='synced'){
         cloudMsg=`Synced · ${local.records.length} records · ${fmtSyncTime(cloudLastSync)}`;
@@ -1854,11 +1921,13 @@ function tombstonePanelHTML(){
 // ── targeted cloud writes (edit=overwrite doc · delete=remove doc) ──
 async function cloudSetRecord(rec){
   if(!fbUser||!fbDb)return;
+  if(!(await cloudFmtOk()))return;          // newer format on cloud → leave it to an updated build
   try{await userRecordsRef().doc(rec.id).set(JSON.parse(JSON.stringify(rec)));}
   catch(e){console.error('cloud set failed',e);}
 }
 async function cloudDeleteRecord(id){
   if(!fbUser||!fbDb)return;
+  if(!(await cloudFmtOk()))return;          // the tombstone still goes up with the next allowed Push
   try{await userRecordsRef().doc(id).delete();}
   catch(e){console.error('cloud delete failed',e);}
 }
@@ -2060,6 +2129,7 @@ function editSave(){
     rec.lastEditedAt=nowStamp();
   }
   if(isTombstoned(rec.id))untombstone(rec.id);
+  rec.syncAt=Date.now();          // every save syncs — notes-only edits too (✏️ is separate)
   if(i>=0)data.records[i]=rec;else data.records.push(rec);
   saveRecords(data);
   removeTombstone(rec.id);
@@ -2456,6 +2526,31 @@ function sessionSyncBarHTML(){
   </div>`;
   return h+`</div>`;
 }
+// ─── Position-card section dropdowns ───
+// Per card, per section; stored on this device only (ctd_card_sections, never synced).
+// Absent = open, so a new card starts fully expanded.
+const CARD_SEC_KEY='ctd_card_sections';
+const CARD_SECS=['entry','exit','sum'];
+function loadCardSecs(){try{return JSON.parse(localStorage.getItem(CARD_SEC_KEY)||'{}')||{};}catch(e){return {};}}
+function saveCardSecs(m){try{localStorage.setItem(CARD_SEC_KEY,JSON.stringify(m));}catch(e){console.error('saveCardSecs failed:',e);}}
+function cardSecClasses(posId){const st=loadCardSecs()[posId]||{};return CARD_SECS.filter(k=>st[k]).map(k=>' c-'+k).join('');}
+function toggleCardSec(posId,k){
+  const m=loadCardSecs(),st=m[posId]||(m[posId]={});st[k]=!st[k];saveCardSecs(m);
+  const card=document.getElementById('poscard-'+posId);if(card)card.classList.toggle('c-'+k,!!st[k]);
+  renderCollapseAll();
+}
+function allCardSecsCollapsed(){const m=loadCardSecs();const ids=loadSession().positions.map(p=>p.id);
+  return ids.length>0&&ids.every(id=>CARD_SECS.every(k=>(m[id]||{})[k]));}
+function setAllCardSecs(collapsed){
+  const m={};loadSession().positions.forEach(p=>{m[p.id]={};CARD_SECS.forEach(k=>{m[p.id][k]=collapsed;});});
+  saveCardSecs(m);renderSession();
+}
+function collapseAllHTML(){const all=allCardSecsCollapsed();
+  return `<div class="collapse-all"><button onclick="setAllCardSecs(${all?'false':'true'})">${all?'Expand all':'Collapse all'}</button></div>`;}
+function renderCollapseAll(){const el=document.querySelector('#session-content .collapse-all');if(el)el.outerHTML=collapseAllHTML();}
+function secHead(posId,k,name,summary){
+  return `<div class="exit-section-hd sec-toggle" data-k="${k}" onclick="toggleCardSec(${escAttr(JSON.stringify(posId))},'${k}')"><span class="sec-name">${name}</span><span class="sec-sum">${summary}</span><span class="sec-chev">▶</span></div>`;
+}
 function renderSession(){
   const data=loadSession();
   const active=data.positions;
@@ -2541,7 +2636,7 @@ function renderSession(){
          ${`<div class="pos-row" style="align-items:flex-start"><span class="pos-rl" style="padding-top:8px">Note</span><div class="note-box${pos.entry.entryNote?'':' empty'}" onclick="startNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.entry.entryNote?escHtml(pos.entry.entryNote):'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div></div>`}`:
         `${`<div class="pos-row" style="align-items:flex-start"><span class="pos-rl" style="padding-top:8px">Note</span><div class="note-box${pos.entry.entryNote?'':' empty'}" onclick="startNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.entry.entryNote?escHtml(pos.entry.entryNote):'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div></div>`}`;
       html+=`
-      <div class="pos-card" id="poscard-${pos.id}">
+      <div class="pos-card${cardSecClasses(pos.id)}" id="poscard-${pos.id}">
         <div class="pos-hd ${dirClass}">
           <div class="pos-hd-left">
             <div class="pos-sym">${pos.entry.inst}<span class="pos-dir-tag ${dirClass}">${dirLabel}</span></div>
@@ -2559,12 +2654,15 @@ function renderSession(){
           <div class="pos-stat"><div class="pos-slbl">Entry Score</div><div class="pos-sval" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryScoreEdit('${pos.id}',this)">${pos.entry.entryScore?'★ '+escHtml(pos.entry.entryScore):'—'} <span style="color:var(--acc);font-size:10px">✎</span></div></div>
           <div class="pos-stat"><div class="pos-slbl">Holding Period</div><div class="pos-sval">${c.holdingStr}</div></div>
         </div>
-        <div class="exit-section-hd">Entry Setting</div>
+        ${secHead(pos.id,'entry','Entry Setting',`${f(c.entry,c.entry>100?2:5)} · SL ${pos.entry.sl?f(parseFloat(pos.entry.sl),c.entry>100?2:5):'—'}`)}
+        <div class="sec-body" data-k="entry">
         <div class="pos-row"><span class="pos-rl">Entry Date</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryDateEdit('${pos.id}',this)">${pos.entry.date?escHtml(dispDate(pos.entry.date)):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry</span><span class="pos-rv" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','price',this)">${f(c.entry,c.entry>100?2:5)} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','sl',this)">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         ${trailRow}
-        <div class="exit-section-hd">Exit Records</div>
+        </div>
+        ${secHead(pos.id,'exit','Exit Records',`${f(c.totalExitLot,2)} / ${f(c.usedLot,2)} lot · ${Object.keys(pos.exit).filter(k=>pos.exit[k]&&typeof pos.exit[k]==='object'&&pos.exit[k].price&&pos.exit[k].lot).length} exit`)}
+        <div class="sec-body" data-k="exit">
         <div class="lot-status-bar" id="lot-bar-${pos.id}" style="background:rgba(0,0,0,.3);border-bottom:.5px solid rgba(255,255,255,.15)">
           <span class="lot-status-lbl">Lot Status</span>
           <span class="lot-status-disp" id="lot-disp-${pos.id}">${f(c.totalExitLot,2)} / ${f(c.usedLot,2)} lot</span>
@@ -2579,12 +2677,15 @@ function renderSession(){
           <span class="pos-rl" style="padding-top:8px">Exit note</span>
           <div class="note-box${pos.exit.note?'':' empty'}" onclick="startExitNoteEdit('${pos.id}',this)" style="cursor:text;min-height:36px">${pos.exit.note?escHtml(pos.exit.note):'<span style=\'color:var(--hint);font-style:italic\'>— tap to add note</span>'}</div>
         </div>
-        <div class="exit-section-hd">Position Sum</div>
+        </div>
+        ${secHead(pos.id,'sum','Position Sum',`<span style="color:${c.netPL>0?'var(--green)':c.netPL<0?'var(--red)':'var(--sub)'}">Net ${c.hasRealized?fSign(c.netPL):'—'}</span>`)}
+        <div class="sec-body" data-k="sum">
         <div class="bd-section">
           <div class="bd-row"><span class="bd-lbl">Realized P/L</span><span class="bd-val ${c.realizedPL>0?'cg':c.realizedPL<0?'cr':''}">${c.hasRealized?fSign(c.realizedPL):'—'}</span></div>
           <div class="bd-row"><span class="bd-lbl">Fees${c.hasFees?` <span style="font-size:11px">(swap <span style="color:${feeColOf(c.totalSwap)}">${fSign(c.totalSwap)}</span> · com <span style="color:${feeColOf(c.totalCom)}">${fSign(c.totalCom)}</span> · vat <span style="color:${feeColOf(c.totalVat)}">${fSign(c.totalVat)}</span>)</span>`:''}</span><span class="bd-val ${c.totalFees>0?'cg':c.totalFees<0?'cr':''}">${c.hasFees?fSign(c.totalFees):'—'}</span></div>
           <div class="bd-row"><span class="bd-lbl">Net P/L</span><span class="bd-val ${c.netPL>0?'cg':c.netPL<0?'cr':''}">${c.hasRealized?fSign(c.netPL):'—'}</span></div>
           <div class="bd-row"><span class="bd-lbl">R : R</span><span class="bd-val" style="color:var(--sub)">${c.hasRealized&&c.risk?f(c.rr,2)+'x':'—'}</span></div>
+        </div>
         </div>
         <div class="pos-action-row">
           <button class="delete-btn" id="del-btn-${pos.id}" onclick="deletePos('${pos.id}')">${BIN_SVG}</button>
@@ -2593,7 +2694,9 @@ function renderSession(){
       </div>`;
     });
   }
-  g('session-content').innerHTML=sessionSyncBarHTML()+html;
+  {const m=loadCardSecs(),live=new Set(active.map(p=>p.id));let chg=false;
+   Object.keys(m).forEach(id=>{if(!live.has(id)){delete m[id];chg=true;}});if(chg)saveCardSecs(m);}
+  g('session-content').innerHTML=sessionSyncBarHTML()+(active.length?collapseAllHTML():'')+html;
   // apply lot status bar colors
   loadSession().positions.forEach(pos=>{
     const c=computePos(pos);
@@ -2709,6 +2812,7 @@ function commitEntryDateEdit(posId,raw){
     addTombstone(oldId,'position'); // rename = kill old cloud doc + local resurrection guard
     untombstone(newId);             // intentional re-add → clear any stale tombstone
     pos.id=newId;
+    {const m=loadCardSecs();if(m[oldId]){m[newId]=m[oldId];delete m[oldId];saveCardSecs(m);}}
   }
   saveSession(d);                   // auto re-stamps updatedAt → orange dot (รอ push)
   renderSession();
@@ -3149,6 +3253,7 @@ function addRecord(pos){
     rec.id=`${base}-${n}`;
   }
   if(isTombstoned(rec.id))untombstone(rec.id); // re-archive = intentional resurrection
+  rec.syncAt=Date.now();
   data.records.push(rec);
   if(!saveRecords(data))return null;   // storage full / write failed → caller must NOT drop the position
   return rec;
@@ -3486,8 +3591,8 @@ function buildSyncGuideUI(){
   // button guide
   h+=`<div style="background:var(--card);border:.5px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">
     <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">Button guide</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px"><span style="color:var(--acc);flex-shrink:0;margin-top:1px">${CLOUD_UP}</span><div style="font-size:12px;line-height:1.5"><div style="font-weight:500;color:var(--text)">Push — local → cloud</div><div style="color:var(--sub)">จดเทรดเสร็จ กดส่งขึ้น (merge + dedup)</div></div></div>
-    <div style="display:flex;gap:8px;margin-bottom:10px"><span style="color:var(--acc);flex-shrink:0;margin-top:1px">${CLOUD_DN}</span><div style="font-size:12px;line-height:1.5"><div style="font-weight:500;color:var(--text)">Pull — cloud → local</div><div style="color:var(--sub)">เปิดเครื่องใหม่ ดึง data ล่าสุด (preview ก่อน confirm)</div></div></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px"><span style="color:var(--acc);flex-shrink:0;margin-top:1px">${CLOUD_UP}</span><div style="font-size:12px;line-height:1.5"><div style="font-weight:500;color:var(--text)">Push — local → cloud</div><div style="color:var(--sub)">จดเทรดเสร็จ กดส่งขึ้น · ส่ง record ใหม่และที่แก้ล่าสุด + position ที่เปลี่ยน + รายการที่ลบ · ไม่ส่งรายการที่เครื่องอื่นลบไปแล้วกลับขึ้นไป</div></div></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px"><span style="color:var(--acc);flex-shrink:0;margin-top:1px">${CLOUD_DN}</span><div style="font-size:12px;line-height:1.5"><div style="font-weight:500;color:var(--text)">Pull — cloud → local</div><div style="color:var(--sub)">เปิดเครื่องใหม่ ดึง data ล่าสุด · ดึงลงทันที แล้วสรุปผล · record ที่แก้ล่าสุดบนเครื่องอื่นจะทับของเครื่องนี้</div></div></div>
     <div style="display:flex;gap:8px"><span style="color:var(--sub);flex-shrink:0;margin-top:1px">${DL_ICON}</span><div style="font-size:12px;line-height:1.5"><div style="font-weight:500;color:var(--text)">Export file — JSON+CSV download</div><div style="color:var(--sub)">backup ฉุกเฉิน / host ล่ม / ส่งไฟล์ให้คนอื่น</div></div></div>
   </div>`;
   // cloud status bar guide
@@ -3598,6 +3703,7 @@ function runImport(){
     rec.eval.holdingStr=holdingBetween(out.eStamp,out.lastDate);
     if(existing.has(rec.id)){skipped++;return;}
     if(isTombstoned(rec.id))untombstone(rec.id); // re-import = intentional resurrection
+    rec.syncAt=Date.now();
     data.records.push(rec);existing.add(rec.id);added++;
   });
   if(added>0)saveRecords(data);
@@ -4190,8 +4296,11 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.08.F';
+const APP_VER='2026.08.09.C';
 const VERSION_LOG=[
+  {v:'2026.08.09.C',note:'Sync ตามแนว SJ: record ที่แก้ sync ข้ามเครื่องได้ (ฉบับที่แก้ล่าสุดชนะ ใช้ syncAt แยกจาก ✏️) · Push อ่าน tombstone บน cloud ก่อน ไม่ส่งรายการที่เครื่องอื่นลบกลับขึ้นไป · กันแอปรุ่นเก่าเขียนทับด้วย syncFmt บน cloud (ทุกเส้นทางที่เขียน) · Pull หยุดถ้าอ่านรายการที่ลบไม่ได้'},
+  {v:'2026.08.09.B',note:'Dropdown อ่านง่ายบน PC: รายการตามสี light/dark mode · มีลูกศรเฉพาะอุปกรณ์ที่ใช้เมาส์ (iPhone เหมือนเดิม) · Button guide: คำอธิบาย Push/Pull ตรงกับการทำงานจริง'},
+  {v:'2026.08.09.A',note:'Tab2 position card: Entry Setting / Exit Records / Position Sum เป็น dropdown (ตอนปิดแสดงค่าย่อ: Entry·SL, lot ที่ปิด·จำนวน exit, Net) · header ตารางตัวเลข และปุ่ม bin/Archive คงเดิม · จำสถานะแยกแต่ละการ์ดในเครื่อง · การ์ดใหม่เปิดทั้งหมด · ปุ่ม Collapse all / Expand all'},
   {v:'2026.08.08.F',note:'Audit fixes: Archive ไม่ลบ position ถ้าบันทึก record ไม่สำเร็จ · escape ข้อความใน note / strategy chip · sync balance และ cloud delete ที่ล้มเหลวแสดง error แทนเงียบ · ลบ dead code · รวม smoke test เป็น e2e ถาวร'},
   {v:'2026.08.08.E',note:'Timezone: dropdown มุมขวาบนเลือกโซนแสดงผล (TH / NY / JP / 00, จำแยกแต่ละเครื่อง) · ช่องกรอกเวลามี dropdown โซนของเวลาที่พิมพ์ · บันทึกเป็น +07:00 เสมอ id จึงไม่เปลี่ยน · แก้ stampMs ให้อ่าน offset จริง (เดิมตีความตามเครื่อง) · Trade History: Holding บนการ์ดเป็นเวลาตลาดเปิด ขยายดูได้ทั้งตลาดเปิดและปฏิทิน'},
   {v:'2026.08.08.D',note:'Exit Scatter: duration นับเฉพาะเวลาตลาดเปิดจริงตาม Pepperstone — หักวันหยุด US (คำนวณจากกฎ ไม่ต้องอัปเดตรายปี) และช่วงพักรายวันของทอง (23:59→01:01) · แยกเวลาตลาดตาม symbol (forex / โลหะ) · DST ใช้วันเปลี่ยนจริงแทนการประมาณจากเดือน · ไม่ขึ้นกับ timezone ของเครื่อง'},
