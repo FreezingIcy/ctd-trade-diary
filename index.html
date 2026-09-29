@@ -605,7 +605,29 @@ function getBalance(){return localStorage.getItem('ctd_balance')||'';}
 function getBalanceAt(){return parseInt(localStorage.getItem('ctd_balance_at')||'0',10)||0;}
 function setBalanceRaw(v,at){try{localStorage.setItem('ctd_balance',String(v));localStorage.setItem('ctd_balance_at',String(at));}catch(e){}}
 function setBalance(v){setBalanceRaw(v,Date.now());}
-function onBalanceInput(el){setBalance((el.value||'').replace(/,/g,''));try{calcRisk(1);calcPos(1);}catch(e){}}
+// Port balance = initial balance + net P/L of all records (archived trades) —
+// the same Total P/L Tab3 shows. Used for Risk % and Margin Lv. everywhere.
+// Equity Curve and %DD keep using the INITIAL balance (their starting point).
+// 0 when no initial balance is set, so callers keep showing "—" / the prompt.
+let _pbCache={raw:null,bal:null,pl:0};
+function recordsNetPL(){
+  const bal=getBalance();let raw='';try{raw=localStorage.getItem(SK3)||'';}catch(e){}
+  if(raw!==_pbCache.raw||bal!==_pbCache.bal){
+    const pl=(loadRecords().records||[]).reduce((t,r)=>t+((r&&r.eval&&+r.eval.realizedPL)||0),0);
+    _pbCache={raw,bal,pl};
+  }
+  return _pbCache.pl;
+}
+function portBalance(){const b=parseNum(getBalance());return (isFinite(b)&&b>0)?b+recordsNetPL():0;}
+function portBalanceHTML(){
+  const b=parseNum(getBalance());
+  if(!(isFinite(b)&&b>0))return `<div style="font-size:15px;font-weight:600;color:var(--hint)">—</div>`;
+  const pl=recordsNetPL(),pb=b+pl,fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `<div style="text-align:right"><div style="font-size:15px;font-weight:600;color:var(--text)">${fmt(pb)}</div>`
+    +`<div style="font-size:11px;color:var(--hint);margin-top:1px">Initial ${fmt(b)} <span style="color:${pl>0?'var(--green)':pl<0?'var(--red)':'var(--hint)'}">${pl>=0?'+':''}${fmt(pl)}</span> P/L</div></div>`;
+}
+function refreshPortBalance(){const el=document.getElementById('p1-portbal');if(el)el.innerHTML=portBalanceHTML();}
+function onBalanceInput(el){setBalance((el.value||'').replace(/,/g,''));refreshPortBalance();try{calcRisk(1);calcPos(1);}catch(e){}}
 function onBalanceBlur(el){if(typeof onPriceBlur==='function')onPriceBlur(el);setBalance((el.value||'').replace(/,/g,''));if(typeof renderRecords==='function')renderRecords();if(typeof calcPos==='function')calcPos(1);}
 // ===== Manual pop-up (in-app, full content minus Strategy) =====
 function manualHTML(){
@@ -626,7 +648,7 @@ function manualHTML(){
       <div class="m-row"><span class="m-l">CV</span><span class="m-v">RpT ÷ SLD</span></div>
       <div class="m-row"><span class="m-l">Lot</span><span class="m-v">CV ÷ (unit × entry)</span></div>
       <div class="m-row"><span class="m-l">Margin</span><span class="m-v">CV ÷ leverage</span></div>
-      <div class="m-row"><span class="m-l">Margin Lv.</span><span class="m-v">(balance ÷ margin) × 100%</span></div>
+      <div class="m-row"><span class="m-l">Margin Lv.</span><span class="m-v">(Port balance ÷ margin) × 100%</span></div>
       <div class="m-row"><span class="m-l">Risk ($)</span><span class="m-v">SLD × unit × lot</span></div>
       <div class="m-row"><span class="m-l">P/L ($)</span><span class="m-v">(exit − entry) × sign × unit × lot</span></div>
       <div class="m-row"><span class="m-l">R:R</span><span class="m-v">reward ÷ risk</span></div>
@@ -2164,6 +2186,7 @@ function switchTab(tab){
   });
   if(tab==='session') renderSession();
   if(tab==='record') renderRecords();
+  if(tab==='calc'){refreshPortBalance();try{calcRisk(1);calcPos(1);}catch(e){}}
 }
 
 // ─── Tab1: Calculator functions ───────────────────────
@@ -2359,14 +2382,22 @@ function calcRisk(n){
 }
 // Risk readout: money plus what that is as a % of starting balance.
 // Shows '—' for the % when no balance has been set (nothing is assumed).
+// "(x%port)" tag after a $risk figure: risk ÷ Port balance, whole percent,
+// smaller than the figure it follows (sized relative to it). Below 0.5% it reads
+// "<1%port" rather than a misleading "0%port". '' when no Port balance is set.
+function pctPortHTML(risk){
+  const pb=portBalance();if(!(pb>0)||!(risk>0))return '';
+  const pct=risk/pb*100,txt=pct<0.5?'<1':String(Math.round(pct));
+  return ` <span style="font-size:.72em;font-weight:500;color:var(--hint)">(${txt}%port)</span>`;
+}
 function setRiskReadout(n,risk){
   const el=g(`p${n}-rc-risk`);if(!el)return;
   if(!risk||!isFinite(risk)){el.textContent='—';el.style.color='';return;}
-  const bal=parseNum(getBalance())||0;
+  const bal=portBalance();
   const pct=bal>0?(risk/bal)*100:null;
   el.innerHTML=`<span style="color:var(--red)">$${f(risk,2)}</span>`
-    +(pct!=null?` <span style="font-size:13px;color:var(--hint)">(${f(pct,2)}% of bal)</span>`
-              :` <span style="font-size:11px;color:var(--hint)">(ตั้ง balance เพื่อดู %)</span>`);
+    +(pct!=null?pctPortHTML(risk)
+              :` <span style="font-size:11px;color:var(--hint)">(ตั้ง Initial balance ที่ Tab3 เพื่อดู %)</span>`);
 }
 function applyLot(n){
   const lotTxt=g(`p${n}-rc-lot`).textContent;
@@ -2385,7 +2416,7 @@ function calcPos(n){
     ['margin','level','risk','cv','os-slpct','os-slpips'].forEach(k=>{const el=g(`p${n}-${k}`);if(el)el.textContent='—';});
     updateSymInfo(n);calcRisk(n);saveDataDebounced();return;
   }
-  const bal=parseNum(getBalance())||0;
+  const bal=portBalance();
   const lev=parseFloat(g(`p${n}-lev`).value)||25;
   const dir=g(`p${n}-dir`).value;const sign=dir==='long'?1:-1;
   const dsel=g(`p${n}-dir`);
@@ -2400,7 +2431,7 @@ function calcPos(n){
   const risk=slDist*unit*lot;
   const mg=g(`p${n}-margin`);if(mg)mg.textContent=margin?'$'+f(margin):'—';
   const le=g(`p${n}-level`);if(le){le.textContent=mlevel?f(mlevel,1)+'%':'—';le.className='os-val '+(mlevel<100?'cr':mlevel<200?'co':mlevel<500?'':'cg');}
-  const rke=g(`p${n}-risk`);if(rke)rke.textContent=risk?'$'+f(risk):'—';
+  const rke=g(`p${n}-risk`);if(rke)rke.innerHTML=risk?'$'+f(risk)+pctPortHTML(risk):'—';
   const cve=g(`p${n}-cv`);if(cve)cve.textContent=cv?'$'+f(cv,0):'—';
   const slPct=entry>0&&slDist>0?(slDist/entry)*100:0;
   const osp=g(`p${n}-os-slpct`);if(osp)osp.textContent=slPct?f(slPct,2)+'%':'—';
@@ -2466,7 +2497,7 @@ function computePos(pos){
   const sl=parseFloat(pos.entry.sl)||0;
   const cv=usedLot*unit*entry;
   const margin=lev>0&&entry>0?cv/lev:0;
-  const bal=parseNum(getBalance())||0;
+  const bal=portBalance();
   const mlevel=margin>0&&bal>0?((bal)/margin)*100:0;
   const slDist=Math.abs(entry-sl);
   const risk=slDist*unit*usedLot;
@@ -2564,7 +2595,7 @@ function renderSession(){
     const closedCount=states.filter(s=>s==='CLOSED').length;
     let totalMargin=0,totalRisk=0;
     comps.forEach(c=>{if(c.state!=='CLOSED'){totalMargin+=c.margin||0;totalRisk+=c.risk||0;}});
-    const aggBal=parseNum(getBalance())||0;
+    const aggBal=portBalance();
     const aggMlevel=totalMargin>0&&aggBal>0?(aggBal/totalMargin)*100:0;
     const aggMlCol=aggMlevel<100?'var(--red)':aggMlevel<200?'var(--orange)':aggMlevel<500?'var(--text)':'var(--green)';
     const noBoxBg=activeCount>0?'#FFB800':'var(--acc)';
@@ -2647,7 +2678,7 @@ function renderSession(){
         <div class="pos-g2">
           <div class="pos-stat"><div class="pos-slbl">Margin</div><div class="pos-sval blue">${c.margin?'$'+f(c.margin):'—'}</div></div>
           <div class="pos-stat"><div class="pos-slbl">Margin Lv.</div><div class="pos-sval ${c.mlevel<100?'red':c.mlevel<200?'orange':c.mlevel<500?'':'green'}">${c.mlevel?f(c.mlevel,1)+'%':'—'}</div></div>
-          <div class="pos-stat"><div class="pos-slbl">Risk ($)</div><div class="pos-sval red">${c.risk?'$'+f(c.risk):'—'}</div></div>
+          <div class="pos-stat"><div class="pos-slbl">Risk ($)</div><div class="pos-sval red">${c.risk?'$'+f(c.risk)+pctPortHTML(c.risk):'—'}</div></div>
           <div class="pos-stat"><div class="pos-slbl">R : R</div><div class="pos-sval ${c.rr>=2?'green':c.rr>0?'':'sub'}">${c.hasRealized&&c.risk?f(c.rr,2)+'x':'—'}</div></div>
           <div class="pos-stat"><div class="pos-slbl">Realized P/L</div><div class="pos-sval ${c.realizedPL>0?'green':c.realizedPL<0?'red':'sub'}">${c.hasRealized?fSign(c.realizedPL):'—'}</div></div>
           <div class="pos-stat"><div class="pos-slbl">Available lot</div><div class="pos-sval acc">${f(c.remainingLot,2)}</div></div>
@@ -3789,7 +3820,7 @@ function resetClearBtn(btn){
 }
 function balanceCardHTML(){
   return `<div class="card" style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;padding:12px 15px">
-    <div><div style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Balance</div></div>
+    <div><div style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Initial balance</div></div>
     <div style="display:flex;align-items:center;gap:3px"><span style="font-size:15px;color:var(--sub);font-weight:600">$</span><input type="text" id="balance-edit" value="${(parseFloat(getBalance())||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}" inputmode="decimal" oninput="onBalanceInput(this)" onblur="onBalanceBlur(this)" style="width:110px;text-align:right;font-size:16px;font-weight:600;color:var(--text);background:transparent;border:none;border-bottom:1.5px solid var(--border);padding:2px 0"></div>
   </div></div>`;
 }
@@ -3983,11 +4014,11 @@ function buildPos(){
   pg.innerHTML=`
     <p class="stitle">Port balance</p>
     <div class="card">
-      <div class="row"><div class="rl">Port balance ($)</div>
-        <div style="font-size:15px;font-weight:600;color:var(--text)">${(parseFloat(getBalance())||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div class="row" style="padding-top:8px;padding-bottom:8px"><div class="rl">Port balance ($)</div>
+        <div id="p1-portbal">${portBalanceHTML()}</div>
       </div>
     </div>
-    <div style="padding:2px 4px 6px;font-size:11px;color:var(--hint)">*แก้ไขได้ที่ Tab3 · Portfolio (sync ข้ามเครื่อง)</div>
+    <div style="padding:2px 4px 6px;font-size:11px;color:var(--hint)">*Port balance = Initial balance + P/L ของ record ทั้งหมด · ตั้ง Initial balance ได้ที่ Tab3 (sync ข้ามเครื่อง)</div>
 
     <p class="stitle">Trading Card</p>
     <div class="card tcard">
@@ -4296,8 +4327,10 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.09.C';
+const APP_VER='2026.08.09.E';
 const VERSION_LOG=[
+  {v:'2026.08.09.E',note:'Risk แสดง (x%port) เป็นจำนวนเต็ม ตัวเล็กกว่า $risk ใน Position Status, Order Setup (Tab1) และการ์ด position (Tab2) · ต่ำกว่า 0.5% แสดง <1%port'},
+  {v:'2026.08.09.D',note:'Tab1 Port balance = Initial balance + P/L ของ record ทั้งหมด (ตรงกับ Total P/L ใน Tab3) พร้อมบรรทัดที่มา · Risk % และ Margin Lv. ทุกจุดคิดจาก Port balance · Tab3 เปลี่ยนชื่อการ์ดเป็น Initial balance · Equity Curve และ %DD ยังใช้ Initial balance'},
   {v:'2026.08.09.C',note:'Sync ตามแนว SJ: record ที่แก้ sync ข้ามเครื่องได้ (ฉบับที่แก้ล่าสุดชนะ ใช้ syncAt แยกจาก ✏️) · Push อ่าน tombstone บน cloud ก่อน ไม่ส่งรายการที่เครื่องอื่นลบกลับขึ้นไป · กันแอปรุ่นเก่าเขียนทับด้วย syncFmt บน cloud (ทุกเส้นทางที่เขียน) · Pull หยุดถ้าอ่านรายการที่ลบไม่ได้'},
   {v:'2026.08.09.B',note:'Dropdown อ่านง่ายบน PC: รายการตามสี light/dark mode · มีลูกศรเฉพาะอุปกรณ์ที่ใช้เมาส์ (iPhone เหมือนเดิม) · Button guide: คำอธิบาย Push/Pull ตรงกับการทำงานจริง'},
   {v:'2026.08.09.A',note:'Tab2 position card: Entry Setting / Exit Records / Position Sum เป็น dropdown (ตอนปิดแสดงค่าย่อ: Entry·SL, lot ที่ปิด·จำนวน exit, Net) · header ตารางตัวเลข และปุ่ม bin/Archive คงเดิม · จำสถานะแยกแต่ละการ์ดในเครื่อง · การ์ดใหม่เปิดทั้งหมด · ปุ่ม Collapse all / Expand all'},
