@@ -148,10 +148,25 @@ option{color:#000;background:#fff}
 .sec-toggle .sec-name{flex-shrink:0}
 .sec-toggle .sec-sum{flex:1;text-align:right;font-weight:500;text-transform:none;letter-spacing:0;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;visibility:hidden}
 .sec-toggle .sec-chev{font-size:10px;color:var(--hint);transition:transform .2s;flex-shrink:0;transform:rotate(90deg)}
-.c-entry .sec-body[data-k="entry"],.c-exit .sec-body[data-k="exit"],.c-sum .sec-body[data-k="sum"]{display:none}
-.c-entry .sec-toggle[data-k="entry"] .sec-chev,.c-exit .sec-toggle[data-k="exit"] .sec-chev,.c-sum .sec-toggle[data-k="sum"] .sec-chev{transform:none}
-.c-entry .sec-toggle[data-k="entry"] .sec-sum,.c-exit .sec-toggle[data-k="exit"] .sec-sum,.c-sum .sec-toggle[data-k="sum"] .sec-sum{visibility:visible}
+.c-entry .sec-body[data-k="entry"],.c-calc .sec-body[data-k="calc"],.c-exit .sec-body[data-k="exit"],.c-sum .sec-body[data-k="sum"]{display:none}
+.c-entry .sec-toggle[data-k="entry"] .sec-chev,.c-calc .sec-toggle[data-k="calc"] .sec-chev,.c-exit .sec-toggle[data-k="exit"] .sec-chev,.c-sum .sec-toggle[data-k="sum"] .sec-chev{transform:none}
+.c-entry .sec-toggle[data-k="entry"] .sec-sum,.c-calc .sec-toggle[data-k="calc"] .sec-sum,.c-exit .sec-toggle[data-k="exit"] .sec-sum,.c-sum .sec-toggle[data-k="sum"] .sec-sum{visibility:visible}
 .collapse-all{display:flex;justify-content:flex-end;margin:0 2px 8px}
+/* P/L calculator (what-if exit) on the position card */
+.cx-in{display:flex;align-items:center;gap:6px;padding:8px 14px 4px;flex-wrap:wrap}
+.cx-l{font-size:12px;color:var(--hint)}
+.cx-in input{width:82px;border:none;border-bottom:1px solid var(--border);background:transparent;font-size:15px;font-weight:600;color:var(--blue);text-align:right;outline:none;font-family:inherit;padding:2px 0;border-radius:0}
+.cx-in input.lot{width:44px}
+.cx-chips{display:flex;gap:4px;margin-left:auto}
+.cx-chips span{font-size:10.5px;font-weight:600;padding:3px 7px;border-radius:9px;background:rgba(120,120,128,.12);color:var(--sub);cursor:pointer}
+.cx-out{padding:2px 14px 10px}
+.cx-grid{display:grid;grid-template-columns:auto 1.15fr 1fr 1fr 1fr;column-gap:8px;row-gap:2px;align-items:baseline;font-variant-numeric:tabular-nums}
+.cx-grid .h{font-size:10px;color:var(--hint);text-align:right;text-transform:uppercase;letter-spacing:.04em}
+.cx-grid .l{font-size:12px;color:var(--sub)}
+.cx-grid .v{text-align:right;font-size:13px;font-weight:600;white-space:nowrap}
+.cx-grid .t{border-top:.5px solid var(--border);padding-top:3px}
+.cx-warn{font-size:11px;color:var(--red);font-weight:600;margin-top:3px}
+.cx-empty{font-size:12px;color:var(--hint)}
 .collapse-all button{border:none;background:rgba(120,120,128,.12);color:var(--sub);font-size:11px;font-weight:600;padding:4px 11px;border-radius:12px;cursor:pointer;font-family:inherit}
 .exit-rec-row{display:flex;align-items:center;min-height:44px;padding:0 14px;border-bottom:.5px solid var(--border);font-size:13px;gap:6px;cursor:pointer}
 .exit-rec-row:last-child{border-bottom:none}
@@ -1966,7 +1981,7 @@ function openEditRecord(id){
     inst:(e.inst||'').toUpperCase(),dir:e.dir==='short'?'short':'long',date:e.date||'',
     price:e.price||'',sl:e.sl||'',usedLot:e.usedLot||'',lev:e.lev||'25',strategy:e.strategy||'',
     rmode:e.rmode||'',rpt:e.rpt||'',vsd:e.vsd||'',vsf:e.vsf||'',
-    entryScore:e.entryScore||'',entryNote:e.entryNote||'',exitNote:(src.exit&&src.exit.note)||''
+    entryScore:e.entryScore||'',entryNote:e.entryNote||'',exitNote:(src.exit&&src.exit.note)||'',portBal:e.portBal||''
   },exits};
   const lbl=document.getElementById('ed-idlabel');if(lbl)lbl.textContent=id;
   editState.tz=getDispTz();
@@ -2109,7 +2124,7 @@ function editBuildPos(){
     entry:{date:eStamp,inst,dir,strategy:en.strategy||'',price:String(entryN),sl:String(slN),
       rmode:en.rmode||'',rpt:en.rpt||'',vsd,vsf,sld:String(sld.toFixed(2)),
       usedLot:String(usedLot),usedCV:String((usedLot*(sym.unit||0)*entryN).toFixed(0)),
-      lev:String(lev),entryScore:en.entryScore||'',entryNote:en.entryNote||''},
+      lev:String(lev),entryScore:en.entryScore||'',portBal:en.portBal||'',entryNote:en.entryNote||''},
     exit,eStamp,lastDate};
 }
 function editRecalc(){
@@ -2385,10 +2400,30 @@ function calcRisk(n){
 // "(x%port)" tag after a $risk figure: risk ÷ Port balance, whole percent,
 // smaller than the figure it follows (sized relative to it). Below 0.5% it reads
 // "<1%port" rather than a misleading "0%port". '' when no Port balance is set.
-function pctPortHTML(risk){
-  const pb=portBalance();if(!(pb>0)||!(risk>0))return '';
-  const pct=risk/pb*100,txt=pct<0.5?'<1':String(Math.round(pct));
-  return ` <span style="font-size:.72em;font-weight:500;color:var(--hint)">(${txt}%port)</span>`;
+function pctTagHTML(pct,approx){
+  if(!(pct>0))return '';
+  const txt=pct<0.5?'<1':String(Math.round(pct));
+  return ` <span style="font-size:.72em;font-weight:500;color:var(--hint)">(${approx?'≈':''}${txt}%port)</span>`;
+}
+function pctPortHTML(risk){const pb=portBalance();return (pb>0&&risk>0)?pctTagHTML(risk/pb*100,false):'';}
+// ─── %port recorded with the trade ───
+// Port balance is captured when a position is sent from Tab1 (entry.portBal) and
+// travels into the record. The % is always risk ÷ that balance, so an edit to
+// Entry/SL/lot keeps it right. Trades without it (before v128, CSV imports
+// without the column) are reconstructed: Initial balance + P/L of records
+// closed BEFORE that trade's entry → shown as "≈", never written back.
+function recPortAtEntry(r,all){
+  const e=(r&&r.eval)||{},en=(r&&r.source&&r.source.entry)||{};
+  const pb=+e.portAtEntry||+en.portBal||0;
+  if(pb>0)return {v:pb,src:'entry'};
+  const init=parseNum(getBalance());if(!(isFinite(init)&&init>0))return null;
+  const t=stampMs(en.date||'');if(!t)return null;
+  let pl=0;(all||loadRecords().records||[]).forEach(o=>{if(o&&o.id!==r.id&&recDateMs(o)<t)pl+=+((o.eval||{}).realizedPL)||0;});
+  const v=init+pl;return v>0?{v,src:'history'}:null;
+}
+function recRiskPctPort(r,all){
+  const p=recPortAtEntry(r,all),risk=+((r&&r.eval||{}).riskAmount)||0;
+  return (p&&risk>0)?{pct:risk/p.v*100,den:p.v,src:p.src}:null;
 }
 function setRiskReadout(n,risk){
   const el=g(`p${n}-rc-risk`);if(!el)return;
@@ -2561,7 +2596,7 @@ function sessionSyncBarHTML(){
 // Per card, per section; stored on this device only (ctd_card_sections, never synced).
 // Absent = open, so a new card starts fully expanded.
 const CARD_SEC_KEY='ctd_card_sections';
-const CARD_SECS=['entry','exit','sum'];
+const CARD_SECS=['entry','calc','exit','sum'];
 function loadCardSecs(){try{return JSON.parse(localStorage.getItem(CARD_SEC_KEY)||'{}')||{};}catch(e){return {};}}
 function saveCardSecs(m){try{localStorage.setItem(CARD_SEC_KEY,JSON.stringify(m));}catch(e){console.error('saveCardSecs failed:',e);}}
 function cardSecClasses(posId){const st=loadCardSecs()[posId]||{};return CARD_SECS.filter(k=>st[k]).map(k=>' c-'+k).join('');}
@@ -2581,6 +2616,66 @@ function collapseAllHTML(){const all=allCardSecsCollapsed();
 function renderCollapseAll(){const el=document.querySelector('#session-content .collapse-all');if(el)el.outerHTML=collapseAllHTML();}
 function secHead(posId,k,name,summary){
   return `<div class="exit-section-hd sec-toggle" data-k="${k}" onclick="toggleCardSec(${escAttr(JSON.stringify(posId))},'${k}')"><span class="sec-name">${name}</span><span class="sec-sum">${summary}</span><span class="sec-chev">▶</span></div>`;
+}
+// ─── P/L calculator (what-if exit) on each position card ───
+// Pure calculation: nothing is saved and no exit is recorded. Typed values live
+// in memory per position until the app is closed, so re-renders keep them.
+var plCalcState={};
+function plCalcExits(pos){return Object.keys(pos.exit||{}).map(k=>pos.exit[k]).filter(x=>x&&typeof x==='object'&&parseFloat(x.price)&&parseFloat(x.lot)).map(x=>({price:parseFloat(x.price),lot:parseFloat(x.lot)}));}
+function plCalcFigures(pos,px,lot){
+  const c=computePos(pos),sym=getSymbol(pos.entry.inst);
+  if(!sym||!(c.entry>0)||!(px>0)||!(lot>0))return null;
+  // R only with a real SL: computePos reads a blank SL as price 0, giving a huge bogus risk
+  const sign=pos.entry.dir==='long'?1:-1,risk=(parseFloat(pos.entry.sl)>0&&c.risk>0)?c.risk:0;
+  const pl=(px-c.entry)*sign*sym.unit*lot;
+  const all=plCalcExits(pos).concat([{price:px,lot}]),lt=all.reduce((a,x)=>a+x.lot,0),avg=all.reduce((a,x)=>a+x.price*x.lot,0)/lt;
+  const tot=(c.netPL||0)+pl;
+  const avail=Math.max(0,(c.usedLot||0)-(c.totalExitLot||0));
+  return {
+    part:{pl,r:risk?pl/risk:null,move:(px-c.entry)/c.entry*sign*100,pip:(px-c.entry)*sign*sym.pipM},
+    all:{pl:tot,r:risk?tot/risk:null,move:(avg-c.entry)/c.entry*sign*100,pip:(avg-c.entry)*sign*sym.pipM},
+    over:lot>avail+1e-9,avail
+  };
+}
+function plCalcOutHTML(pos){
+  const st=plCalcState[pos.id]||{};const F=plCalcFigures(pos,parseNum(st.px),parseNum(st.lot));
+  if(!F)return '<div class="cx-empty">กรอกราคา exit หรือกดชิป</div>';
+  const col=v=>v>0?'var(--green)':v<0?'var(--red)':'var(--text)',sg=(v,d)=>(v>=0?'+':'')+f(v,d);
+  const cell=(v,txt,t)=>`<span class="v${t?' t':''}" style="color:${v==null?'var(--hint)':col(v)}">${txt}</span>`;
+  const row=(lbl,o,t)=>`<span class="l${t?' t':''}">${lbl}</span>`+cell(o.pl,sg(o.pl,2),t)+cell(o.r,o.r==null?'—':sg(o.r,2)+'R',t)+cell(o.move,sg(o.move,2)+'%',t)+cell(o.pip,sg(o.pip,1),t);
+  return '<div class="cx-grid"><span></span><span class="h">$</span><span class="h">R</span><span class="h">%price</span><span class="h">pip</span>'
+    +row('ส่วนนี้',F.part)+row('ทั้งไม้',F.all,true)+'</div>'
+    +(F.over?`<div class="cx-warn">lot เกินที่เหลือ (${f(F.avail,2)})</div>`:'');
+}
+function plCalcSummary(pos){
+  const st=plCalcState[pos.id]||{},px=parseNum(st.px),F=plCalcFigures(pos,px,parseNum(st.lot));
+  if(!F)return '';const c=computePos(pos);
+  return `<span style="color:${F.part.pl>0?'var(--green)':F.part.pl<0?'var(--red)':'var(--sub)'}">${F.part.pl>=0?'+':''}${f(F.part.pl,2)}</span> @ ${f(px,c.entry>100?2:5)}`;
+}
+function plCalcSectionHTML(pos){
+  const c=computePos(pos),dp=c.entry>100?2:5,st=plCalcState[pos.id]||{};
+  const avail=Math.max(0,(c.usedLot||0)-(c.totalExitLot||0));
+  const lot=st.lot!=null?st.lot:(avail>0?+avail.toFixed(2):(c.usedLot||'')),idj=escAttr(JSON.stringify(pos.id));
+  const sl=parseFloat(pos.entry.sl),sign=pos.entry.dir==='long'?1:-1,d=Math.abs(c.entry-sl);
+  const chips=[['BE',c.entry]];if(sl>0&&d>0)chips.unshift(['SL',sl]),chips.push(['1R',c.entry+sign*d],['2R',c.entry+sign*2*d]);
+  return `${secHead(pos.id,'calc','P/L Calculator',plCalcSummary(pos))}
+        <div class="sec-body" data-k="calc">
+          <div class="cx-in"><span class="cx-l">Exit</span><input id="pcpx-${escAttr(pos.id)}" inputmode="decimal" placeholder="${f(c.entry,dp).replace(/,/g,'')}" value="${escAttr(st.px||'')}" oninput="plCalcInput(${idj})"><span class="cx-l">×</span><input id="pclot-${escAttr(pos.id)}" class="lot" inputmode="decimal" value="${escAttr(String(lot))}" oninput="plCalcInput(${idj})"><span class="cx-l">lot</span>
+            <div class="cx-chips">${chips.map(([l,v])=>`<span title="${v.toFixed(dp)}" onclick="plCalcChip(${idj},'${v.toFixed(dp)}')">${l}</span>`).join('')}</div></div>
+          <div class="cx-out" id="pcout-${escAttr(pos.id)}">${plCalcOutHTML(pos)}</div>
+        </div>`;
+}
+function plCalcRefresh(posId){
+  const pos=loadSession().positions.find(p=>p.id===posId);if(!pos)return;
+  const out=document.getElementById('pcout-'+posId);if(out)out.innerHTML=plCalcOutHTML(pos);
+  const card=document.getElementById('poscard-'+posId),sum=card&&card.querySelector('.sec-toggle[data-k="calc"] .sec-sum');if(sum)sum.innerHTML=plCalcSummary(pos);
+}
+function plCalcInput(posId){
+  const px=document.getElementById('pcpx-'+posId),lot=document.getElementById('pclot-'+posId);
+  plCalcState[posId]={px:px?px.value:'',lot:lot?lot.value:''};plCalcRefresh(posId);
+}
+function plCalcChip(posId,price){
+  const px=document.getElementById('pcpx-'+posId);if(px)px.value=price;plCalcInput(posId);
 }
 function renderSession(){
   const data=loadSession();
@@ -2692,6 +2787,7 @@ function renderSession(){
         <div class="pos-row"><span class="pos-rl">Entry SL</span><span class="pos-rv red" style="border-bottom:1px dashed var(--border);cursor:pointer" onclick="startEntryNumEdit('${pos.id}','sl',this)">${pos.entry.sl?f(parseFloat(pos.entry.sl),parseFloat(pos.entry.sl)>100?2:5):'—'} <span style="color:var(--acc);font-size:11px">✎</span></span></div>
         ${trailRow}
         </div>
+        ${plCalcSectionHTML(pos)}
         ${secHead(pos.id,'exit','Exit Records',`${f(c.totalExitLot,2)} / ${f(c.usedLot,2)} lot · ${Object.keys(pos.exit).filter(k=>pos.exit[k]&&typeof pos.exit[k]==='object'&&pos.exit[k].price&&pos.exit[k].lot).length} exit`)}
         <div class="sec-body" data-k="exit">
         <div class="lot-status-bar" id="lot-bar-${pos.id}" style="background:rgba(0,0,0,.3);border-bottom:.5px solid rgba(255,255,255,.15)">
@@ -2726,7 +2822,8 @@ function renderSession(){
     });
   }
   {const m=loadCardSecs(),live=new Set(active.map(p=>p.id));let chg=false;
-   Object.keys(m).forEach(id=>{if(!live.has(id)){delete m[id];chg=true;}});if(chg)saveCardSecs(m);}
+   Object.keys(m).forEach(id=>{if(!live.has(id)){delete m[id];chg=true;}});if(chg)saveCardSecs(m);
+   Object.keys(plCalcState).forEach(id=>{if(!live.has(id))delete plCalcState[id];});}
   g('session-content').innerHTML=sessionSyncBarHTML()+(active.length?collapseAllHTML():'')+html;
   // apply lot status bar colors
   loadSession().positions.forEach(pos=>{
@@ -2844,6 +2941,7 @@ function commitEntryDateEdit(posId,raw){
     untombstone(newId);             // intentional re-add → clear any stale tombstone
     pos.id=newId;
     {const m=loadCardSecs();if(m[oldId]){m[newId]=m[oldId];delete m[oldId];saveCardSecs(m);}}
+    if(plCalcState[oldId]){plCalcState[newId]=plCalcState[oldId];delete plCalcState[oldId];}
   }
   saveSession(d);                   // auto re-stamps updatedAt → orange dot (รอ push)
   renderSession();
@@ -3228,6 +3326,7 @@ function buildRecord(pos){
   const netPL=c.netPL;
   const outcome=netPL>0.0001?'win':netPL<-0.0001?'loss':'breakeven';
   const rMultipleNet=c.risk>0?netPL/c.risk:0;
+  const pbAtEntry=parseFloat(pos.entry&&pos.entry.portBal)||0;
   return {
     recVer:'r1',
     feeVer:FEE_VER,
@@ -3246,6 +3345,8 @@ function buildRecord(pos){
       entrySL:parseFloat(pos.entry.sl)||0,
       exits,
       riskAmount:+c.risk.toFixed(2),
+      portAtEntry:pbAtEntry>0?pbAtEntry:null,
+      riskPctPort:pbAtEntry>0&&c.risk>0?+(c.risk/pbAtEntry*100).toFixed(2):null,
       realizedPL:+netPL.toFixed(2),       // net (after fees) — Phase 7B
       grossPL:+c.realizedPL.toFixed(2),   // gross (before fees) — kept for transparency
       totalFees:+c.totalFees.toFixed(2),
@@ -3307,7 +3408,8 @@ function buildExportRows(){
   const slotCols=['cl','t1','t2','t3'];
   const exitCols=[];
   slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Date`,`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
-  const rows=[[...tradeCols,...exitCols]];
+  const portCols=['Port at entry','Risk %port','Port src'];
+  const rows=[[...tradeCols,...exitCols,...portCols]];
   data.records.forEach(r=>{
     const e=r.eval;const x=e.ext||{};
     const row=[r.id,e.symbol,e.strategy||'',e.direction,toISODate(r.source?.entry?.date||''),_num(e.entryPrice),_num(e.entrySL),_num(x.usedLot),_num(x.lev),_num(e.riskAmount),
@@ -3320,6 +3422,8 @@ function buildExportRows(){
       if(ex){const gv=ex.gross!=null?ex.gross:ex.pl;row.push(toISODate(ex.date||''),_num(ex.price),_num(ex.lot),ex.method||'',ex.score||'',_num(ex.swap),_num(ex.com),_num(ex.vat),_num(gv),_num(ex.pl));}
       else row.push('','','','','','','','','','');
     });
+    const rp=recRiskPctPort(r,data.records);
+    row.push(rp?_num(+rp.den.toFixed(2)):'',rp?_num(+rp.pct.toFixed(2)):'',rp?rp.src:'');
     rows.push(row);
   });
   return rows;
@@ -3445,28 +3549,9 @@ async function exportRecords(){
   if(!data.records.length)return;
   // build content
   const jsonStr=JSON.stringify(data,null,2);
-  const tradeCols=['ID','Symbol','Strategy','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
-  const slotCols=['cl','t1','t2','t3'];
-  const exitCols=[];
-  slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
-  const rows=[[...tradeCols,...exitCols]];
-  data.records.forEach(r=>{
-    const e=r.eval;const x=e.ext||{};
-    const row=[r.id,e.symbol,e.strategy||'',e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,
-      e.grossPL!=null?e.grossPL:e.realizedPL,
-      e.totalFees!=null?e.totalFees:0,
-      e.realizedPL,
-      e.rMultiple,e.outcome,e.entryScore,e.holdingStr,x.riskMode];
-    const bySlot={};(e.exits||[]).forEach(ex=>bySlot[ex.slot]=ex);
-    slotCols.forEach(s=>{
-      const ex=bySlot[s];
-      if(ex){
-        const grossV=ex.gross!=null?ex.gross:ex.pl;
-        row.push(ex.price,fmtLot(ex.lot),ex.method,ex.score,ex.swap||'',ex.com||'',ex.vat||'',grossV,ex.pl);
-      }else row.push('','','','','','','','','');
-    });
-    rows.push(row);
-  });
+  // ONE schema for every export (CSV download, Copy data, Excel) — see buildExportRows.
+  // Copies used to drift: the CSV people download lacked notes, exit dates and FeeVer.
+  const rows=buildExportRows();
   const csvStr=rows.map(r=>r.map(csvCell).join(',')).join('\n');
   // iOS: Web Share API → native share sheet (Save to Files / AirDrop / etc.)
   if(navigator.share){
@@ -3494,27 +3579,9 @@ function showExportModal(){
   const data=loadRecords();
   if(!data.records.length)return;
   const jsonStr=JSON.stringify(data,null,2);
-  // build CSV inline (mirror exportRecords schema)
-  const tradeCols=['ID','Symbol','Strategy','Dir','Entry Date','Entry','SL','Lot','Lev','Risk $','Gross $','Fees $','Net $','R-mult','Outcome','EntryScore','Holding','RiskMode'];
-  const slotCols=['cl','t1','t2','t3'];
-  const exitCols=[];
-  slotCols.forEach(s=>{const u=s.toUpperCase();exitCols.push(`${u} Price`,`${u} Lot`,`${u} Method`,`${u} Sc`,`${u} Swap`,`${u} Com`,`${u} VAT`,`${u} Gross`,`${u} Net`);});
-  const rows=[[...tradeCols,...exitCols]];
-  data.records.forEach(r=>{
-    const e=r.eval;const x=e.ext||{};
-    const row=[r.id,e.symbol,e.strategy||'',e.direction,toISODate(r.source?.entry?.date||''),e.entryPrice,e.entrySL,fmtLot(x.usedLot),x.lev,e.riskAmount,
-      e.grossPL!=null?e.grossPL:e.realizedPL,
-      e.totalFees!=null?e.totalFees:0,
-      e.realizedPL,
-      e.rMultiple,e.outcome,e.entryScore,e.holdingStr,x.riskMode];
-    const bySlot={};(e.exits||[]).forEach(ex=>bySlot[ex.slot]=ex);
-    slotCols.forEach(s=>{
-      const ex=bySlot[s];
-      if(ex){const gv=ex.gross!=null?ex.gross:ex.pl;row.push(ex.price,fmtLot(ex.lot),ex.method,ex.score,ex.swap||'',ex.com||'',ex.vat||'',gv,ex.pl);}
-      else row.push('','','','','','','','','');
-    });
-    rows.push(row);
-  });
+  // ONE schema for every export (CSV download, Copy data, Excel) — see buildExportRows.
+  // Copies used to drift: the CSV people download lacked notes, exit dates and FeeVer.
+  const rows=buildExportRows();
   const csvStr=rows.map(r=>r.map(csvCell).join(',')).join('\n');
   const existing=document.getElementById('export-modal');
   if(existing){existing.remove();return;}
@@ -3669,7 +3736,8 @@ const IMPORT_ALIASES={
   id:['id',0],symbol:['symbol',1],strategy:['strategy',2],dir:['dir',3],
   entrydate:['entrydate',4],entry:['entry',5],sl:['sl',6],lot:['lot',7],lev:['lev',8],
   riskmode:['riskmode',9],rpt:['rpt',10],vola:['vola',11],sf:['sf',12],
-  entryscore:['entryscore',13],entrynote:['entrynote',14],exitnote:['exitnote',15]
+  entryscore:['entryscore',13],entrynote:['entrynote',14],exitnote:['exitnote',15],
+  portatentry:['portatentry',9999],portsrc:['portsrc',9999]   // export-only columns (no legacy position)
 };
 function cellBy(cells,hdr,key){
   const a=IMPORT_ALIASES[key];if(!a)return '';
@@ -3713,7 +3781,8 @@ function posFromImportRow(cells,hdr){
   return {pos:{version:'v1',ver:APP_VER,feeVer,id,meta:{state:'CLOSED',importedAt:eStamp,closedAt:lastDate},
     entry:{date:eStamp,inst,dir,strategy:get('strategy'),price:String(entryN),sl:String(slN),rmode:get('riskmode'),rpt:get('rpt'),
       vsd,vsf,sld:String(sld.toFixed(2)),usedLot:String(lot),usedCV:String((lot*sym.unit*entryN).toFixed(0)),
-      lev:String(lev),entryScore:get('entryscore'),entryNote:get('entrynote')},
+      lev:String(lev),entryScore:get('entryscore'),entryNote:get('entrynote'),
+      portBal:(get('portsrc')==='entry'&&parseNum(get('portatentry'))>0)?parseNum(get('portatentry')):''},
     exit},eStamp,lastDate};
 }
 function runImport(){
@@ -3963,6 +4032,7 @@ function renderRecords(){
         const sumBox=`<div class="rec-box">
           <div class="rec-box-h">Summary</div>
           ${e.strategy?`<div class="rec-brow"><span class="rec-bl">Strategy</span><span class="rec-bv" style="color:var(--strat);font-weight:600">${escHtml(e.strategy)}</span></div>`:''}
+          <div class="rec-brow"><span class="rec-bl">Risk</span><span class="rec-bv">${e.riskAmount?`<span style="color:var(--red)">$${f(e.riskAmount)}</span>`+((x=>x?pctTagHTML(x.pct,x.src==='history'):'')(recRiskPctPort(r))):'—'}</span></div>
           <div class="rec-brow"><span class="rec-bl">R-mult</span><span class="rec-bv">${fSign(e.rMultiple,2)}R</span></div>
           <div class="rec-brow"><span class="rec-bl">%Move</span><span class="rec-bv" style="color:${moveC}">${pctMove!=null?fSign(pctMove,2)+'%':'—'}</span></div>
           <div class="rec-brow"><span class="rec-bl">Outcome</span><span class="rec-bv" style="color:${outcomeC}">${e.outcome}</span></div>
@@ -4209,7 +4279,8 @@ function buildPacket(n){
       usedCV:String(cv.toFixed(0)),
       lev:String(lev),
       entryScore:g(`p${n}-entry-score`)?.value||'',
-      entryNote:g(`p${n}-entry-note`)?.value||''
+      entryNote:g(`p${n}-entry-note`)?.value||'',
+      portBal:(pb=>pb>0?+pb.toFixed(2):'')(portBalance())   // Port balance at the moment of entry → %port
     },
     exit:{trailSL:'',note:'',cl:{price:'',date:'',method:'',lot:'',score:''},t1:{price:'',date:'',method:'',lot:'',score:''},t2:{price:'',date:'',method:'',lot:'',score:''},t3:{price:'',date:'',method:'',lot:'',score:''}}
   };
@@ -4327,8 +4398,10 @@ if(document.readyState==='complete'){
 // ── Version system ── APP_VER format yyyy.mm.dd.X (zero-padded → string-sortable).
 // Bump on every code edit: same day → next letter (A→B→C); new day → reset to A.
 // New records are stamped ver:APP_VER (provenance). Old records keep no ver = legacy.
-const APP_VER='2026.08.09.E';
+const APP_VER='2026.08.10.A';
 const VERSION_LOG=[
+  {v:'2026.08.10.A',note:'Tab2 การ์ด position: เพิ่ม P/L Calculator (dropdown ก่อน Exit Records) · กรอกราคา exit × lot (ตั้งต้น = lot ที่เหลือ) · ชิป SL / BE / 1R / 2R · ตาราง $ · R · %price · pip ของส่วนนี้และทั้งไม้ · คำนวณอย่างเดียว ไม่บันทึก · ค่าที่พิมพ์อยู่จนปิดแอป'},
+  {v:'2026.08.09.F',note:'บันทึก %port ไว้กับ trade: เก็บ Port balance ตอนเปิดไม้ (Tab1 → Tab2) ติดไปถึง record · ไม้เก่าคำนวณย้อนจากประวัติ แสดง ≈ ไม่เขียนทับ · Trade History Summary มีแถว Risk $x (y%port) · export เพิ่ม Port at entry / Risk %port / Port src (ต่อท้าย) และ import อ่านกลับ'},
   {v:'2026.08.09.E',note:'Risk แสดง (x%port) เป็นจำนวนเต็ม ตัวเล็กกว่า $risk ใน Position Status, Order Setup (Tab1) และการ์ด position (Tab2) · ต่ำกว่า 0.5% แสดง <1%port'},
   {v:'2026.08.09.D',note:'Tab1 Port balance = Initial balance + P/L ของ record ทั้งหมด (ตรงกับ Total P/L ใน Tab3) พร้อมบรรทัดที่มา · Risk % และ Margin Lv. ทุกจุดคิดจาก Port balance · Tab3 เปลี่ยนชื่อการ์ดเป็น Initial balance · Equity Curve และ %DD ยังใช้ Initial balance'},
   {v:'2026.08.09.C',note:'Sync ตามแนว SJ: record ที่แก้ sync ข้ามเครื่องได้ (ฉบับที่แก้ล่าสุดชนะ ใช้ syncAt แยกจาก ✏️) · Push อ่าน tombstone บน cloud ก่อน ไม่ส่งรายการที่เครื่องอื่นลบกลับขึ้นไป · กันแอปรุ่นเก่าเขียนทับด้วย syncFmt บน cloud (ทุกเส้นทางที่เขียน) · Pull หยุดถ้าอ่านรายการที่ลบไม่ได้'},
